@@ -352,7 +352,7 @@ class NovaService : Service() {
     }
 
     private fun modelOk(dir: File): Boolean =
-        File(dir, "am/final.mdl").isFile && File(dir, "graph/words.txt").isFile
+        File(dir, "am/final.mdl").isFile && File(dir, "graph/HCLr.fst").isFile && File(dir, "graph/Gr.fst").isFile
 
     private fun loadModel(): Model {
         val dir = File(filesDir, "model-en")
