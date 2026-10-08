@@ -1,5 +1,6 @@
 name: Unpack zip
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -7,13 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - name: Unpack
+        run: |
           set -e
-          unzip -oq NOVA_v6_full_handover_v2.zip -x ".github/*" -d unpacked
-          cp -r unpacked/. .
-          rm -rf unpacked NOVA_v6_full_handover_v2.zip
-          git config user.name bot
-          git config user.email bot@users.noreply.github.com
+          mkdir /tmp/x
+          unzip -q NOVA_v15_assistant.zip -d /tmp/x
+          rm -rf /tmp/x/.github
+          cp -a /tmp/x/. .
+          rm -f NOVA_v15_assistant.zip
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
           git add -A
-          git commit -m "Unpack v2"
+          git commit -m "Unpack NOVA v15" || echo "nothing to commit"
           git push
