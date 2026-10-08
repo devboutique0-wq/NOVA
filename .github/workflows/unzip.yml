@@ -1,0 +1,21 @@
+name: Unzip NOVA
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract
+        run: |
+          unzip -q NOVA_repaired_final.zip -d x
+          cp x/.github/workflows/build.yml build_workflow.yml
+          rm -rf x/.git x/.github
+          cp -r x/. .
+          rm -rf x NOVA_repaired_final.zip
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add -A
+          git commit -m "Extract NOVA source"
+          git push
