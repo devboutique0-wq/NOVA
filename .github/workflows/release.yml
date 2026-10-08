@@ -1,0 +1,69 @@
+name: Release APK
+
+# Step B/C. Builds a SIGNED apk named nova-vc<versionCode>.apk and publishes it as a GitHub release.
+# Needs the signing secrets (NOVA_KEYSTORE_B64, NOVA_KEYSTORE_PASSWORD, NOVA_KEY_ALIAS). Start it by hand: Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "versionCode (a whole number, higher than the installed app, e.g. 7)"
+        required: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      NOVA_VERSION_CODE: ${{ inputs.version_code }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check inputs and secrets
+        env:
+          KS_B64: ${{ secrets.NOVA_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.NOVA_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.NOVA_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.NOVA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          case "$NOVA_VERSION_CODE" in ''|*[!0-9]*) echo "::error::version_code must be a whole number"; exit 1;; esac
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ] || [ -z "$KS_ALIAS" ]; then
+            echo "::error::Signing secrets are missing. A release without the fixed key could never be installed as an update."; exit 1
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/nova.jks"
+          echo "NOVA_KEYSTORE_PATH=$RUNNER_TEMP/nova.jks" >> "$GITHUB_ENV"
+          echo "NOVA_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+          echo "NOVA_KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
+          if [ -n "$KEY_PASS" ]; then echo "NOVA_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"; fi
+      - name: Download and validate offline wake/command model
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets tmp
+          curl -L --retry 3 --retry-all-errors -f -o m.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+          unzip -q m.zip -d tmp
+          test -f tmp/vosk-model-small-en-us-0.15/graph/HCLr.fst
+          test -f tmp/vosk-model-small-en-us-0.15/am/final.mdl
+          mv tmp/vosk-model-small-en-us-0.15 app/src/main/assets/model-en
+          rm -f m.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - name: Test and build signed apk
+        run: gradle testDebugUnitTest assembleDebug --no-daemon --console=plain
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk "nova-vc${NOVA_VERSION_CODE}.apk"
+          gh release create "v${NOVA_VERSION_CODE}" "nova-vc${NOVA_VERSION_CODE}.apk" \
+            --title "NOVA build ${NOVA_VERSION_CODE}" --notes "Signed build, versionCode ${NOVA_VERSION_CODE}."
+          # a release made with GITHUB_TOKEN does not start other workflows by itself, so refresh the feed explicitly
+          gh workflow run feed.yml --ref main
