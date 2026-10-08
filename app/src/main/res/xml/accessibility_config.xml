@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starts with window-state events only. NovaAccessibilityService adds content-change events at runtime
+     and ONLY while Screen Monitoring is ON or a confirmed WhatsApp send is waiting. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="300"
+    android:description="@string/acc_desc"
+    android:settingsActivity="com.nova.assistant.MainActivity" />

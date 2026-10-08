@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="acc_desc">NOVA uses this only for: phone navigation by voice (Home, Back, Recents, Notifications, Quick Settings, Lock), pressing WhatsApp SEND after you say yes, and reading visible screen TEXT when you say "analyze screen" or switch Screen Monitoring on. It reads text only, not images. Nothing is uploaded unless you ask for AI analysis and have added your own API key.</string>
+</resources>

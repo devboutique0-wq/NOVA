@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--c1:#00f0ff;--c2:#8a2be2;--bg:#05060f}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:radial-gradient(circle at 50% 30%,#10163a,var(--bg) 70%);color:#cfe;font-family:sans-serif;overflow:hidden}
+body:before{content:"";position:fixed;inset:0;background:linear-gradient(rgba(0,240,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);background-size:36px 36px;pointer-events:none}
+.wrap{height:100%;display:flex;flex-direction:column;align-items:center;padding:36px 20px 24px}
+h1{letter-spacing:12px;font-weight:200;font-size:22px;color:var(--c1);text-shadow:0 0 14px var(--c1)}
+.status{font-size:11px;letter-spacing:3px;opacity:.65;margin-top:6px;text-transform:uppercase;text-align:center}
+.orbbox{flex:0 0 250px;display:flex;align-items:center;justify-content:center;margin-top:8px}
+.orb{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0,var(--c1) 22%,var(--c2) 65%,#120030 100%);box-shadow:0 0 40px var(--c1),0 0 90px var(--c2),inset 0 0 30px rgba(255,255,255,.3);position:relative;filter:grayscale(1) brightness(.5);transition:.4s}
+.orb:before,.orb:after{content:"";position:absolute;inset:-22px;border-radius:50%;border:1px solid var(--c1);opacity:.5;animation:spin 8s linear infinite;border-top-color:transparent;border-bottom-color:transparent}
+.orb:after{inset:-42px;border-color:var(--c2);animation-duration:12s;animation-direction:reverse;border-left-color:transparent;border-right-color:transparent}
+.on .orb{filter:none;animation:breathe 3s ease-in-out infinite}
+.think .orb{filter:hue-rotate(160deg);animation:breathe .5s ease-in-out infinite}
+.listen .orb{filter:hue-rotate(60deg);animation:breathe .8s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.1)}}
+@keyframes popmsg{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes panelOut{to{opacity:0;transform:scale(.96)}}
+#panel.out{animation:panelOut .28s ease-in forwards;pointer-events:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.log{flex:1;width:100%;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:8px 2px}
+.msg{padding:10px 14px;border-radius:14px;font-size:14px;max-width:88%;animation:in .3s;line-height:1.4}
+.me{align-self:flex-end;background:rgba(138,43,226,.25);border:1px solid rgba(138,43,226,.6)}
+.ai{align-self:flex-start;background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.5)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+button{padding:14px 40px;border-radius:40px;border:2px solid var(--c1);background:rgba(0,240,255,.08);color:var(--c1);font-size:15px;letter-spacing:4px;box-shadow:0 0 24px rgba(0,240,255,.45)}
+button.sm{padding:8px 16px;font-size:11px;letter-spacing:2px;box-shadow:none;border-width:1px}
+button:active{transform:scale(.95)}
+.row{display:flex;gap:10px;align-items:center;margin-top:8px}
+#panel{display:none;position:fixed;inset:0;z-index:5;background:rgba(5,6,15,.97);overflow-y:auto;padding:22px 20px 40px}
+#panel h2{letter-spacing:8px;font-weight:200;font-size:18px;color:var(--c1);text-shadow:0 0 12px var(--c1);margin-bottom:14px}
+#panel label{display:block;font-size:12px;letter-spacing:1px;opacity:.85;margin-top:14px}
+#panel input[type=text],#panel input[type=password],#panel select{display:block;width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1px solid var(--c2);background:rgba(0,0,0,.5);color:#fff;font-size:14px}
+#panel input[type=range]{width:100%;margin-top:6px}
+#panel small{display:block;opacity:.55;font-size:11px;line-height:1.4;margin-top:5px}
+#panel .chk{display:flex;gap:10px;align-items:center}
+#panel .box{border:1px solid rgba(0,240,255,.25);border-radius:12px;padding:12px;margin-top:16px}
+#panel .row{flex-wrap:wrap}
+#smsg{margin-top:12px;font-size:13px;color:#ffd166;min-height:18px}
+.ok{color:#7CFC9A}.bad{color:#ff8a8a}
+.badge{margin-top:8px;font-size:10px;letter-spacing:2px;padding:4px 12px;border-radius:20px;border:1px solid rgba(124,252,154,.6);color:#7CFC9A;text-transform:uppercase}
+.badge.cloud{border-color:rgba(0,240,255,.6);color:var(--c1)}
+
+/* ---------- opening animation ---------- */
+#intro{position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 42%,#1b1e55,#0a0b24 55%,#04050f 100%);animation:introOut .7s 2.7s ease-in forwards}
+#intro:before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,240,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.05) 1px,transparent 1px);background-size:36px 36px;animation:fadeIn 1s both}
+#intro:after{content:"";position:absolute;left:0;right:0;height:120px;top:-120px;background:linear-gradient(transparent,rgba(0,240,255,.16),transparent);animation:scan 1.8s .3s ease-in-out both}
+.ib{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center}
+.io{width:84px;height:84px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0,var(--c1) 22%,var(--c2) 65%,#120030 100%);box-shadow:0 0 40px var(--c1),0 0 90px var(--c2),inset 0 0 24px rgba(255,255,255,.35);animation:orbPop 1s .15s cubic-bezier(.2,1.4,.4,1) both,orbBreathe 1.4s 1.2s ease-in-out infinite}
+.ir{position:absolute;border-radius:50%;border:2px solid var(--c1);border-top-color:transparent;border-bottom-color:transparent;animation:ringIn .9s .45s ease-out both,spin 3s .45s linear infinite}
+.ir.a{width:132px;height:132px}
+.ir.b{width:182px;height:182px;border-color:#b45cff;border-left-color:transparent;border-right-color:transparent;animation:ringIn .9s .65s ease-out both,spinR 5s .65s linear infinite}
+.ip{position:absolute;width:84px;height:84px;border-radius:50%;border:2px solid var(--c1);opacity:0;animation:pulse 1.6s 1s ease-out 2}
+.it{margin-top:26px;font-size:34px;font-weight:200;color:var(--c1);text-shadow:0 0 18px var(--c1);display:flex}
+.it span{display:inline-block;opacity:0;animation:letter .6s ease-out both}
+.it span:nth-child(1){animation-delay:.9s}.it span:nth-child(2){animation-delay:1.05s}.it span:nth-child(3){animation-delay:1.2s}.it span:nth-child(4){animation-delay:1.35s}
+.is{margin-top:12px;font-size:11px;letter-spacing:4px;color:#cfe;text-transform:uppercase;animation:fadeIn .8s 1.7s both}
+.il{margin-top:22px;width:140px;height:2px;background:rgba(0,240,255,.15);border-radius:2px;overflow:hidden;animation:fadeIn .5s 1.4s both}
+.il:after{content:"";display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--c2),var(--c1));transform:translateX(-100%);animation:load 1.2s 1.5s ease-in-out forwards}
+@keyframes orbPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes orbBreathe{50%{transform:scale(1.12)}}
+@keyframes ringIn{from{transform:scale(.3) rotate(-180deg);opacity:0}to{opacity:.9}}
+@keyframes spinR{to{transform:rotate(-360deg)}}
+@keyframes pulse{from{transform:scale(1);opacity:.7}to{transform:scale(3);opacity:0}}
+@keyframes letter{from{opacity:0;transform:translateY(14px) scale(.6);filter:blur(8px);letter-spacing:22px}to{opacity:1;transform:none;filter:none;letter-spacing:12px}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scan{from{top:-120px}to{top:100%}}
+@keyframes load{to{transform:translateX(0)}}
+@keyframes introOut{0%{opacity:1;transform:scale(1)}99%{opacity:0;transform:scale(1.25);visibility:visible}100%{opacity:0;transform:scale(1.25);visibility:hidden}}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+@keyframes zoom{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.wrap>h1{animation:drop .7s 2.9s both}
+.wrap>.status{animation:fadeIn .7s 3.1s both}
+.wrap>.orbbox{animation:zoom .8s 3s cubic-bezier(.2,1.2,.4,1) both}
+.wrap>.log{animation:fadeIn .6s 3.3s both}
+.wrap>.row{animation:rise .7s 3.3s both}
+</style></head>
+<body><div id="intro"><div class="ib"><div class="ip"></div><div class="ir b"></div><div class="ir a"></div><div class="io"></div></div><div class="it"><span>N</span><span>O</span><span>V</span><span>A</span></div><div class="is">Aapki awaaz, aapka assistant</div><div class="il"></div></div>
+<div class="wrap" id="app">
+<h1>NOVA</h1><div class="status" id="st">Offline</div><div class="badge" id="mode">LOCAL MODE - no API key needed</div>
+<div class="orbbox"><canvas id="tf" width="250" height="250" aria-label="NOVA"></canvas></div>
+<div class="log" id="log"></div>
+<div class="row"><button id="btn">ACTIVATE</button><button class="sm" id="quiet">CHUP</button><button class="sm" id="gear">SETTINGS</button></div>
+</div>
+<div id="panel">
+<h2>SETTINGS</h2>
+
+<label>WAKE WORD (jis shabd se NOVA jaagta hai)
+<input type="text" id="s_wake" maxlength="12" autocapitalize="none" autocomplete="off"></label>
+<small>Sirf English akshar, ek shabd, 3 se 12 akshar. Shabd Vosk model ki dictionary mein hona chahiye (jaise nova, jarvis, computer). Na mila to NOVA khud "nova" use karega aur bata dega.</small>
+
+<label>AWAAZ KI BHASHA
+<select id="s_lang"><option value="hi">Hindi</option><option value="en">English</option></select></label>
+<label>BOLNE KI SPEED <span id="v_rate"></span>
+<input type="range" id="s_rate" min="0.6" max="1.6" step="0.1"></label>
+<label>AWAAZ KI PITCH <span id="v_pitch"></span>
+<input type="range" id="s_pitch" min="0.7" max="1.4" step="0.1"></label>
+<div class="row"><button class="sm" id="s_test">AWAAZ TEST</button></div>
+
+<label>AI MODEL (Gemini)
+<select id="s_model"></select></label>
+<small>NOVA pehle local phone actions karta hai. AI request mein configured model fail/quota par available fallback try hota hai.</small>
+
+<label class="chk"><input type="checkbox" id="s_boot"> Phone restart ke baad NOVA wapas chalu karne ka notification do</label>
+<label class="chk"><input type="checkbox" id="s_screen"> SCREEN MONITORING (sirf local, default OFF): screen par error/warning aane par NOVA bol dega</label>
+<small>Monitoring phone ke andar hi chalti hai (Accessibility text, koi image nahi) aur kuch bhi cloud par nahi bhejti. Iske liye Accessibility ON honi chahiye. Screen ka analysis alag hai: sirf jab aap bolo "analyze screen"; key hone par hi password-free screen text AI ko jaata hai.</small>
+
+<div class="box">
+<label style="margin-top:0">GEMINI API KEYS (OPTIONAL) <span id="keyst"></span>
+<textarea id="s_key" rows="3" placeholder="Har API key alag line mein paste karo" autocomplete="off"></textarea></label>
+<small>Bina key ke phone commands (torch, volume, battery, apps...) offline chalte hain. Key sirf lambe sawaal, web search aur deep screen analysis ke liye chahiye. Keys Android Keystore mein encrypted rehti hain aur kabhi screen par wapas nahi dikhti. Quota/server error par NOVA agli saved key/model try karta hai. Sirf apni/authorized keys rakho.</small>
+<div class="row"><button class="sm" id="s_savekey">KEYS SAVE</button><button class="sm" id="s_delkey">KEYS HATAO</button></div>
+</div>
+
+<div class="box">
+<label style="margin-top:0">ACCESSIBILITY CONTROL <span id="accst"></span></label>
+<small>Optional. Home/Back/Recents/Notifications jaise navigation, WhatsApp auto-send (sirf aapke "yes" ke baad) aur local screen monitoring ke liye. Bina Accessibility ke baaki phone controls chalte rehte hain. NOVA screen text apne aap cloud par upload nahi karta.</small>
+<div class="row"><button class="sm" id="s_acc">ACCESSIBILITY ON KARO</button><button class="sm" id="s_app">APP INFO</button></div>
+<small>Android 13+ par pehle APP INFO mein jao, upar teen dot (⋮) dabao, "Allow restricted settings" chuno. Phir ACCESSIBILITY ON KARO mein NOVA ko ON karo.</small>
+</div>
+
+<div class="box">
+<label style="margin-top:0">PERMISSIONS <span id="permst"></span></label>
+<small>Ye sirf tab maange jaate hain jab aap yahan tap karo. Contacts: "naam ko call/message karo" ke liye. Brightness: screen ki roshni badalne ke liye.</small>
+<div class="row"><button class="sm" id="s_contacts">ALLOW CONTACTS</button><button class="sm" id="s_bright">ALLOW BRIGHTNESS</button></div>
+</div>
+
+<div id="smsg"></div>
+<div class="row" style="margin-top:14px"><button class="sm" id="s_save">SAVE</button><button class="sm" id="s_close">BAND KARO</button></div>
+</div>
+<script>
+var $=function(id){return document.getElementById(id)};
+var log=$('log'),st=$('st'),app=$('app'),btn=$('btn'),panel=$('panel');
+var on=false,S={wake:'nova'},panelOpen=false;
+
+function add(t,c){var d=document.createElement('div');d.className='msg '+c;d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight}
+function listenTxt(){return 'Listening - bolo "'+S.wake+'"'}
+function ready(){st.textContent=listenTxt();app.className=on?'on':''}
+function onNova(r,t){
+  if(r=='sys'){st.textContent=t;return}
+  if(r=='mode'){app.className=(t=='on')?'on':t;return}
+  add(t,r); if(r=='ai')ready();
+}
+function setOn(o){on=o;app.className=o?'on':'';st.textContent=o?listenTxt():'Offline';btn.textContent=o?'STOP':'ACTIVATE'}
+
+function loadS(){try{S=JSON.parse(Android.getSettings())}catch(e){}}
+function msg(t,cls){
+  var m=$('smsg');m.textContent=t;m.className=cls||'';
+  if(cls=='ok'){pendingFx=true;m.style.animation='none';void m.offsetWidth;m.style.animation='popmsg .5s'}
+}
+function accTxt(){var a=$('accst');a.textContent=S.acc?'- ON':'- OFF';a.className=S.acc?'ok':'bad'}
+function keyTxt(){var k=$('keyst');k.textContent=S.hasKey?'- '+(S.keyCount||1)+' encrypted key(s)':'- optional';k.className='ok'}
+function modeTxt(){var m=$('mode');if(S.hasKey){m.textContent='AI KEYS SAVED - local commands still work offline';m.className='badge cloud'}else{m.textContent='LOCAL MODE - no API key needed';m.className='badge'}}
+function permTxt(){var p=$('permst');p.textContent='- contacts '+(S.contacts?'ON':'OFF')+', brightness '+(S.writeSettings?'ON':'OFF');p.className=(S.contacts&&S.writeSettings)?'ok':'bad'}
+function fillPanel(){
+  $('s_wake').value=S.wake; $('s_lang').value=S.lang;
+  $('s_rate').value=S.rate; $('s_pitch').value=S.pitch;
+  $('v_rate').textContent=S.rate; $('v_pitch').textContent=S.pitch;
+  var m=$('s_model'); m.innerHTML='';
+  (S.models||[]).forEach(function(x){var o=document.createElement('option');o.value=x;o.textContent=x;m.appendChild(o)});
+  m.value=S.model; $('s_boot').checked=!!S.autostart; $('s_screen').checked=!!S.screenMonitor;
+  $('s_key').value=''; accTxt(); keyTxt(); permTxt(); modeTxt();
+}
+function openPanel(){loadS();fillPanel();msg('');panel.style.display='block';panelOpen=true}
+var pendingFx=false;
+function closePanel(){
+  var play=pendingFx; pendingFx=false; panelOpen=false;
+  panel.classList.add('out');
+  setTimeout(function(){
+    panel.classList.remove('out'); panel.style.display='none';
+    loadS();modeTxt();if(on)ready();
+    if(play&&window.tfAssemble)tfAssemble();      // robot re-assembles after a confirmed change
+  },280);
+}
+function collect(){return JSON.stringify({
+  wake:$('s_wake').value.trim().toLowerCase(), lang:$('s_lang').value,
+  rate:parseFloat($('s_rate').value), pitch:parseFloat($('s_pitch').value),
+  model:$('s_model').value, autostart:$('s_boot').checked, screenMonitor:$('s_screen').checked})}
+
+btn.onclick=function(){
+  var r=Android.toggle();
+  if(r=='started'){setOn(true);if(window.tfAssemble)tfAssemble()}
+  else if(r=='stopped')setOn(false);
+  else if(r=='perm')add('Permission dialog mein Allow dabao; mic allow hote hi NOVA chalu ho jaayega','ai');
+  else if(r=='nomic')add('Mic permission zaroori hai. Phone Settings > Apps > NOVA mein allow karo','ai');
+};
+$('gear').onclick=openPanel;
+$('s_close').onclick=closePanel;
+$('quiet').onclick=function(){Android.stopSpeak()};
+$('s_rate').oninput=function(){$('v_rate').textContent=this.value};
+$('s_pitch').oninput=function(){$('v_pitch').textContent=this.value};
+$('s_test').onclick=function(){
+  var r=Android.saveSettings(collect());
+  if(r=='ok'||r=='need_acc'){Android.testVoice();msg('')}else if(r=='bad_wake'){msg('Pehle wake word theek karo','bad')}
+};
+$('s_save').onclick=function(){
+  var oldWake=S.wake, wasRunning=Android.running();
+  var r=Android.saveSettings(collect());
+  if(r=='bad_wake'){msg('Wake word: sirf English akshar, ek shabd, 3 se 12 akshar','bad');return}
+  if(r=='need_acc'){loadS();$('s_screen').checked=false;msg('Baaki settings save ho gayi. Screen Monitoring ke liye pehle Accessibility ON karo, phir dobara tick karke SAVE karo','bad');return}
+  if(r!='ok'){msg('Save nahi hua, dobara try karo','bad');return}
+  loadS();
+  if(wasRunning&&S.wake!=oldWake){msg('Save ho gaya. Naya wake word chalane ke liye STOP dabake dobara ACTIVATE karo','ok')}
+  else{msg('Settings save ho gayi','ok')}
+  if(on)ready();
+  setTimeout(closePanel,900);   // SAVE = done: close and play the assemble animation
+};
+$('s_savekey').onclick=function(){
+  var v=$('s_key').value.trim();
+  if(!v){msg('Kam se kam ek API key likho','bad');return}
+  var r=Android.saveKeys(v);
+  if(r.indexOf('ok')==0){$('s_key').value='';loadS();keyTxt();modeTxt();msg(r.substring(3)+' key(s) encrypted save ho gayi; fallback ready hai','ok')}
+  else if(r=='invalid')msg('Koi valid key nahi mili. Har key alag line mein, bina space ke (20+ akshar)','bad');
+  else msg('Keys save nahi ho paayi. Dobara try karo','bad');
+};
+$('s_delkey').onclick=function(){Android.clearKey();loadS();keyTxt();modeTxt();msg('Saari saved keys hata di gayi. Ab LOCAL MODE','ok')};
+$('s_acc').onclick=function(){Android.openAccessibility()};
+$('s_app').onclick=function(){Android.openAppInfo()};
+$('s_contacts').onclick=function(){var r=Android.requestContacts();if(r=='granted'){loadS();permTxt();msg('Contacts permission pehle se ON hai','ok')}};
+$('s_bright').onclick=function(){Android.openWriteSettings();msg('Settings khuli: NOVA ke liye "Allow modifying system settings" ON karo, phir wapas aao')};
+
+// results of asynchronous actions started from native code
+window.onFlow=function(r){
+  if(r=='started'||r=='nomic'||r=='start_failed'){
+    if(r=='nomic')add('Mic permission zaroori hai. APP INFO > Permissions mein Microphone allow karo','ai');
+    else if(r=='start_failed')add('NOVA start nahi ho paaya. Dobara ACTIVATE dabao','ai');
+    setOn(Android.running());
+  }
+  else if(r=='contacts_ok'){loadS();permTxt();msg('Contacts permission mil gayi','ok')}
+  else if(r=='contacts_denied'){loadS();permTxt();msg('Contacts permission nahi mili. Naam se call/message nahi hoga; number bolkar chalega','bad')}
+  else if(r=='write_settings_failed'){msg('Settings screen nahi khul paayi. APP INFO se try karo','bad')}
+};
+
+// keep the screen in sync (service start/stop, accessibility switched on)
+setInterval(function(){
+  var r=Android.running(); if(r!==on)setOn(r);
+  if(panelOpen){var a=S.acc,w=S.writeSettings;loadS();if(S.acc!==a)accTxt();if(S.writeSettings!==w)permTxt()}
+},1500);
+
+loadS();modeTxt();
+setOn(Android.running());
+add('Activate karo aur "'+S.wake+'" bolo. Phone controls API ke bina chal sakte hain; complex AI/analysis ke liye keys optional fallback hain.','ai');
+
+/* ---------- Transformer-style assembly (canvas, vector, resolution independent) ---------- */
+(function(){
+var cv=document.getElementById('tf'); if(!cv||!cv.getContext)return;
+var ctx=cv.getContext('2d'); var SZ=250, dpr=1;
+function fit(){dpr=Math.min(window.devicePixelRatio||1,3);cv.width=Math.round(SZ*dpr);cv.height=Math.round(SZ*dpr);cv.style.width=SZ+'px';cv.style.height=SZ+'px'}
+fit(); window.addEventListener('resize',fit);
+var reduce=false; try{reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+function mir(p){return p.map(function(q){return [-q[0],q[1]]}).reverse()}
+var L=[
+ [[-40,-70],[40,-70],[55,-45],[-55,-45]],
+ [[-8,-94],[8,-94],[14,-70],[-14,-70]],
+ [[-52,-88],[-38,-88],[-34,-60],[-48,-52]],
+ [[-52,-45],[-6,-45],[-10,-30],[-52,-30]],
+ [[-55,-30],[-30,-30],[-26,25],[-50,10]],
+ [[-72,-42],[-58,-42],[-58,10],[-72,0]]
+];
+var C=[
+ [[-24,-30],[24,-30],[20,15],[-20,15]],
+ [[-20,19],[20,19],[14,48],[-14,48]],
+ [[-14,52],[14,52],[8,70],[-8,70]]
+];
+var shapes=[], i;
+for(i=0;i<L.length;i++){shapes.push(L[i]); if(i!==1)shapes.push(mir(L[i]))}
+for(i=0;i<C.length;i++)shapes.push(C[i]);
+var plates=shapes.map(function(pts,k){
+  var cx=0,cy=0; pts.forEach(function(p){cx+=p[0];cy+=p[1]}); cx/=pts.length; cy/=pts.length;
+  var a=(k*2.399)+0.7, d=270+((k*53)%110);
+  var dl=Math.hypot(cx,cy)||1;
+  return {pts:pts,cx:cx,cy:cy,sx:Math.cos(a)*d,sy:Math.sin(a)*d,sr:((k%2)?1:-1)*(2.2+(k%4)*.7),
+          delay:k*65,dur:720,landed:false,land:0,dx:cx/dl,dy:cy/dl,dark:k>=shapes.length-3};
+});
+var eyes=[[[-35,-27],[-12,-27],[-15,-19],[-35,-21]]]; eyes.push(mir(eyes[0]));
+var t0=0, burstT=-9999, lastCls='', ready=false;
+function easeOutBack(x){var c1=1.5,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}
+function easeOutCubic(x){return 1-Math.pow(1-x,3)}
+function assemble(){
+  t0=performance.now(); ready=true;
+  plates.forEach(function(p){p.landed=false;p.land=0});
+  if(reduce){plates.forEach(function(p){p.landed=true;p.land=-9999}); t0=-99999}
+}
+window.tfAssemble=assemble;
+function poly(pts,ox,oy,rot,sc){
+  var c=Math.cos(rot),s=Math.sin(rot);
+  ctx.beginPath();
+  pts.forEach(function(q,j){
+    var x=q[0]*sc,y=q[1]*sc, rx=x*c-y*s+ox, ry=x*s+y*c+oy;
+    if(j===0)ctx.moveTo(rx,ry); else ctx.lineTo(rx,ry);
+  });
+  ctx.closePath();
+}
+function frame(now){
+  var cls=(document.getElementById('app')||{}).className||'';
+  if(cls!==lastCls){
+    var wasListen=lastCls.indexOf('listen')>=0, wasOn=lastCls.indexOf('on')>=0||lastCls.indexOf('think')>=0||wasListen;
+    if(ready&&cls.indexOf('listen')>=0&&!wasListen)burstT=now;           // wake word heard
+    if(ready&&cls&&!wasOn)assemble();                                    // ACTIVATE pressed
+    lastCls=cls;
+  }
+  var listen=cls.indexOf('listen')>=0, think=cls.indexOf('think')>=0, active=cls.length>0;
+  var el=now-t0;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,SZ,SZ);
+  ctx.translate(SZ/2,SZ/2+8);
+  var sc=0.92+(listen?0.03*Math.sin(now/110):0.01*Math.sin(now/700));
+  var float=ready?Math.sin(now/900)*3:0;
+  ctx.translate(0,float);
+  // sound rings while listening
+  if(listen){
+    for(var r=0;r<3;r++){var ph=((now/900)+r/3)%1; ctx.globalAlpha=(1-ph)*.5; ctx.strokeStyle='#7CFC9A'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,-8,60+ph*70,0,6.2832); ctx.stroke();}
+    ctx.globalAlpha=1;
+  }
+  // wake burst amount
+  var bp=(now-burstT)/750, b=0; if(bp>=0&&bp<1){b=bp<.17?bp/.17:Math.max(0,1-(bp-.17)/.83); b=b*b}
+  var allLanded=true, dim=active?1:.45;
+  plates.forEach(function(p){
+    var k=(el-p.delay)/p.dur, ox,oy,rot,sca,al;
+    if(k<=0){ox=p.sx;oy=p.sy;rot=p.sr;sca=.55;al=0;allLanded=false}
+    else if(k<1){var e=easeOutBack(k),e2=easeOutCubic(k);ox=p.sx*(1-e);oy=p.sy*(1-e);rot=p.sr*(1-e2);sca=.55+.45*e2;al=Math.min(1,k*3);allLanded=false}
+    else{ox=0;oy=0;rot=0;sca=1;al=1; if(!p.landed){p.landed=true;p.land=now}}
+    ox+=p.dx*70*b; oy+=p.dy*70*b; rot+=b*(p.dx>0?.25:-.25);
+    ctx.globalAlpha=al*dim;
+    var g=ctx.createLinearGradient(-60,-90,60,70);
+    if(p.dark){g.addColorStop(0,'#0a1030');g.addColorStop(1,'#1a0f40')}
+    else{g.addColorStop(0,'#27408f');g.addColorStop(.5,'#3a2b9c');g.addColorStop(1,'#14205a')}
+    ctx.save(); ctx.scale(sc,sc);
+    poly(p.pts,ox,oy,rot,sca); ctx.fillStyle=g; ctx.fill();
+    ctx.shadowColor='#00f0ff'; ctx.shadowBlur=8; ctx.strokeStyle='rgba(0,240,255,.9)'; ctx.lineWidth=1.4; ctx.stroke();
+    ctx.shadowBlur=0;
+    // spark where the plate clicks into place
+    var ls=now-p.land; if(p.landed&&ls<320){var f=1-ls/320; var rg=ctx.createRadialGradient(p.cx,p.cy,0,p.cx,p.cy,38);
+      rg.addColorStop(0,'rgba(255,255,255,'+(.9*f)+')'); rg.addColorStop(1,'rgba(0,240,255,0)'); ctx.globalAlpha=1; ctx.fillStyle=rg; ctx.fillRect(p.cx-40,p.cy-40,80,80)}
+    ctx.restore();
+  });
+  // eyes light up after the last plate locks
+  if(ready&&allLanded){
+    var since=now-Math.max.apply(null,plates.map(function(p){return p.land}));
+    var on=Math.min(1,since/350); var blink=((now%3300)<120)?.15:1;
+    var col=think?'#b45cff':(listen?'#7CFC9A':'#00f0ff');
+    var glow=(listen?1:.7)*on*dim*blink*(0.85+0.15*Math.sin(now/(think?120:400)));
+    ctx.save(); ctx.scale(sc,sc); ctx.globalAlpha=glow; ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=22;
+    eyes.forEach(function(e){poly(e,0,0,0,1);ctx.fill()}); ctx.restore();
+    if(think){ctx.globalAlpha=.55*dim;ctx.fillStyle=col;var sy=-80+((now/6)%160);ctx.fillRect(-58,sy,116,2)}
+    ctx.globalAlpha=1;
+  }
+  ctx.globalAlpha=1;
+}
+var raf=0;
+function loop(now){frame(now);raf=requestAnimationFrame(loop)}
+function start(){if(!raf)raf=requestAnimationFrame(loop)}
+function stop(){if(raf){cancelAnimationFrame(raf);raf=0}}
+document.addEventListener('visibilitychange',function(){document.hidden?stop():start()});
+window.__tfFrame=frame; start();
+setTimeout(assemble,3000);   // after the opening animation fades
+})();
+
+</script></body></html>

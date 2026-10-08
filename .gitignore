@@ -1,0 +1,18 @@
+# build output
+build/
+app/build/
+.gradle/
+.idea/
+*.iml
+local.properties
+captures/
+*.apk
+*.aab
+
+# Vosk model is downloaded by CI (too big for git)
+app/src/main/assets/model-en/
+
+# never commit secrets
+*.jks
+*.keystore
+.env
