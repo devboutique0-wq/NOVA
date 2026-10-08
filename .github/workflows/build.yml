@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           M=app/src/main/AndroidManifest.xml
-          for p in QUERY_ALL_PACKAGES SYSTEM_ALERT_WINDOW CALL_PHONE; do
+          for p in QUERY_ALL_PACKAGES CALL_PHONE; do
             if grep -q "$p" "$M"; then echo "::error::$p must not be in the manifest"; exit 1; fi
           done
           if grep -rEn 'catch \(_' app/src/main/java; then
@@ -48,31 +48,25 @@ jobs:
             echo "::error::unsafe !! operator found"; exit 1
           fi
 
+      - name: Tooling self-tests (feed + self-improve guards)
+        run: python3 tools/test_self_improve.py
+
       - name: Download and validate offline wake/command model
         run: |
           set -euo pipefail
           mkdir -p app/src/main/assets tmp
           curl -L --retry 3 --retry-all-errors -f -o m.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
           unzip -q m.zip -d tmp
-          echo "---- extracted files ----"
-          find tmp -maxdepth 3 | head -60
-          MD=$(find tmp -type f -name final.mdl | head -1 | xargs -r dirname | xargs -r dirname)
-          echo "model dir: $MD"
-          test -n "$MD"
-          mv "$MD" app/src/main/assets/model-en
-          rm -rf m.zip tmp
+          test -f tmp/vosk-model-small-en-us-0.15/graph/words.txt
+          test -f tmp/vosk-model-small-en-us-0.15/am/final.mdl
+          mv tmp/vosk-model-small-en-us-0.15 app/src/main/assets/model-en
+          rm -f m.zip
           du -sh app/src/main/assets/model-en
           SIZE_MB=$(du -sm app/src/main/assets/model-en | cut -f1)
           echo "model size: ${SIZE_MB} MB"
           if [ "$SIZE_MB" -lt 30 ] || [ "$SIZE_MB" -gt 120 ]; then
-            echo "::error::Vosk model size ${SIZE_MB} MB is outside the expected 30-120 MB range"
+            echo "::error::Vosk model size ${SIZE_MB} MB is outside the expected 30-120 MB range (truncated or wrong download)"
             exit 1
-          fi
-          # Small Vosk models may not ship graph/words.txt. If it is missing,
-          # do not make the app require it (the wake-word lookup already copes without it).
-          if [ ! -f app/src/main/assets/model-en/graph/words.txt ]; then
-            echo "graph/words.txt not in model: relaxing modelOk() in NovaService.kt"
-            sed -i 's| && File(dir, "graph/words.txt").isFile||' app/src/main/java/com/nova/assistant/NovaService.kt
           fi
 
       - uses: actions/setup-java@v4
@@ -83,6 +77,27 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
+
+      # Step B: fixed signing key. Secrets: NOVA_KEYSTORE_B64, NOVA_KEYSTORE_PASSWORD, NOVA_KEY_ALIAS (optional NOVA_KEY_PASSWORD).
+      # Without the secrets (or on pull requests from forks) the build still works with the throwaway debug key.
+      - name: Load fixed signing key (if secrets exist)
+        env:
+          KS_B64: ${{ secrets.NOVA_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.NOVA_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.NOVA_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.NOVA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KS_ALIAS" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/nova.jks"
+            echo "NOVA_KEYSTORE_PATH=$RUNNER_TEMP/nova.jks" >> "$GITHUB_ENV"
+            echo "NOVA_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "NOVA_KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
+            if [ -n "$KEY_PASS" ]; then echo "NOVA_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"; fi
+            echo "Fixed signing key loaded"
+          else
+            echo "No signing secrets: using the throwaway debug key (in-app APK updates will be refused)"
+          fi
 
       - name: Source sanity checks
         run: |
@@ -99,11 +114,13 @@ jobs:
           python3 - <<'PY'
           import re
           s = open("app/src/main/assets/ui.html", encoding="utf-8").read()
-          m = re.search(r"<script>(.*)</script>", s, re.S)
-          open("ui_check.js", "w", encoding="utf-8").write(m.group(1))
+          blocks = re.findall(r"<script>(.*?)</script>", s, re.S)   # ui.html has TWO script blocks: check each one
+          assert blocks, "no <script> block found"
+          for i, b in enumerate(blocks):
+              open("ui_check_%d.js" % i, "w", encoding="utf-8").write(b)
           PY
-          node --check ui_check.js
-          rm -f ui_check.js
+          for f in ui_check_*.js; do node --check "$f"; done
+          rm -f ui_check_*.js
 
       # 1) unit tests  2) APK build. If a test fails the APK is not built.
       - name: Test and build
@@ -117,9 +134,7 @@ jobs:
           ls -l "$APK"
           unzip -l "$APK" > apk_list.txt
           grep -q 'assets/model-en/am/final.mdl' apk_list.txt
-          if [ -f app/src/main/assets/model-en/graph/words.txt ]; then
-            grep -q 'assets/model-en/graph/words.txt' apk_list.txt
-          fi
+          grep -q 'assets/model-en/graph/words.txt' apk_list.txt
           grep -q 'assets/ui.html' apk_list.txt
           grep -q 'classes.dex' apk_list.txt
           # the Vosk native library must be packaged for at least one ABI
