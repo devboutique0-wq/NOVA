@@ -127,9 +127,9 @@ class NovaHud(private val ctx: Context) {
     fun show(state: String) {
         if (!canShow(ctx)) return
         val v = view
-        if (v != null) { v.setState(state); return }
+        if (v != null) { v.changeState(state); return }
         val nv = HudView(ctx)
-        nv.setState(state)
+        nv.changeState(state)
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -183,7 +183,7 @@ class NovaHud(private val ctx: Context) {
         } catch (e: Throwable) {
         }
     }
-    fun setState(state: String) { view?.setState(state) }
+    fun setState(state: String) { view?.changeState(state) }
 
     /** Plates fly apart, then the window is removed. */
     fun hide() {
@@ -260,7 +260,7 @@ private class HudView(ctx: Context) : View(ctx) {
         setMeasuredDimension(cardW, cardH)
     }
 
-    fun setState(s: String) { state = s; invalidate() }
+    fun changeState(s: String) { state = s; invalidate() }
 
     fun assemble() { run(0f, 1f, 650L, null) }
     fun disassemble(end: () -> Unit) { run(t, 0f, 420L, end) }
