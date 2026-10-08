@@ -45,7 +45,7 @@ class Cfg(ctx: Context) {
 
     /** Default ON: command replies go to the chat / floating card silently. NOVA speaks only for alerts, confirmations and driving. */
     var quietReplies: Boolean
-        get() = p.getBoolean("quietReplies", true)
+        get() = p.getBoolean("quietReplies", false)
         set(v) { p.edit().putBoolean("quietReplies", v).apply() }
 
     /** Default OFF: NOVA never opens the mic by itself to ask "shall I remember this shortcut?" after a command. */
