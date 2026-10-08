@@ -1,0 +1,19 @@
+name: Unpack zip
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          unzip -oq NOVA_v6_full_handover_v2.zip -x ".github/*" -d unpacked
+          cp -r unpacked/. .
+          rm -rf unpacked NOVA_v6_full_handover_v2.zip
+          git config user.name bot
+          git config user.email bot@users.noreply.github.com
+          git add -A
+          git commit -m "Unpack v2"
+          git push
