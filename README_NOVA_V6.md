@@ -18,6 +18,12 @@ NOVA is an Android voice assistant. Wake word and command recognition are offlin
 
 Model IDs tried, in order: `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`. They were taken from Google's documentation in October 2026, but model availability changes; an unavailable ID is skipped on a 404.
 
+## New in this version (not yet compiled or tested)
+
+- **Floating card:** after the wake word a card assembles from steel plates over any app (optional "Display over other apps").
+- **Screen control (needs Accessibility):** "tap <label>", "click <label>", "<label> dabao", "type <text>", "scroll/swipe up|down|left|right". Risky labels (send, pay, delete, buy, ...) ask for a spoken "yes" first. tap/type are refused in the package installer, permission screens, system Settings, Play Store, payment/bank apps and NOVA itself. Password boxes are never typed into. After a tap NOVA says whether the screen visibly changed, never just "done".
+- **Memory (Layer 1):** NOVA remembers shortcuts on the phone only. If you say an unknown phrase and then a known command twice, it asks once (max every 6 h) whether to remember it. Shortcuts can only contain built-in safe commands, never tap/type/call/message. Fuzzy matching never merges different numbers. CLEAR MEMORY wipes everything.
+
 ## Limits you should know about
 
 - **English-only confirmation:** the offline recognizer is an English model. Spoken confirmations are "yes", "yeah", "yep", "okay", "sure", plus "haan", "han", "ji". Hindi in Devanagari is not recognized; Hinglish commands work only as far as the English model hears the words.
@@ -28,7 +34,7 @@ Model IDs tried, in order: `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-
 - **Brightness** needs "Modify system settings". Tap ALLOW BRIGHTNESS in Settings.
 - Accessibility is optional. Without it, navigation commands (Home/Back/...), WhatsApp send, screen monitoring and launch verification by foreground app are unavailable; everything else works.
 - Android permissions are requested only from the app screen after you tap something, never from a voice command or in the background.
-- No `QUERY_ALL_PACKAGES`, no overlay permission, no `CALL_PHONE`.
+- No `QUERY_ALL_PACKAGES`, no `CALL_PHONE`. The floating NOVA card (assemble animation) uses the optional "Display over other apps" permission (tap ALLOW POPUP in Settings); without it NOVA works exactly as before, just without the card.
 
 ## Build
 

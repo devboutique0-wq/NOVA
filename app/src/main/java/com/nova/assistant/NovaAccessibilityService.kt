@@ -1,6 +1,11 @@
 package com.nova.assistant
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
+import android.os.Bundle
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -54,6 +59,83 @@ class NovaAccessibilityService : AccessibilityService() {
         fun foregroundPackage(): String? = instance?.rootInActiveWindow?.packageName?.toString()
 
         fun performGlobalAction(action: Int): Boolean = instance?.performGlobalAction(action) ?: false
+
+        // ------------------------------------------------------------------ voice screen control
+        // Rules (what is allowed) live in Control.kt. These must run on a worker thread (they may wait).
+
+        /** code: ok, no_acc, no_window, blocked, not_found, ambiguous:N, no_focus, password, failed. */
+        class Ctl(val ok: Boolean, val code: String)
+
+        /** A cheap fingerprint of the visible text, to tell whether an action changed the screen. */
+        fun screenSignature(): Int = readScreen(false)?.lines?.hashCode() ?: 0
+
+        fun tapLabel(label: String): Ctl {
+            val s = instance ?: return Ctl(false, "no_acc")
+            val root = s.rootInActiveWindow ?: return Ctl(false, "no_window")
+            if (Control.blocked(root.packageName?.toString(), s.packageName, "tap")) return Ctl(false, "blocked")
+            val exact = ArrayList<AccessibilityNodeInfo>()
+            val part = ArrayList<AccessibilityNodeInfo>()
+            findLabel(root, 0, label, exact, part)
+            val list = if (exact.isNotEmpty()) exact else part
+            if (list.isEmpty()) return Ctl(false, "not_found")
+            if (list.size > 1) return Ctl(false, "ambiguous:" + list.size)
+            return if (s.clickNode(list[0])) Ctl(true, "ok") else Ctl(false, "failed")
+        }
+
+        fun typeText(text: String): Ctl {
+            val s = instance ?: return Ctl(false, "no_acc")
+            val root = s.rootInActiveWindow ?: return Ctl(false, "no_window")
+            if (Control.blocked(root.packageName?.toString(), s.packageName, "type")) return Ctl(false, "blocked")
+            val node = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return Ctl(false, "no_focus")
+            if (node.isPassword) return Ctl(false, "password")
+            if (!node.isEditable) return Ctl(false, "no_focus")
+            val old = node.text?.toString() ?: ""
+            val hint = node.hintText?.toString()
+            val base = if (hint != null && old == hint) "" else old      // an empty box shows its hint as text
+            val args = Bundle()
+            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, base + text)
+            return if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) Ctl(true, "ok") else Ctl(false, "failed")
+        }
+
+        fun scrollDir(dir: String): Ctl {
+            val s = instance ?: return Ctl(false, "no_acc")
+            val path = Control.swipePath(dir) ?: return Ctl(false, "failed")
+            val dm = s.resources.displayMetrics
+            val p = Path()
+            p.moveTo(path[0] * dm.widthPixels, path[1] * dm.heightPixels)
+            p.lineTo(path[2] * dm.widthPixels, path[3] * dm.heightPixels)
+            val g = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(p, 0, 320)).build()
+            val latch = CountDownLatch(1)
+            var done = false
+            val accepted = s.dispatchGesture(g, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) { done = true; latch.countDown() }
+                override fun onCancelled(gestureDescription: GestureDescription?) { latch.countDown() }
+            }, null)
+            if (!accepted) return Ctl(false, "failed")
+            try { latch.await(1500, TimeUnit.MILLISECONDS) } catch (e: InterruptedException) { }
+            return if (done) Ctl(true, "ok") else Ctl(false, "failed")
+        }
+
+        private fun findLabel(
+            n: AccessibilityNodeInfo?, depth: Int, label: String,
+            exact: ArrayList<AccessibilityNodeInfo>, part: ArrayList<AccessibilityNodeInfo>
+        ) {
+            if (n == null || depth > 30 || exact.size + part.size > 20) return
+            try {
+                if (!n.isVisibleToUser) return
+                if (!n.isPassword) {
+                    var best = 0
+                    val t = n.text?.toString()
+                    val d = n.contentDescription?.toString()
+                    if (!t.isNullOrBlank()) best = maxOf(best, Control.matchScore(t, label))
+                    if (!d.isNullOrBlank()) best = maxOf(best, Control.matchScore(d, label))
+                    if (best == 2) exact.add(n) else if (best == 1) part.add(n)
+                }
+                for (i in 0 until n.childCount) findLabel(n.getChild(i), depth + 1, label, exact, part)
+            } catch (e: Exception) {
+                // node went away while walking: ignore
+            }
+        }
 
         /** Cancels pending scans at once when monitoring is switched off. */
         fun monitorChanged() { instance?.onMonitorChanged() }

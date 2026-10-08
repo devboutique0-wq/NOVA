@@ -70,11 +70,12 @@ class NovaService : Service() {
         @Volatile private var loopThread: Thread? = null
 
         const val RATE = 16000
+        private const val HUD_MAX_MS = 35000L
         private const val MAX_READ_ERRORS = 5
     }
 
     /** An action that waits for the user's spoken "yes" (call, WhatsApp send). Expires after PENDING_TTL_MS. */
-    private class Pending(val prompt: String, val createdAt: Long, val run: () -> String)
+    private class Pending(val prompt: String, val createdAt: Long, val onNo: (() -> Unit)? = null, val run: () -> String)
 
     private val h = Handler(Looper.getMainLooper())
     private lateinit var cfg: Cfg
@@ -91,7 +92,12 @@ class NovaService : Service() {
     @Volatile private var busy = false              // a turn is being processed
     @Volatile private var listening = false         // the loop is capturing a command / answer
     @Volatile private var pending: Pending? = null
+    @Volatile private var lastKind = ""                      // kind of the command the last turn ran (decides spoken or silent reply)
+    @Volatile private var historyAt = 0L                     // when the cloud chat memory was last used
+    @Volatile private var dictatePending: Pending? = null   // the pending that waits for a DICTATED driving reply (not a yes/no)
+    @Volatile private var dictTarget: Driving.Msg? = null    // the message that dictated reply answers (memory only)
     @Volatile private var answerWindow = false
+    @Volatile private var wakeRequest = false        // set by the default-assistant button (long-press Home / power): same as the wake word
     @Volatile private var alive = false             // per-instance: true from onCreate until onDestroy / loop failure
 
     // Text only, bounded with Logic.boundHistory (PART 1B reads/writes it; synchronize when iterating).
@@ -101,7 +107,100 @@ class NovaService : Service() {
     override fun onStartCommand(i: Intent?, f: Int, s: Int): Int = START_NOT_STICKY
 
     private fun tr(hi: String, en: String): String = if (cfg.lang == "en") en else hi
-    private fun mode(m: String) { listener?.invoke("mode", m) }
+    private fun mode(m: String) {
+        listener?.invoke("mode", m)
+        h.post { hudMode(m) }
+    }
+
+    // ------------------------------------------------------------------ floating card (needs "Display over other apps")
+
+    private var hud: NovaHud? = null
+    private lateinit var brain: BrainStore
+    @Volatile private var lastTurnLocal = false      // the last turn was handled by a built-in command or a shortcut
+
+    private val hudHide = object : Runnable {
+        override fun run() {
+            val hd = hud ?: return
+            if (!hd.isShown) return
+            val waiting = busy || listening || ttsActive || pending != null || answerWindow
+            val shownMs = hd.visibleForMs()
+            if (shownMs > HUD_MAX_MS || (!waiting && shownMs >= NovaHud.MIN_VISIBLE_MS)) hd.hide()
+            else h.postDelayed(this, 400)
+        }
+    }
+
+    // ---- SLEEP: NOVA is awake only between the wake word and the end of the task. Then it sleeps again.
+    @Volatile private var curWake = "nova"
+    private val sleepRun = Runnable { goSleep() }
+
+    /** Go back to sleep [afterMs] from now (the card/reply gets time to be read first). A new wake cancels it. */
+    private fun armSleep(afterMs: Long) {
+        h.removeCallbacks(sleepRun)
+        h.postDelayed(sleepRun, afterMs.coerceIn(800L, 12000L))
+    }
+
+    /** Only the wake-word listener stays on. Chat memory, last command and the card are cleared. */
+    private fun goSleep() {
+        if (!alive) return
+        if (busy || listening || ttsActive || pending != null || answerWindow) {
+            h.postDelayed(sleepRun, 1500L)   // still working or waiting for a spoken yes: stay awake, look again soon
+            return
+        }
+        synchronized(history) { history.clear() }
+        historyAt = 0L
+        lastKind = ""
+        lastTurnLocal = false
+        mode("sleep")
+        sys(tr("Sleep mode - \"$curWake\" bolo to jaagunga", "Asleep - say \"$curWake\" to wake me"))
+    }
+
+    /** Called by the assistant session. The audio loop picks it up on its next chunk; ignored while NOVA is busy or speaking. */
+    fun wakeNow() { if (alive && !busy && !ttsActive) wakeRequest = true }
+
+    private var overlayNudged = false
+
+    /** The card is a silent no-op without "Display over other apps": say so ONCE, with a tap-to-fix notification. */
+    private fun overlayNudge() {
+        if (overlayNudged) return
+        overlayNudged = true
+        val msg = tr(
+            "Card dikhane ke liye 'Display over other apps' allow karo. Notification par tap karo.",
+            "To see the card, allow 'Display over other apps'. Tap the notification."
+        )
+        sys(msg)
+        try {
+            val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+            val pi = PendingIntent.getActivity(this, 7, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            val n = Notification.Builder(this, "nova")
+                .setContentTitle(tr("NOVA card band hai", "NOVA card is off"))
+                .setContentText(msg)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build()
+            getSystemService(NotificationManager::class.java).notify(7, n)
+        } catch (e: Exception) { }
+    }
+
+    private fun hudMode(m: String) {
+        val hd = hud ?: return
+        when (m) {
+            "listen" -> {
+                h.removeCallbacks(hudHide)
+                if (pending == null) { hd.setReply(""); hd.setHeard("") }   // keep the confirm question visible
+                if (!NovaHud.canShow(this)) overlayNudge()
+                hd.show("listen")
+            }
+            "think" -> { h.removeCallbacks(hudHide); hd.setState("think") }
+            "on" -> if (hd.isShown) {
+                hd.setState("reply")
+                h.removeCallbacks(hudHide)
+                h.postDelayed(hudHide, hd.holdMs())
+            }
+            "sleep" -> { h.removeCallbacks(hudHide); if (hd.isShown) hd.hide() }
+            "off" -> { h.removeCallbacks(hudHide); hd.destroy() }
+        }
+    }
     private fun sys(t: String) { listener?.invoke("sys", t) }
 
     // ------------------------------------------------------------------ lifecycle
@@ -109,6 +208,9 @@ class NovaService : Service() {
     override fun onCreate() {
         super.onCreate()
         cfg = Cfg(this)
+        brain = BrainStore.get(this)
+        h.postDelayed(autoCheck, 45_000L)
+        hud = NovaHud(this)
         SecureStore.migrateOld(this)
         SecureStore.migrateSingleToPool(this)
         getSystemService(NotificationManager::class.java).createNotificationChannel(
@@ -149,9 +251,16 @@ class NovaService : Service() {
 
     override fun onDestroy() {
         alive = false
+        Driving.enabled = false
+        Driving.inbox.clear()
+        DrivingBridge.forgetAll()
         if (instance === this) { instance = null; running = false }
         h.removeCallbacksAndMessages(null)
+        try { hud?.destroy() } catch (e: Exception) { }
+        hud = null
         pending = null
+        dictatePending = null
+        dictTarget = null
         answerWindow = false
         history.clear()
         try { tts?.stop(); tts?.shutdown() } catch (e: Exception) { }
@@ -192,7 +301,10 @@ class NovaService : Service() {
 
     private fun speak(text: String, confirm: Boolean, show: Boolean): Boolean {
         if (text.isEmpty()) return false
-        if (show) listener?.invoke("ai", text)
+        if (show) {
+            listener?.invoke("ai", text)
+            h.post { hud?.setReply(text) }
+        }
         val t = tts
         if (t == null || !ttsReady) {
             if (confirm) answerWindow = true   // no voice: the user can still read the question and answer
@@ -297,6 +409,7 @@ class NovaService : Service() {
             val md = loadModel()
             model = md
             val wakeWord = resolveWake()
+            curWake = wakeWord
             val wk = Recognizer(md, RATE.toFloat(), Logic.wakeGrammar(wakeWord))
             wake = wk
             val cm = Recognizer(md, RATE.toFloat())
@@ -319,12 +432,13 @@ class NovaService : Service() {
                 fatal(tr("Mic busy hai (koi doosra app use kar raha hai).", "The mic is busy (another app is using it)."))
                 return
             }
-            mode("on")
-            sys(tr("Listening - bolo \"$wakeWord\"", "Listening - say \"$wakeWord\""))
+            mode("sleep")
+            sys(tr("Sleep mode - \"$wakeWord\" bolo to jaagunga", "Asleep - say \"$wakeWord\" to wake me"))
 
             val buf = ShortArray(1600) // 100 ms
             var capturing = false
             var answerCapture = false
+            var dictCapture = false          // this capture is a dictated driving reply: longer, ends only on silence
             var pcm = ByteArrayOutputStream()
             val cmdText = StringBuilder()
             var heard = false
@@ -334,23 +448,44 @@ class NovaService : Service() {
             var noise = 300.0
             var wasBlocked = false
             var readErrors = 0
+            var peak = 0.0                    // loudest recent chunk: a wake word must be spoken, not just a faint sound
+            var lastCaptureEnd = 0L           // cooldown against a second false wake right after a turn
+            val pre = ArrayList<ShortArray>() // last ~0.5 s of audio, so the first words after the wake word are not lost
 
             fun startCapture(answer: Boolean) {
+                h.removeCallbacks(sleepRun)    // awake now: no sleeping in the middle of a task
                 wk.reset()
                 cm.reset()
                 tn.startTone(ToneGenerator.TONE_PROP_BEEP, 120)
                 capturing = true
                 listening = true
                 answerCapture = answer
+                dictCapture = answer && pending != null && pending === dictatePending
                 pcm = ByteArrayOutputStream()
                 cmdText.setLength(0)
                 heard = false
                 silentMs = 0
                 totalMs = 0
                 skip = 2                       // do not record our own beep
+                if (!answer) {                 // words spoken while the wake word was being recognised are kept
+                    for (c in pre) {
+                        try {
+                            if (cm.acceptWaveForm(c, c.size)) {
+                                val t = Logic.extractText(cm.getResult())
+                                if (t.isNotBlank()) cmdText.append(' ').append(t)
+                            }
+                        } catch (e: Exception) { }
+                        for (s in c) {
+                            pcm.write(s.toInt() and 0xff)
+                            pcm.write((s.toInt() shr 8) and 0xff)
+                        }
+                    }
+                }
+                pre.clear()
                 mode("listen")
                 sys(
-                    if (answer) tr("Haan ya nahi bolo...", "Say yes or no...")
+                    if (dictCapture) tr("Jawab bolo...", "Say your reply...")
+                    else if (answer) tr("Haan ya nahi bolo...", "Say yes or no...")
                     else tr("Bolo, main sun raha hoon...", "Speak, I am listening...")
                 )
             }
@@ -380,6 +515,7 @@ class NovaService : Service() {
                     wasBlocked = false
                     wk.reset()
                     cm.reset()
+                    pre.clear()
                     skip = 2
                 }
                 if (skip > 0) { skip--; continue }
@@ -399,14 +535,31 @@ class NovaService : Service() {
                         answerWindow = false
                         if (pending != null) { startCapture(true); continue }
                     }
+                    if (wakeRequest) {
+                        wakeRequest = false
+                        pending = null
+                        dictatePending = null
+                        dictTarget = null
+                        startCapture(false)
+                        continue
+                    }
                     noise = noise * 0.97 + minOf(rms, 1500.0) * 0.03
+                    peak = maxOf(rms, peak * 0.85)
+                    pre.add(buf.copyOf(n))
+                    while (pre.size > 5) pre.removeAt(0)
                     val done = wk.acceptWaveForm(buf, n)
                     val txt = if (done) wk.getResult() else wk.getPartialResult()
-                    if (Logic.heardWake(txt, wakeWord)) {
+                    val wakeNow = Logic.heardWake(txt, wakeWord)
+                    if (wakeNow && (peak < maxOf(400.0, noise * 1.8) || System.currentTimeMillis() - lastCaptureEnd < Logic.WAKE_COOLDOWN_MS)) {
+                        wk.reset()                 // too faint or too soon: a false wake (TV, room noise, echo of our voice)
+                    } else if (wakeNow) {
                         pending = null // a new command cancels any waiting confirmation
+                        dictatePending = null
+                        dictTarget = null
                         startCapture(false)
                     }
                 } else {
+                    hud?.setLevel((rms / 3000.0).toFloat().coerceIn(0f, 1f))   // waveform on the card follows your voice
                     totalMs += ms
                     val speaking = rms > maxOf(450.0, noise * 2.5)
                     if (speaking) { heard = true; silentMs = 0 } else if (heard) silentMs += ms
@@ -419,17 +572,20 @@ class NovaService : Service() {
                     var endpoint = false
                     if (cm.acceptWaveForm(buf, n)) {
                         val t = Logic.extractText(cm.getResult())
-                        if (t.isNotBlank()) { cmdText.append(' ').append(t); endpoint = true; heard = true }
+                        if (t.isNotBlank()) { cmdText.append(' ').append(t); endpoint = !dictCapture; heard = true }
                     }
-                    val maxMs = if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS
-                    val noSpeechMs = if (answerCapture) Logic.NO_SPEECH_ANSWER_MS else Logic.NO_SPEECH_COMMAND_MS
-                    val end = endpoint || (heard && silentMs >= Logic.END_SILENCE_MS) ||
+                    val maxMs = if (dictCapture) Logic.MAX_DICTATION_MS else if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS
+                    val noSpeechMs = if (dictCapture) Logic.NO_SPEECH_DICTATION_MS else if (answerCapture) Logic.NO_SPEECH_ANSWER_MS else Logic.NO_SPEECH_COMMAND_MS
+                    val silenceMs = if (dictCapture) Logic.DICTATION_SILENCE_MS else Logic.END_SILENCE_MS
+                    val end = endpoint || (heard && silentMs >= silenceMs) ||
                         totalMs >= maxMs || (!heard && totalMs >= noSpeechMs)
                     if (end) {
                         capturing = false
                         listening = false
+                        lastCaptureEnd = System.currentTimeMillis()
                         val isAnswer = answerCapture
                         answerCapture = false
+                        dictCapture = false
                         if (!endpoint) {
                             try {
                                 val ft = Logic.extractText(cm.getFinalResult())
@@ -443,11 +599,15 @@ class NovaService : Service() {
                         wk.reset()
                         if (!heard) {
                             mode("on")
+                            armSleep(2500L)
                             if (isAnswer) {
                                 pending = null
+                                dictatePending = null
+                                dictTarget = null
                                 say(tr("Jawab nahi mila, isliye cancel kar diya", "No answer heard, so I cancelled it"))
                             } else {
                                 sys(tr("Kuch suna nahi, dobara \"$wakeWord\" bolo", "Heard nothing, say \"$wakeWord\" again"))
+                                h.post { hud?.setReply(tr("Kuch suna nahi", "Heard nothing")) }
                             }
                             continue
                         }
@@ -484,13 +644,21 @@ class NovaService : Service() {
 
     // ------------------------------------------------------------------ one turn
 
-    private fun finishTurn(reply: String) {
+    private fun finishTurn(reply: String, kind: String? = null) {
         h.post {
             if (alive) {
                 val p = pending
                 val confirm = p != null && !Logic.isExpired(p.createdAt, System.currentTimeMillis(), Logic.PENDING_TTL_MS)
-                say(reply, confirm)      // say() FIRST (sets ttsActive) ...
+                // kind == null (answers to a yes/no, errors) is always spoken; a normal command reply may be silent
+                val loud = kind == null || Logic.speakReply(cfg.quietReplies, confirm, kind)
+                if (loud) {
+                    say(reply, confirm)  // say() FIRST (sets ttsActive) ...
+                } else {
+                    listener?.invoke("ai", reply)                     // silent: chat + floating card only
+                    hud?.setReply(reply)
+                }
                 mode("on")
+                armSleep((hud?.holdMs() ?: 3000L) + 600L)   // reply stays readable, then NOVA sleeps (waits if a yes is pending)
             }
             busy = false                 // ... THEN release the mic loop
         }
@@ -502,14 +670,251 @@ class NovaService : Service() {
         } catch (t: Throwable) {
             tr("Kuch gadbad ho gayi, dobara try karo", "Something went wrong, please try again")
         }
-        finishTurn(reply)
+        finishTurn(withNudge(reply), lastKind)
+    }
+
+    // ------------------------------------------------------------------ Layer 1 brain: shortcuts
+
+    /** A one-step shortcut behaves exactly like the built-in command it points to (confirmations unchanged). */
+    private fun skillCmd(sk: Skill): Logic.Cmd {
+        if (sk.steps.size == 1) {
+            val one = Logic.classify(sk.steps[0])
+            if (one != null) return one
+        }
+        return Logic.Cmd("skill", sk.name)
+    }
+
+    private fun runSkill(name: String): String {
+        val sk = brain.skill(name) ?: return tr("Ye shortcut nahi mila", "That shortcut was not found")
+        val out = ArrayList<String>()
+        for (step in sk.steps.take(Brain.MAX_STEPS)) {
+            if (!alive) break
+            val w = Brain.waitSeconds(step)
+            if (w != null) {
+                try { Thread.sleep(w * 1000L) } catch (e: InterruptedException) { break }
+                continue
+            }
+            val sc = Logic.classify(step)
+            if (sc == null) { out.add(tr("Ek step samajh nahi aaya, ruk gaya", "One step was not understood, so I stopped")); break }
+            out.add(runCommand(sc))
+            if (pending != null) break           // a step is asking for a yes: never run on past it
+        }
+        return if (out.isEmpty()) tr("Shortcut mein kuch nahi tha", "The shortcut was empty") else out.joinToString(". ")
+    }
+
+    // ------------------------------------------------------------------ Discover -> Ask -> Add (updates)
+
+    private val autoCheck = object : Runnable {
+        override fun run() {
+            if (!alive) return
+            Thread {
+                try {
+                    if (cfg.feedUrl.isNotBlank() &&
+                        System.currentTimeMillis() - UpdateManager.lastCheck(this@NovaService) >= Updater.CHECK_GAP_MS
+                    ) {
+                        val known = UpdateManager.offers(this@NovaService).map { it.item.id }.toSet()
+                        if (UpdateManager.refresh(this@NovaService, cfg.feedUrl) == null) {
+                            val fresh = UpdateManager.offers(this@NovaService).filter { it.item.id !in known }
+                            if (fresh.isNotEmpty()) {
+                                UpdateManager.notifyUser(
+                                    this@NovaService,
+                                    tr("${fresh.size} naye update mile. Bolo 'check updates' ya app kholo.",
+                                        "${fresh.size} new update(s) found. Say 'check updates' or open the app."),
+                                    null
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) { }
+            }.start()
+            h.postDelayed(this, 6L * 60 * 60 * 1000)          // look again in 6 h (it only refreshes about once a day)
+        }
+    }
+
+    /** Voice: "check updates". Reads the feed, then ASKS before anything is downloaded. Worker thread. */
+    private fun updateCheck(): String {
+        if (cfg.feedUrl.isBlank()) return tr(
+            "Pehle app ki settings mein update feed URL daalo", "Set the update feed URL in the app settings first"
+        )
+        val err = UpdateManager.refresh(this, cfg.feedUrl)
+        if (err != null) return tr("Update check nahi ho paya: $err", "The update check failed: $err")
+        val list = UpdateManager.offers(this)
+        if (list.isEmpty()) return tr("Abhi koi naya update nahi hai", "Nothing new right now")
+        val first = list[0].item
+        val size = Updater.sizeText(first.size)
+        val q = tr(
+            "${list.size} update mile. Pehla: ${first.title}, $size. Install karu? Haan ya nahi bolo.",
+            "${list.size} update(s) found. First: ${first.title}, $size. Install it? Say yes or no."
+        )
+        if (pending != null) return q
+        pending = Pending(q, System.currentTimeMillis(), { UpdateManager.skip(this, first.id) }) {
+            UpdateManager.install(this, first.id) { ok, msg ->
+                UpdateManager.notifyUser(this, msg, null)
+                h.post { if (alive) announceIfIdle(msg) }
+            }
+            tr("Download shuru kar diya, khatam hone par bataunga", "Download started, I will tell you when it is done")
+        }
+        return q
+    }
+
+    // ------------------------------------------------------------------ Driving mode (read messages aloud, reply only after "yes")
+
+    private var drivingHintShown = false
+
+    /** Called by NovaNotificationService (any thread) for a new message while driving mode is on. */
+    fun onDrivingMessage(m: Driving.Msg) {
+        if (!alive || !Driving.enabled) return
+        val hint = !drivingHintShown && m.canReply && !m.hidden
+        if (announceIfIdle(Driving.intro(m, cfg.lang != "en", hint))) {
+            Driving.inbox.markRead(m)
+            if (hint) drivingHintShown = true
+        }
+    }
+
+    private fun driveOn(): String {
+        if (!DrivingBridge.listenerEnabled(this)) {
+            DrivingBridge.openListenerSettings(this)
+            return tr(
+                "Pehle settings mein NOVA ke liye Notification access chalu karo, maine settings khol di hain. Phir dobara bolo driving mode on",
+                "Turn on Notification access for NOVA in the settings I just opened, then say driving mode on again"
+            )
+        }
+        Driving.enabled = true
+        drivingHintShown = false
+        return tr(
+            "Driving mode chalu. Naye messages main bol kar sunaunga. Jawab bhejne se pehle main aapse haan poochunga.",
+            "Driving mode is on. I will read new messages aloud, and I always ask for your yes before sending a reply."
+        )
+    }
+
+    private fun driveOff(): String {
+        Driving.enabled = false
+        Driving.inbox.clear()
+        DrivingBridge.forgetAll()
+        dictatePending = null
+        dictTarget = null
+        return tr("Driving mode band. Saare messages bhool gaya.", "Driving mode is off. I forgot all the messages.")
+    }
+
+    private fun driveClear(): String {
+        Driving.inbox.clear()
+        DrivingBridge.forgetAll()
+        dictatePending = null
+        dictTarget = null
+        return tr("Saare messages saaf kar diye", "Cleared all messages")
+    }
+
+    private fun driveRead(): String {
+        if (!Driving.enabled) return tr("Driving mode band hai. Pehle bolo driving mode on", "Driving mode is off. Say driving mode on first")
+        val batch = Driving.inbox.unreadBatch()
+        if (batch.isEmpty()) return tr("Koi naya message nahi hai", "No new messages")
+        return batch.joinToString(" ") { Driving.intro(it, cfg.lang != "en", false) }
+    }
+
+    /** One of a few FIXED replies, sent only after the user hears the exact text and says a local "yes". */
+    private fun driveReply(id: String): String {
+        if (!Driving.enabled) return tr("Driving mode band hai. Pehle bolo driving mode on", "Driving mode is off. Say driving mode on first")
+        val m = Driving.inbox.latestReplyable()
+            ?: return tr("Jawab dene layak koi message nahi hai", "There is no message I can reply to")
+        val text = Driving.quickText(id, cfg.lang != "en")
+            ?: return tr("Ye jawab mujhe nahi aata", "I do not know that reply")
+        val q = tr(
+            "${m.sender} ko ${m.app} par bhej du: '$text'? Haan ya nahi bolo.",
+            "Send '$text' to ${m.sender} on ${m.app}? Say yes or no."
+        )
+        return askFirst(q) {
+            if (DrivingBridge.sendReply(this, m.key, text)) tr("Bhej diya", "Sent")
+            else tr("Bhej nahi paya, wo notification ab nahi hai", "I could not send it, that notification is gone")
+        }
+    }
+
+    /**
+     * Step 1 of a dictated reply ("reply likho"): NOVA asks what to send and records ONE utterance (no wake word needed).
+     * Nothing is sent here. The words only become a message after step 2 (read back + spoken local "yes").
+     */
+    private fun driveDictate(): String {
+        if (!Driving.enabled) return tr("Driving mode band hai. Pehle bolo driving mode on", "Driving mode is off. Say driving mode on first")
+        val m = Driving.inbox.latestReplyable()
+            ?: return tr("Jawab dene layak koi message nahi hai", "There is no message I can reply to")
+        if (pending != null) return tr("Ek confirmation pehle se baaki hai", "Another confirmation is already waiting")
+        val q = tr(
+            "${m.sender} ko kya jawab bhejna hai? Beep ke baad bolo.",
+            "What shall I reply to ${m.sender}? Speak after the beep."
+        )
+        val p = Pending(q, System.currentTimeMillis(), null) { "" }   // run is never used: processAnswer routes it to dictatedReply
+        dictTarget = m
+        dictatePending = p
+        pending = p
+        return q
+    }
+
+    /** Step 2: the user's own words are read back; they are sent ONLY after a spoken, local "yes". Worker thread. */
+    private fun dictatedReply(raw: String): String {
+        val m = dictTarget
+        dictTarget = null
+        if (!Driving.enabled || m == null) return tr("Driving mode band hai, jawab nahi bheja", "Driving mode is off, so I did not send anything")
+        val msg = Driving.cleanDictation(raw)
+            ?: return tr("Kuch samajh nahi aaya. Dobara bolo reply likho", "I did not catch that. Say reply write to try again")
+        val q = tr(
+            "${m.sender} ko ${m.app} par bhej du: '$msg'? Haan ya nahi bolo.",
+            "Send '$msg' to ${m.sender} on ${m.app}? Say yes or no."
+        )
+        return askFirst(q) {
+            if (DrivingBridge.sendReply(this, m.key, msg)) tr("Bhej diya", "Sent")
+            else tr("Bhej nahi paya, wo notification ab nahi hai", "I could not send it, that notification is gone")
+        }
+    }
+
+    /** After a successful local command NOVA may offer to remember a phrase it keeps hearing (max one question / 6 h). */
+    private fun withNudge(reply: String): String {
+        if (!cfg.nudges || !lastTurnLocal || pending != null || reply.isBlank()) return reply
+        val now = System.currentTimeMillis()
+        val p = brain.nextProposal(now) ?: return reply
+        val q = tr(
+            "Ek baat: '${p.phrase}' ko '${p.command}' ka shortcut bana du? Haan ya nahi bolo.",
+            "One thing: shall I remember '${p.phrase}' as a shortcut for '${p.command}'? Say yes or no."
+        )
+        pending = Pending(q, now, { brain.decline(p) }) {
+            val err = brain.accept(p)
+            if (err == null) tr("Yaad kar liya: '${p.phrase}' ab '${p.command}' chalayega", "Saved: '${p.phrase}' now runs '${p.command}'")
+            else tr("Shortcut save nahi ho paya", "I could not save that shortcut")
+        }
+        return "$reply. $q"
     }
 
     private fun handle(pcm: ByteArray, text: String): String {
         listener?.invoke("me", "🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)")))
-        val c = if (text.isBlank()) null else Logic.classify(text)
+        h.post { hud?.setHeard("🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)"))) }
+        val c0 = if (text.isBlank()) null else Logic.classify(text)
+        val sk = if (c0 == null && text.isNotBlank()) brain.resolve(text) else null   // Layer 1: shortcuts + fuzzy match
+        val c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
+        val now = System.currentTimeMillis()
+        lastTurnLocal = c != null
+        lastKind = c?.kind ?: ""
+        if (c0 != null) brain.record(now, text, "local", c0.kind)
+        else if (sk != null) brain.record(now, text, "skill", sk.name)
+        else brain.record(now, text, "unknown", "")
         if (c != null) return runCommand(c)                       // local, offline, no network
-        if (SecureStore.hasKeys(this)) return askCloud(pcm, text) // only when the user added an optional key
+        if (text.isNotBlank()) {                                  // Layer 2: optional offline model (a translator only)
+            val line = LocalBrains.ask(this, text)
+            val mc = line?.let { Logic.classify(it) }
+            if (line != null && mc != null && LocalBrainRules.accepted(mc)) {
+                lastKind = mc.kind
+                if (mc.kind == LocalBrainRules.TAP_KIND) {        // a model never taps by itself: spoken local "yes" first
+                    return askFirst(
+                        tr("Main '${mc.arg}' dabau? Haan ya nahi bolo.", "Tap '${mc.arg}'? Say yes or no.")
+                    ) { runCommand(mc) }
+                }
+                return runCommand(mc)
+            }
+        }
+        if (SecureStore.hasKeys(this)) {                           // only when the user added an optional key
+            if (Logic.isJunk(text)) {                             // noise / cough / TV: never sent to the cloud, never acted on
+                return tr("Samajh nahi aaya, dobara bolo", "I did not catch that, please say it again")
+            }
+            lastKind = "cloud"
+            return askCloud(pcm, text)
+        }
         return tr(
             "Ye command local mode mein samajh nahi aaya. Battery, torch, volume, ya open YouTube jaise commands bolo. Khule sawaalon ke liye settings mein API key (optional) daalo.",
             "I did not understand that as a local command. Try battery, torch, volume or open YouTube. For open questions add an optional API key in Settings."
@@ -520,15 +925,22 @@ class NovaService : Service() {
     private fun processAnswer(text: String) {
         val p = pending
         pending = null
-        listener?.invoke("me", "🎤 " + (if (text.isNotBlank()) text else tr("(jawab)", "(answer)")))
+        val isDict = p != null && p === dictatePending
+        dictatePending = null
+        // a dictated message is never shown in the chat log: it is read back and kept in memory only
+        listener?.invoke("me", "🎤 " + if (isDict) tr("(dictate kiya hua jawab)", "(dictated reply)")
+            else if (text.isNotBlank()) text else tr("(jawab)", "(answer)"))
         val reply: String = try {
             when {
                 p == null -> tr("Koi confirmation baaki nahi tha", "Nothing was waiting for confirmation")
-                Logic.isExpired(p.createdAt, System.currentTimeMillis(), Logic.PENDING_TTL_MS) ->
+                Logic.isExpired(p.createdAt, System.currentTimeMillis(), Logic.PENDING_TTL_MS) -> {
+                    dictTarget = null
                     tr("Confirmation ka time nikal gaya, cancel kar diya", "That confirmation expired, so I cancelled it")
+                }
+                isDict -> dictatedReply(text)
                 else -> when (Logic.parseAnswer(text)) {
                     true -> p.run()
-                    false -> tr("Theek hai, cancel kar diya", "Okay, cancelled")
+                    false -> { p.onNo?.invoke(); tr("Theek hai, cancel kar diya", "Okay, cancelled") }
                     null -> tr("Samajh nahi aaya, isliye cancel kar diya", "I did not understand, so I cancelled it")
                 }
             }
@@ -541,7 +953,7 @@ class NovaService : Service() {
     /** Registers a dangerous action (call, WhatsApp send). It only runs after a spoken, local "yes". */
     private fun askFirst(prompt: String, run: () -> String): String {
         if (pending != null) return tr("Ek confirmation pehle se baaki hai", "Another confirmation is already waiting")
-        pending = Pending(prompt, System.currentTimeMillis(), run)
+        pending = Pending(prompt, System.currentTimeMillis(), null, run)
         return prompt
     }
 
@@ -552,6 +964,8 @@ class NovaService : Service() {
             try { tts?.stop() } catch (e: Exception) { }
             ttsActive = false
             pending = null
+            dictatePending = null
+            dictTarget = null
             tr("Theek hai", "Okay")
         }
         "battery" -> batteryReply()
@@ -562,6 +976,23 @@ class NovaService : Service() {
             cfg.screenMonitor = false
             NovaAccessibilityService.monitorChanged()
             tr("Screen monitoring band kar diya", "Screen monitoring is off")
+        }
+        "skill" -> runSkill(c.arg)
+        "update_check" -> updateCheck()
+        "drive_on" -> driveOn()
+        "drive_off" -> driveOff()
+        "drive_read" -> driveRead()
+        "drive_clear" -> driveClear()
+        "drive_reply" -> driveReply(c.arg)
+        "drive_dictate" -> driveDictate()
+        "quiet_on" -> {
+            cfg.quietReplies = true
+            tr("Theek hai, ab jawab chat mein likhunga, bolunga nahi. Alert aur confirmation bol kar bataunga.",
+                "Okay, replies now go to the chat silently. I will speak only for alerts and confirmations.")
+        }
+        "quiet_off" -> {
+            cfg.quietReplies = false
+            tr("Theek hai, ab jawab bol kar bhi dunga", "Okay, I will speak my replies again")
         }
         "analyze" -> analyzeScreen()      // PART 1B
         else -> runLocalTool(c)           // PART 1B: torch, volume, brightness, media, global, open_app, settings, camera
@@ -669,12 +1100,65 @@ class NovaService : Service() {
                 "settings" -> openSettings(c.arg, c.num == 2)
                 "camera" -> launch(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), null, "Camera")
                 "open_app" -> openApp(c.arg)
+                "tap" -> tapCmd(c.arg)
+                "type" -> typeCmd(c.arg)
+                "scroll" -> scrollCmd(c.arg)
                 else -> R(false, tr("Ye command samajh nahi aaya", "I did not understand that command"))
             }
         } catch (e: Exception) {
             R(false, tr("Ye kaam nahi ho paya", "That did not work"))
         }
         return r.msg
+    }
+
+    // ---------------------------------------------------------------- screen control (Accessibility)
+
+    private fun ctlFail(code: String, what: String): R = R(false, when {
+        code == "no_acc" -> tr("Pehle Accessibility permission on karo", "Turn on the Accessibility permission first")
+        code == "no_window" -> tr("Screen padh nahi paya, isliye kuch nahi kiya", "I could not read the screen, so I did nothing")
+        code == "blocked" -> tr("Is screen par main control nahi karta (security/payment/settings). Ye aap khud karo",
+            "I do not control this screen (security, payment or settings). Please do it yourself")
+        code == "not_found" -> tr("Screen par '$what' nahi mila", "I could not find '$what' on the screen")
+        code.startsWith("ambiguous") -> tr("'$what' ${code.substringAfter(':')} jagah mila, thoda aur specific bolo",
+            "'$what' appears ${code.substringAfter(':')} times, please be more specific")
+        code == "no_focus" -> tr("Koi text box select nahi hai", "No text box is selected")
+        code == "password" -> tr("Password box mein main type nahi karta", "I never type into password boxes")
+        else -> tr("Ye kaam nahi ho paya", "That did not work")
+    })
+
+    private fun tapCmd(label: String): R {
+        if (Control.isRiskyLabel(label)) {
+            val msg = askFirst(
+                tr("'$label' dabaun? Haan ya nahi bolo", "Tap '$label'? Say yes or no")
+            ) { doTap(label).msg }
+            return R(true, msg)
+        }
+        return doTap(label)
+    }
+
+    private fun doTap(label: String): R {
+        val before = NovaAccessibilityService.screenSignature()
+        val r = NovaAccessibilityService.tapLabel(label)
+        if (!r.ok) return ctlFail(r.code, label)
+        try { Thread.sleep(700) } catch (e: InterruptedException) { }
+        val after = NovaAccessibilityService.screenSignature()
+        return if (after != before) R(true, tr("'$label' dabaya, screen badal gayi", "Tapped '$label', the screen changed"))
+        else R(true, tr("'$label' dabaya, par screen mein badlav nahi dikha", "Tapped '$label', but I could not see the screen change"))
+    }
+
+    private fun typeCmd(text: String): R {
+        val r = NovaAccessibilityService.typeText(text)
+        return if (r.ok) R(true, tr("Likh diya", "Typed it")) else ctlFail(r.code, text)
+    }
+
+    private fun scrollCmd(dir: String): R {
+        val before = NovaAccessibilityService.screenSignature()
+        val r = NovaAccessibilityService.scrollDir(dir)
+        if (!r.ok) return ctlFail(r.code, dir)
+        try { Thread.sleep(500) } catch (e: InterruptedException) { }
+        val after = NovaAccessibilityService.screenSignature()
+        return if (after != before) R(true, tr("Scroll kar diya", "Scrolled $dir"))
+        else R(true, tr("Scroll kiya, par screen badli nahi (shayad end aa gaya)", "Scrolled, but nothing changed (maybe the end)"))
     }
 
     private fun torch(on: Boolean): R {
@@ -1090,6 +1574,7 @@ class NovaService : Service() {
         JSONObject().put("role", role).put("parts", JSONArray().put(JSONObject().put("text", text)))
 
     private fun remember(user: String, reply: String) {
+        historyAt = System.currentTimeMillis()
         synchronized(history) {
             history.add(msg("user", if (user.isBlank()) "(voice command)" else user))
             history.add(msg("model", reply))
@@ -1148,7 +1633,7 @@ class NovaService : Service() {
     private fun systemPrompt(): String {
         val now = SimpleDateFormat("EEEE, d MMMM yyyy, hh:mm a", Locale.ENGLISH).format(Date())
         val bat = getSystemService(BatteryManager::class.java).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return """You are NOVA, a voice assistant on the user's Android phone. The user's message is a short audio recording of a spoken command in Hindi, Hinglish or English, sometimes with a rough offline transcript that may be wrong: trust the audio. If it is empty or unclear, ask the user briefly to repeat. Your replies are read aloud, so: no markdown, no lists, no emojis, no URLs, short natural sentences. Reply in the language the user spoke: Hindi in Devanagari script for Hindi or Hinglish, English for English. Use the provided tools for phone actions and never claim an action was done unless the tool result says so; if a tool result says requested or not confirmed, say exactly that. The call and whatsapp tools ask the user for a spoken confirmation by themselves, so call them directly without asking first. For call, sms and whatsapp pass the contact name in Latin letters as it is usually saved, for example Rahul. For whatsapp pass only the final message text. You cannot see the phone screen. For analysis or explanations give a clear answer: conclusion first, then two to four reasons, then key risks. Use search_web for anything current such as news, prices or scores. Keep answers under about 8 sentences unless asked for detail. Never call or message anyone the user did not ask for. Current time: $now. Phone battery: $bat percent."""
+        return """You are NOVA, a voice assistant on the user's Android phone. The user's message is a short audio recording of a spoken command in Hindi, Hinglish or English, sometimes with a rough offline transcript that may be wrong: trust the audio. If it is empty or unclear, ask the user briefly to repeat. Your replies are read aloud, so: no markdown, no lists, no emojis, no URLs, short natural sentences. Reply in the language the user spoke: Hindi in Devanagari script for Hindi or Hinglish, English for English. Use the provided tools for phone actions and never claim an action was done unless the tool result says so; if a tool result says requested or not confirmed, say exactly that. The call and whatsapp tools ask the user for a spoken confirmation by themselves, so call them directly without asking first. For call, sms and whatsapp pass the contact name in Latin letters as it is usually saved, for example Rahul. For whatsapp pass only the final message text. You cannot see the phone screen. For analysis or explanations give a clear answer: conclusion first, then two to four reasons, then key risks. Use search_web for anything current such as news, prices or scores. Keep answers under about 8 sentences unless asked for detail. Never call or message anyone the user did not ask for. Never repeat, redo or continue an earlier command unless the user clearly asks for it again in this new message. If the audio is silent, noisy, cut off or unclear, call no tool, change nothing, and only ask the user to repeat. Current time: $now. Phone battery: $bat percent."""
     }
 
     private fun declarations(): JSONArray {
@@ -1196,6 +1681,7 @@ class NovaService : Service() {
 
     /** The AI path. Reached only when the user has added their own key AND the sentence is not a local command. */
     private fun askCloud(pcm: ByteArray, text: String): String {
+        if (System.currentTimeMillis() - historyAt > Logic.HISTORY_TTL_MS) synchronized(history) { history.clear() }  // old commands are forgotten
         val parts = JSONArray()
         if (pcm.isNotEmpty()) {
             parts.put(JSONObject().put("inlineData", JSONObject()

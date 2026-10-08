@@ -54,6 +54,8 @@ class MainActivity : Activity() {
     private fun hardenWebView(w: WebView) {
         val s = w.settings
         s.javaScriptEnabled = true
+        s.mediaPlaybackRequiresUserGesture = false   // lets the opening sound play without a tap
+        s.domStorageEnabled = true                  // remembers the sound on/off choice
         s.allowFileAccess = false              // file:///android_asset/ is always readable regardless
         s.allowContentAccess = false
         s.allowFileAccessFromFileURLs = false
@@ -80,9 +82,36 @@ class MainActivity : Activity() {
 
     private fun blocked() = WebResourceResponse("text/plain", "utf-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
 
+    /** Back: the page decides (close sheet / settings, play the closing animation, or leave). */
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        web.evaluateJavascript("(window.novaBack?novaBack():'exit')") { r ->
+            if (r == null || r.contains("exit")) moveTaskToBack(true)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun vibe(ms: Long) {
+        try {
+            val v: android.os.Vibrator? = if (Build.VERSION.SDK_INT >= 31) {
+                getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+            } else {
+                getSystemService(VIBRATOR_SERVICE) as? android.os.Vibrator
+            }
+            if (v == null) return
+            if (Build.VERSION.SDK_INT >= 26) {
+                v.vibrate(android.os.VibrationEffect.createOneShot(ms, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                v.vibrate(ms)
+            }
+        } catch (e: Throwable) {
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         NovaService.uiVisible = true
+        pushFlow("resumed")      // back from an Android settings screen: the page re-checks its permission list
     }
 
     override fun onPause() {
@@ -114,6 +143,10 @@ class MainActivity : Activity() {
             if (!NovaService.running && startFlow(false) == "started") moveTaskToBack(true)
         }
     }
+
+    private fun isDefaultAssistant(): Boolean = try {
+        (Settings.Secure.getString(contentResolver, "assistant") ?: "").startsWith("$packageName/")
+    } catch (e: Exception) { false }
 
     private fun granted(p: String) =
         checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
@@ -155,6 +188,7 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             REQ_START -> pushFlow(startFlow(true))
+            REQ_BASIC -> pushFlow("basics_done")
             REQ_CONTACTS -> {
                 val ok = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
                 pushFlow(if (ok) "contacts_ok" else "contacts_denied")
@@ -174,6 +208,9 @@ class MainActivity : Activity() {
     }
 
     inner class Bridge {
+        @JavascriptInterface
+        fun vibrate(ms: Int) { vibe(ms.toLong().coerceIn(5L, 400L)) }
+
         @JavascriptInterface
         fun running() = NovaService.running
 
@@ -230,6 +267,151 @@ class MainActivity : Activity() {
             }
         }
 
+        /** The floating NOVA card needs "Display over other apps"; the user opens it here. */
+        @JavascriptInterface
+        fun openOverlaySettings() {
+            runOnUiThread {
+                try {
+                    startActivity(
+                        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                    )
+                } catch (e: Exception) {
+                    pushFlow("overlay_settings_failed")
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------- Update Center (what is new / what is missing)
+
+        /** One snapshot for the Update Center page: version + which permissions are on. Nothing is changed here. */
+        @JavascriptInterface
+        fun getStatus(): String {
+            val vName = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
+            return JSONObject()
+                .put("versionName", vName)
+                .put("versionCode", UpdateManager.appVersion(this@MainActivity))
+                .put("mic", granted(Manifest.permission.RECORD_AUDIO))
+                .put("notif", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS))
+                .put("overlay", Settings.canDrawOverlays(this@MainActivity))
+                .put("acc", NovaAccessibilityService.isEnabled(this@MainActivity))
+                .put("notifAccess", DrivingBridge.listenerEnabled(this@MainActivity))
+                .put("installOk", packageManager.canRequestPackageInstalls())
+                .put("assistant", isDefaultAssistant())
+                .put("contacts", granted(Manifest.permission.READ_CONTACTS))
+                .put("writeSettings", Settings.System.canWrite(this@MainActivity))
+                .put("feedUrl", cfg.feedUrl)
+                .put("running", NovaService.running)
+                .toString()
+        }
+
+        /** Opens Android's own "Default digital assistant app" choice. The user picks NOVA there; NOVA cannot set it by itself. */
+        @JavascriptInterface
+        fun openAssistantSettings() {
+            runOnUiThread {
+                val tries = listOf(
+                    Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+                    Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+                    Intent(Settings.ACTION_SETTINGS)
+                )
+                for (i in tries) {
+                    try { startActivity(i); return@runOnUiThread } catch (e: Exception) { }
+                }
+                pushFlow("update_msg:Settings could not be opened. Open Settings > Apps > Default apps > Digital assistant app")
+            }
+        }
+
+        /** Asks Android for the microphone and notification permission (the user sees the normal Android dialog). */
+        @JavascriptInterface
+        fun requestBasics(): String {
+            val ask = ArrayList<String>()
+            if (!granted(Manifest.permission.RECORD_AUDIO)) ask.add(Manifest.permission.RECORD_AUDIO)
+            if (Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS)) {
+                ask.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (ask.isEmpty()) return "ok"
+            runOnUiThread { requestPermissions(ask.toTypedArray(), REQ_BASIC) }
+            return "asked"
+        }
+
+        /** Driving mode reads messages only after the user switches "Notification access" on for NOVA. */
+        @JavascriptInterface
+        fun openNotificationAccess() {
+            runOnUiThread { DrivingBridge.openListenerSettings(this@MainActivity) }
+        }
+
+        // ---------------------------------------------------------------- updates (Discover -> Ask -> Add)
+
+        /** "ok" or "bad" (the feed URL must be https). An empty URL turns update checks off. */
+        @JavascriptInterface
+        fun setFeedUrl(url: String): String {
+            val u = url.trim()
+            if (u.isEmpty()) { cfg.feedUrl = ""; return "ok" }
+            if (!Updater.feedUrlOk(u)) return "bad"
+            cfg.feedUrl = u
+            return "ok"
+        }
+
+        @JavascriptInterface
+        fun checkUpdates() {
+            val url = cfg.feedUrl
+            Thread {
+                val e = if (url.isBlank()) "set the feed URL first" else UpdateManager.refresh(this@MainActivity, url)
+                pushFlow(if (e == null) "updates_ok" else "updates_err:$e")
+            }.start()
+        }
+
+        /** {"offers":[{id,type,title,sizeText,status}],"installed":{id:version}} */
+        @JavascriptInterface
+        fun getUpdates(): String {
+            val arr = JSONArray()
+            for (o in UpdateManager.offers(this@MainActivity)) {
+                arr.put(
+                    JSONObject().put("id", o.item.id).put("type", o.item.type).put("title", o.item.title)
+                        .put("sizeText", Updater.sizeText(o.item.size)).put("status", o.status)
+                )
+            }
+            return JSONObject().put("offers", arr)
+                .put("installed", JSONObject(UpdateManager.installedJson(this@MainActivity))).toString()
+        }
+
+        /** Only the user's tap on INSTALL calls this. The download is verified (https, host list, SHA-256, size). */
+        @JavascriptInterface
+        fun installUpdate(id: String): String {
+            UpdateManager.install(this@MainActivity, id) { ok, msg ->
+                if (!ok || msg.isNotEmpty()) pushFlow("update_msg:$msg")
+            }
+            return "started"
+        }
+
+        @JavascriptInterface
+        fun skipUpdate(id: String): String { UpdateManager.skip(this@MainActivity, id); return "ok" }
+
+        @JavascriptInterface
+        fun rollbackUpdate(id: String): String = UpdateManager.rollback(this@MainActivity, id)
+
+        /** "Install unknown apps" for NOVA - needed once, only for installing a new NOVA version. */
+        @JavascriptInterface
+        fun openInstallSettings() {
+            runOnUiThread {
+                try {
+                    startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                } catch (e: Exception) {
+                    pushFlow("update_msg:Settings could not be opened. Use APP INFO > Install unknown apps")
+                }
+            }
+        }
+
+        /** {"skills":n,"events":n,"learned":n} - how much NOVA has learned on this phone. */
+        @JavascriptInterface
+        fun brainStats(): String = BrainStore.get(this@MainActivity).statsJson()
+
+        /** Wipes all learned shortcuts and the local event log. */
+        @JavascriptInterface
+        fun brainClear(): String {
+            BrainStore.get(this@MainActivity).clear()
+            return "ok"
+        }
+
         @JavascriptInterface
         fun getSettings(): String {
             val keyCount = SecureStore.getKeys(this@MainActivity).size
@@ -249,6 +431,8 @@ class MainActivity : Activity() {
                 .put("screenMonitor", cfg.screenMonitor)
                 .put("contacts", granted(Manifest.permission.READ_CONTACTS))
                 .put("writeSettings", Settings.System.canWrite(this@MainActivity))
+                .put("overlay", Settings.canDrawOverlays(this@MainActivity))
+                .put("feedUrl", cfg.feedUrl)
                 .put("running", NovaService.running)
                 .toString()
         }
@@ -322,5 +506,6 @@ class MainActivity : Activity() {
         const val ASSET_PREFIX = "file:///android_asset/"
         const val REQ_START = 1
         const val REQ_CONTACTS = 2
+        const val REQ_BASIC = 3
     }
 }

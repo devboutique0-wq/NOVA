@@ -43,6 +43,21 @@ class Cfg(ctx: Context) {
         get() = p.getBoolean("screenMonitor", false)
         set(v) { p.edit().putBoolean("screenMonitor", v).apply() }
 
+    /** Default ON: command replies go to the chat / floating card silently. NOVA speaks only for alerts, confirmations and driving. */
+    var quietReplies: Boolean
+        get() = p.getBoolean("quietReplies", true)
+        set(v) { p.edit().putBoolean("quietReplies", v).apply() }
+
+    /** Default OFF: NOVA never opens the mic by itself to ask "shall I remember this shortcut?" after a command. */
+    var nudges: Boolean
+        get() = p.getBoolean("nudges", false)
+        set(v) { p.edit().putBoolean("nudges", v).apply() }
+
+    /** The update feed the USER chose (https only). Empty = no update checks at all. */
+    var feedUrl: String
+        get() = p.getString("feedUrl", "") ?: ""
+        set(v) { p.edit().putString("feedUrl", v).apply() }
+
     fun locale(): Locale = if (lang == "en") Locale("en", "IN") else Locale("hi", "IN")
 
     fun applyVoice(t: TextToSpeech?) {

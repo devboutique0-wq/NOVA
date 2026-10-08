@@ -1,0 +1,10 @@
+{
+  "title": "NOVA starter shortcuts",
+  "version": 1,
+  "minApp": 0,
+  "skills": [
+    {"name": "good night", "triggers": ["good night", "sone ja"], "steps": ["torch off", "volume mute"]},
+    {"name": "meeting mode", "triggers": ["meeting mode"], "steps": ["volume mute", "brightness minimum"]},
+    {"name": "wake up", "triggers": ["good morning", "uth ja"], "steps": ["volume fifty", "brightness fifty"]}
+  ]
+}

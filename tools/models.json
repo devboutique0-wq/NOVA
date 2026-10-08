@@ -1,0 +1,4 @@
+{
+  "_help": "Add open-licensed model files here. Example entry (check the licence on Hugging Face first): {\"id\":\"model-name-q4\",\"title\":\"Model name Q4\",\"repo\":\"owner/repo\",\"file\":\"file.bin\",\"version\":1,\"minApp\":6}",
+  "models": []
+}

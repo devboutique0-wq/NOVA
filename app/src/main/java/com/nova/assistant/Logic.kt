@@ -22,7 +22,12 @@ object Logic {
     const val NO_SPEECH_COMMAND_MS = 3000   // give up if nothing is said after the wake word
     const val MAX_ANSWER_MS = 6000          // hard cap for a yes/no answer
     const val NO_SPEECH_ANSWER_MS = 4000
+    const val MAX_DICTATION_MS = 15000      // hard cap for one dictated driving reply
+    const val NO_SPEECH_DICTATION_MS = 6000 // give up if nothing is said after "bolo, kya jawab bhejna hai"
+    const val DICTATION_SILENCE_MS = 1300   // people pause mid-sentence: wait a bit longer than for a command
     const val PENDING_TTL_MS = 30000L       // a confirmation older than this is dead
+    const val WAKE_COOLDOWN_MS = 1500L      // after a turn ends, ignore the wake word for a moment (echo, tail of our own voice)
+    const val HISTORY_TTL_MS = 120_000L     // cloud chat memory older than this is forgotten, so an old command can never come back
     const val HISTORY_MAX = 6
     const val MAX_TOOL_STEPS = 6
     const val MAX_KEYS = 10
@@ -75,6 +80,25 @@ object Logic {
         if (w.size <= 3 && w.all { it in YES }) return true
         return null
     }
+
+    // ---------------------------------------------------------------- noise guard / quiet replies
+
+    private val NOISE_WORDS = setOf("the", "a", "an", "uh", "huh", "hm", "hmm", "um", "ah", "oh", "and", "it", "is", "i", "so", "to", "of")
+
+    /** True when a capture holds no real words (silence, a cough, TV noise turned into "the"). Such a capture is never sent anywhere. */
+    fun isJunk(text: String): Boolean {
+        val w = norm(text).split(" ").filter { it.isNotBlank() }
+        return w.isEmpty() || w.all { it in NOISE_WORDS || it.length <= 2 }
+    }
+
+    /** Replies of these commands are always spoken: the user asked to HEAR something (driving messages, screen text, the mode switch). */
+    val LOUD_KINDS: Set<String> = setOf(
+        "drive_on", "drive_off", "drive_read", "drive_clear", "drive_reply", "drive_dictate", "analyze", "quiet_on", "quiet_off"
+    )
+
+    /** false = show the reply in the chat / card only. A waiting yes/no question is ALWAYS spoken (risky actions stay audible). */
+    fun speakReply(quiet: Boolean, confirmPending: Boolean, kind: String): Boolean =
+        !quiet || confirmPending || kind in LOUD_KINDS
 
     fun isExpired(createdAt: Long, now: Long, ttlMs: Long): Boolean = now < createdAt || now - createdAt > ttlMs
 
@@ -283,6 +307,35 @@ object Logic {
         val wantsSettings = has("settings", "setting")
 
         if (core in setOf("stop", "cancel", "chup", "quiet", "ruko", "be quiet", "shut up")) return Cmd("stop")
+
+        if (core in setOf("check updates", "check update", "any updates", "any update", "update check", "updates", "kuch naya hai", "kuch naya")) {
+            return Cmd("update_check")
+        }
+
+        // ---- quiet replies on / off (default on: replies are shown in the chat, not spoken)
+        if (core in setOf("quiet mode on", "silent replies on", "voice replies off")) return Cmd("quiet_on")
+        if (core in setOf("quiet mode off", "silent replies off", "voice replies on")) return Cmd("quiet_off")
+
+        // ---- driving mode (read messages aloud, fixed quick replies). Checked before the free-text "type" rule.
+        Driving.command(n, core)?.let { return it }
+
+        // ---- screen control (needs Accessibility). Checked early because typed text may contain any word.
+        Regex("^(?:(?:please|nova|hey)\\s+)*(?:type|likho|write)\\s+(.+)$").find(n)?.let {
+            val txt = Control.cleanTyped(it.groupValues[1])
+            if (txt.isNotEmpty()) return Cmd("type", txt)
+        }
+        if (has("scroll", "swipe")) {
+            val d = Control.direction(t)
+            if (d != null && size <= 5) return Cmd("scroll", d)
+        }
+        Regex("^(?:tap|click|press|dabao|dabana)(?:\\s+on)?\\s+(.+)$").find(core)?.let {
+            val label = it.groupValues[1].removeSuffix(" button").trim()
+            if (label.isNotEmpty() && label.length <= 40 && label.split(" ").size <= 5) return Cmd("tap", label)
+        }
+        Regex("^(.+?)\\s+(?:dabao|dabana)$").find(core)?.let {
+            val label = it.groupValues[1].removeSuffix(" button").trim()
+            if (label.isNotEmpty() && label.length <= 40 && label.split(" ").size <= 5) return Cmd("tap", label)
+        }
 
         if (has("monitor", "monitoring")) {
             if (has("off", "stop", "band", "bandh", "disable")) return Cmd("monitor_off")
