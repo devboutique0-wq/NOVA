@@ -70,6 +70,20 @@ jobs:
             exit 1
           fi
 
+      - name: Download Indian-English listening model (extra)
+        run: |
+          set -euo pipefail
+          mkdir -p tmp2
+          curl -L --retry 3 --retry-all-errors -f -o m2.zip https://alphacephei.com/vosk/models/vosk-model-small-en-in-0.4.zip
+          unzip -q m2.zip -d tmp2
+          ls tmp2
+          D=$(find tmp2 -mindepth 1 -maxdepth 1 -type d | head -1)
+          find "$D" -maxdepth 2 | head -30
+          test -f "$D/am/final.mdl"
+          mv "$D" app/src/main/assets/model-en-in
+          rm -f m2.zip
+          du -sh app/src/main/assets/model-en-in
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -136,6 +150,7 @@ jobs:
           unzip -l "$APK" > apk_list.txt
           grep -q 'assets/model-en/am/final.mdl' apk_list.txt
           grep -q 'assets/model-en/graph/HCLr.fst' apk_list.txt
+          grep -q 'assets/model-en-in/am/final.mdl' apk_list.txt
           grep -q 'assets/ui.html' apk_list.txt
           grep -q 'classes.dex' apk_list.txt
           # the Vosk native library must be packaged for at least one ABI
