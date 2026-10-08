@@ -1,0 +1,30 @@
+name: Fix model check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Change words.txt check to HCLr.fst + Gr.fst
+        run: |
+          python3 - <<'PY'
+          p = "app/src/main/java/com/nova/assistant/NovaService.kt"
+          s = open(p, encoding="utf-8").read()
+          old = 'File(dir, "graph/words.txt").isFile'
+          new = 'File(dir, "graph/HCLr.fst").isFile && File(dir, "graph/Gr.fst").isFile'
+          if old not in s:
+              raise SystemExit("pattern not found (already fixed?)")
+          open(p, "w", encoding="utf-8").write(s.replace(old, new))
+          print("fixed")
+          PY
+          git diff --stat
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git commit -am "Fix model check: Vosk small model has no words.txt"
+          git push
