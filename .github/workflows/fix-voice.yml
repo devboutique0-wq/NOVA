@@ -1,0 +1,29 @@
+name: Fix voice replies
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: NOVA speaks replies by default
+        run: |
+          python3 - <<'PY'
+          p = "app/src/main/java/com/nova/assistant/Cfg.kt"
+          s = open(p, encoding="utf-8").read()
+          old = 'p.getBoolean("quietReplies", true)'
+          new = 'p.getBoolean("quietReplies", false)'
+          if old not in s:
+              raise SystemExit("pattern not found (already fixed?)")
+          open(p, "w", encoding="utf-8").write(s.replace(old, new))
+          print("fixed")
+          PY
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git commit -am "NOVA speaks replies by default"
+          git push
