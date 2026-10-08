@@ -57,8 +57,9 @@ jobs:
           mkdir -p app/src/main/assets tmp
           curl -L --retry 3 --retry-all-errors -f -o m.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
           unzip -q m.zip -d tmp
-          test -f tmp/vosk-model-small-en-us-0.15/graph/words.txt
           test -f tmp/vosk-model-small-en-us-0.15/am/final.mdl
+          test -f tmp/vosk-model-small-en-us-0.15/graph/HCLr.fst
+          test -f tmp/vosk-model-small-en-us-0.15/graph/Gr.fst
           mv tmp/vosk-model-small-en-us-0.15 app/src/main/assets/model-en
           rm -f m.zip
           du -sh app/src/main/assets/model-en
@@ -134,7 +135,7 @@ jobs:
           ls -l "$APK"
           unzip -l "$APK" > apk_list.txt
           grep -q 'assets/model-en/am/final.mdl' apk_list.txt
-          grep -q 'assets/model-en/graph/words.txt' apk_list.txt
+          grep -q 'assets/model-en/graph/HCLr.fst' apk_list.txt
           grep -q 'assets/ui.html' apk_list.txt
           grep -q 'classes.dex' apk_list.txt
           # the Vosk native library must be packaged for at least one ABI
