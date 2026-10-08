@@ -1,0 +1,262 @@
+name: Add Indian-English listening (stage 1)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add files and patch NovaService
+        run: |
+          set -euo pipefail
+          J=app/src/main/java/com/nova/assistant
+          T=app/src/test/java/com/nova/assistant
+          cat > "$J/Hearing.kt" <<'STAGE1_EOF'
+          package com.nova.assistant
+
+          /**
+           * Pure helpers for "what did the mic really hear": sound-alike app matching and choosing between the texts
+           * that several listening models produced for the same audio. No Android code, so it is unit tested.
+           */
+          object Hearing {
+              const val APP_MATCH_MIN = 0.72
+
+              /** Sound-alike form: letters only, similar sounds merged, repeated letters collapsed. */
+              fun sound(s: String): String {
+                  var t = s.lowercase().filter { it in 'a'..'z' }
+                  t = t.replace("ph", "f").replace("ck", "k").replace("sh", "s").replace("ch", "k")
+                  val sb = StringBuilder()
+                  for (c in t) {
+                      val m = when (c) {
+                          'c', 'q' -> 'k'
+                          'z', 'x' -> 's'
+                          'w' -> 'v'
+                          'y' -> 'i'
+                          else -> c
+                      }
+                      if (sb.isEmpty() || sb[sb.length - 1] != m) sb.append(m)
+                  }
+                  return sb.toString()
+              }
+
+              fun distance(a: String, b: String): Int {
+                  var prev = IntArray(b.length + 1) { it }
+                  for (i in 1..a.length) {
+                      val cur = IntArray(b.length + 1)
+                      cur[0] = i
+                      for (j in 1..b.length) {
+                          val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                          cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+                      }
+                      prev = cur
+                  }
+                  return prev[b.length]
+              }
+
+              fun similarity(a: String, b: String): Double {
+                  if (a.isEmpty() || b.isEmpty()) return 0.0
+                  return 1.0 - distance(a, b).toDouble() / maxOf(a.length, b.length)
+              }
+
+              /** Best sound-alike match of [query] among app [labels]: index and score (0..1). Index -1 = nothing close. */
+              fun fuzzyApp(query: String, labels: List<String>): Pair<Int, Double> {
+                  val q = sound(query)
+                  if (q.length < 4) return Pair(-1, 0.0)
+                  var bestIdx = -1
+                  var best = 0.0
+                  for (i in labels.indices) {
+                      val parts = ArrayList<String>()
+                      parts.add(sound(labels[i]))
+                      for (w in labels[i].split(" ")) {
+                          val sw = sound(w)
+                          if (sw.length >= 4) parts.add(sw)
+                      }
+                      var s = 0.0
+                      for (p in parts) s = maxOf(s, similarity(q, p))
+                      if (s > best) { best = s; bestIdx = i }
+                  }
+                  return if (best >= APP_MATCH_MIN) Pair(bestIdx, best) else Pair(-1, best)
+              }
+
+              fun fuzzyAppIndex(query: String, labels: List<String>): Int = fuzzyApp(query, labels).first
+
+              /**
+               * Several models heard the same audio. Pick the text that becomes a real command:
+               * an app that is installed (exactly) beats other commands, which beat a sound-alike app match.
+               * The first text wins ties, so the main model keeps its old behaviour. Nothing usable: the first text.
+               */
+              fun pickBest(texts: List<String>, labels: () -> List<String>): String {
+                  val list = texts.map { it.trim() }.filter { it.isNotEmpty() }
+                  if (list.isEmpty()) return ""
+                  var best = list[0]
+                  var bestScore = 0.0
+                  var lab: List<String>? = null
+                  for (c in list) {
+                      val cmd = Logic.classify(c) ?: continue
+                      var score = 0.95
+                      if (cmd.kind == "open_app") {
+                          val l = lab ?: labels().also { lab = it }
+                          score = if (Logic.bestAppIndex(cmd.arg, l) >= 0) 1.0
+                          else {
+                              val f = fuzzyApp(cmd.arg, l)
+                              if (f.first >= 0) 0.5 + f.second * 0.4 else 0.0
+                          }
+                      }
+                      if (score > bestScore) { bestScore = score; best = c }
+                  }
+                  return best
+              }
+          }
+          STAGE1_EOF
+          cat > "$T/HearingTest.kt" <<'STAGE1_EOF'
+          package com.nova.assistant
+
+          import org.junit.Assert.assertEquals
+          import org.junit.Assert.assertTrue
+          import org.junit.Test
+
+          class HearingTest {
+              private val labels = listOf("WhatsApp", "Instagram", "Chrome", "YouTube", "Calculator", "Gmail")
+
+              @Test fun soundMergesSimilarLetters() {
+                  assertEquals("krome", Hearing.sound("Chrome"))
+                  assertEquals(Hearing.sound("instagram"), Hearing.sound("insta gram"))
+              }
+
+              @Test fun fuzzyFindsSoundAlikeApp() {
+                  assertEquals(1, Hearing.fuzzyAppIndex("in star gram", labels))
+                  assertEquals(1, Hearing.fuzzyAppIndex("instagram", labels))
+                  assertEquals(5, Hearing.fuzzyAppIndex("gee mail", labels))
+              }
+
+              @Test fun fuzzyRejectsFarOrShort() {
+                  assertEquals(-1, Hearing.fuzzyAppIndex("face book", labels))
+                  assertEquals(-1, Hearing.fuzzyAppIndex("zzzz", labels))
+                  assertEquals(-1, Hearing.fuzzyAppIndex("", labels))
+                  assertEquals(-1, Hearing.fuzzyAppIndex("ab", labels))
+              }
+
+              @Test fun pickBestPrefersInstalledApp() {
+                  assertEquals("open instagram", Hearing.pickBest(listOf("open in star gram", "open instagram")) { labels })
+              }
+
+              @Test fun pickBestKeepsFirstOnTie() {
+                  assertEquals("torch on", Hearing.pickBest(listOf("torch on", "turn on the torch")) { labels })
+              }
+
+              @Test fun pickBestUsesSoundAlikeWhenNoExactApp() {
+                  assertEquals("open in star gram", Hearing.pickBest(listOf("open in star gram", "open tomato")) { labels })
+              }
+
+              @Test fun pickBestFallsBackToFirstText() {
+                  assertEquals("blah blah", Hearing.pickBest(listOf("blah blah", "more blah")) { labels })
+                  assertEquals("", Hearing.pickBest(listOf("", "  ")) { labels })
+                  assertTrue(Hearing.pickBest(listOf("only one")) { labels } == "only one")
+              }
+          }
+          STAGE1_EOF
+          cat > "$RUNNER_TEMP/patch.py" <<'STAGE1_EOF'
+          import sys, re
+          p = "app/src/main/java/com/nova/assistant/NovaService.kt"
+          s = open(p, encoding="utf-8").read()
+
+          def rep(old, new, label):
+              global s
+              if s.count(old) != 1:
+                  raise SystemExit("PATCH FAILED (%s): found %d times" % (label, s.count(old)))
+              s = s.replace(old, new)
+
+          if "startAltModels" in s:
+              raise SystemExit("already patched")
+
+          # 1) start loading the extra model after the main one
+          rep("            model = md\n", "            model = md\n            startAltModels()\n", "start")
+
+          # 2) close it with the others
+          rep("            try { model?.close() } catch (t: Throwable) { }\n",
+              "            closeAltModels()\n            try { model?.close() } catch (t: Throwable) { }\n", "close")
+
+          # 3) choose the best text for a normal command (yes/no answers stay as they are)
+          rep("else Thread { process(bytes, text, dur) }.start()",
+              "else Thread { process(bytes, pickHeard(bytes, text), dur) }.start()", "pick")
+
+          # 4) sound-alike fallback when opening an app
+          rep("        val idx = Logic.bestAppIndex(q, labels)\n",
+              "        val idx = Logic.bestAppIndex(q, labels).let { if (it >= 0) it else Hearing.fuzzyAppIndex(q, labels) }\n", "openapp")
+
+          # 5) the new block, placed before modelOk
+          block = '''    // ---- extra listening models (Indian English now, Hindi later). Optional: a missing folder is simply skipped.
+              private val altLock = Any()
+              @Volatile private var altIn: Model? = null
+              @Volatile private var altStarted = false
+
+              private fun startAltModels() {
+                  if (altStarted) return
+                  altStarted = true
+                  Thread {
+                      try {
+                          if (assets.list("model-en-in").isNullOrEmpty()) return@Thread
+                          val dir = File(filesDir, "model-en-in")
+                          val done = File(dir, ".done")
+                          if (!done.exists() || !File(dir, "am/final.mdl").isFile) {
+                              dir.deleteRecursively()
+                              copyAssets("model-en-in", dir)
+                              if (!File(dir, "am/final.mdl").isFile) { dir.deleteRecursively(); return@Thread }
+                              done.writeText("1")
+                          }
+                          val m = Model(dir.absolutePath)
+                          synchronized(altLock) {
+                              if (alive) altIn = m else m.close()
+                              Unit
+                          }
+                      } catch (t: Throwable) {
+                          // the extra model is optional: NOVA keeps working with the main one
+                      }
+                  }.start()
+              }
+
+              private fun closeAltModels() {
+                  synchronized(altLock) {
+                      try { altIn?.close() } catch (t: Throwable) { }
+                      altIn = null
+                      altStarted = false
+                  }
+              }
+
+              /** Runs one model over the whole recorded command and returns everything it heard. */
+              private fun decodeWith(m: Model, pcm: ByteArray): String {
+                  val r = Recognizer(m, RATE.toFloat())
+                  val out = StringBuilder()
+                  try {
+                      var i = 0
+                      while (i < pcm.size) {
+                          val len = minOf(3200, pcm.size - i)
+                          if (r.acceptWaveForm(pcm.copyOfRange(i, i + len), len)) {
+                              val t = Logic.extractText(r.getResult())
+                              if (t.isNotBlank()) out.append(' ').append(t)
+                          }
+                          i += len
+                      }
+                      val f = Logic.extractText(r.getFinalResult())
+                      if (f.isNotBlank()) out.append(' ').append(f)
+                  } finally {
+                      try { r.close() } catch (t: Throwable) { }
+                  }
+                  return out.toString().trim()
+              }
+
+              private fun installedLabels(): List<String> {
+                  val pm = packageManager
+                  val list = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                  return list.map { it.loadLabel(pm).toString() }
+              }
+
+              /** The main model's [text] plus what the extra model heard; the one that becomes a real command wins. */
+              private fun pickHeard(pcm: ByteArray, text: String): String {
+                  try {
+                      var other = ""
