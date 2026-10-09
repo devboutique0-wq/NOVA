@@ -191,10 +191,52 @@ button.icb.off{opacity:.45}
 <div class="row"><button class="sm" id="s_contacts">ALLOW CONTACTS</button><button class="sm" id="s_bright">ALLOW BRIGHTNESS</button><button class="sm" id="s_overlay">ALLOW POPUP</button></div>
 </div>
 
+<div class="box">
+<label style="margin-top:0">GROQ KEY (OPTIONAL, SUNNE KE LIYE) <span id="groqst"></span>
+<input type="password" id="g_key" placeholder="Groq key yahan paste karo" autocomplete="off"></label>
+<small>Hindi aur Hinglish behtar samajhne ke liye. Key Android Keystore me encrypted rehti hai aur kabhi wapas screen par nahi dikhti. Key hone par aapki awaaz internet se Groq ko jaati hai. Sirf apni key rakho.</small>
+<div class="row"><button class="sm" id="g_save">GROQ SAVE</button><button class="sm" id="g_del">GROQ HATAO</button></div>
+</div>
+
+<div class="box">
+<label style="margin-top:0">WAIT TIME <span id="w_val"></span>
+<input type="range" id="w_sec" min="2" max="10" step="1" value="5"></label>
+<small>Aap bolna band karte ho, uske itne second baad NOVA kaam shuru karta hai. Slider chhodte hi turant save ho jata hai.</small>
+</div>
+
 <div id="smsg"></div>
 <div class="row" style="margin-top:14px"><button class="sm" id="s_save">SAVE</button><button class="sm" id="s_close">BAND KARO</button></div>
 </div>
 <script>
+(function(){
+  function g(id){return document.getElementById(id)}
+  function say(t,ok){var m=g("smsg");if(!m)return;m.textContent=t;m.className=ok?"ok":"bad"}
+  function gst(){var e=g("groqst");if(!e)return;var h=false;try{h=Android.hasGroqKey()}catch(x){}e.textContent=h?"- key saved":"- optional";e.className=h?"ok":""}
+  function wst(){var v=g("w_val");var s=g("w_sec");if(!s)return;var n=5;try{n=Android.getWaitSec()}catch(x){}s.value=n;if(v)v.textContent=n+" sec"}
+  var sv=g("w_sec");
+  if(sv){
+    sv.addEventListener("input",function(){var v=g("w_val");if(v)v.textContent=sv.value+" sec"});
+    sv.addEventListener("change",function(){
+      try{Android.setWaitSec(parseInt(sv.value,10));say("Wait time save ho gaya: "+sv.value+" sec",true)}
+      catch(x){say("Wait time save nahi hua",false)}
+    });
+  }
+  var b1=g("g_save");
+  if(b1){b1.addEventListener("click",function(){
+    var f=g("g_key");var r="fail";
+    try{r=Android.saveGroqKey(f.value)}catch(x){}
+    if(r==="ok"){f.value="";say("Groq key save ho gayi",true)}
+    else if(r==="invalid"){say("Key galat lag rahi hai (kam se kam 20 akshar, bina space)",false)}
+    else{say("Groq key save nahi hui",false)}
+    gst();
+  })}
+  var b2=g("g_del");
+  if(b2){b2.addEventListener("click",function(){
+    try{Android.clearGroqKey()}catch(x){}
+    say("Groq key hata di",true);gst();
+  })}
+  gst();wst();
+})();
 var $=function(id){return document.getElementById(id)};
 var log=$('log'),st=$('st'),app=$('app'),btn=$('btn'),panel=$('panel');
 var on=false,S={wake:'nova'},panelOpen=false;

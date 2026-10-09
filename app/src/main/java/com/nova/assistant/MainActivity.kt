@@ -248,6 +248,13 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun hasGroqKey(): Boolean = SecureStore.hasGroq(this@MainActivity)
 
+        /** Seconds NOVA waits after you stop speaking (2 to 10). */
+        @JavascriptInterface
+        fun getWaitSec(): Int = ExtCfg.waitSec(this@MainActivity)
+
+        @JavascriptInterface
+        fun setWaitSec(sec: Int): String { ExtCfg.setWaitSec(this@MainActivity, sec); return "ok" }
+
         @JavascriptInterface
         fun clearGroqKey() { SecureStore.clearGroq(this@MainActivity) }
 
