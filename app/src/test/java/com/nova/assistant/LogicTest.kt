@@ -372,7 +372,7 @@ class LogicTest {
     }
 
     @Test fun constants_areSane() {
-        assertTrue(Logic.END_SILENCE_MS in 300..1200)
+        assertTrue(Logic.END_SILENCE_MS in 300..6000)
         assertTrue(Logic.MAX_COMMAND_MS > Logic.NO_SPEECH_COMMAND_MS)
         assertTrue(Logic.MAX_ANSWER_MS > 0)
         assertTrue(Logic.MAX_CALLS >= Logic.MODELS.size)

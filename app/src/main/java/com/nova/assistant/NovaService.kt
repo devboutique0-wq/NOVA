@@ -572,11 +572,11 @@ class NovaService : Service() {
                     var endpoint = false
                     if (cm.acceptWaveForm(buf, n)) {
                         val t = Logic.extractText(cm.getResult())
-                        if (t.isNotBlank()) { cmdText.append(' ').append(t); endpoint = !dictCapture; heard = true }
+                        if (t.isNotBlank()) { cmdText.append(' ').append(t); endpoint = false; heard = true }
                     }
                     val maxMs = if (dictCapture) Logic.MAX_DICTATION_MS else if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS
                     val noSpeechMs = if (dictCapture) Logic.NO_SPEECH_DICTATION_MS else if (answerCapture) Logic.NO_SPEECH_ANSWER_MS else Logic.NO_SPEECH_COMMAND_MS
-                    val silenceMs = if (dictCapture) Logic.DICTATION_SILENCE_MS else Logic.END_SILENCE_MS
+                    val silenceMs = if (dictCapture) Logic.DICTATION_SILENCE_MS else if (answerCapture) 1500 else Logic.END_SILENCE_MS
                     val end = endpoint || (heard && silentMs >= silenceMs) ||
                         totalMs >= maxMs || (!heard && totalMs >= noSpeechMs)
                     if (end) {

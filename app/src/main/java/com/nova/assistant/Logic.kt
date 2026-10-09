@@ -17,7 +17,7 @@ object Logic {
     )
 
     // ---- timing / bounds ----
-    const val END_SILENCE_MS = 600          // silence after speech that ends a command
+    const val END_SILENCE_MS = 5000          // silence after speech that ends a command
     const val MAX_COMMAND_MS = 12000        // hard cap for one spoken command
     const val NO_SPEECH_COMMAND_MS = 3000   // give up if nothing is said after the wake word
     const val MAX_ANSWER_MS = 6000          // hard cap for a yes/no answer
