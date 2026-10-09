@@ -1,0 +1,33 @@
+name: add-pattern
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch manifest
+        run: |
+          python3 - <<'PY'
+          p='app/src/main/AndroidManifest.xml'
+          s=open(p,encoding='utf-8').read()
+          if 'PatternSetupActivity' in s:
+              print('already done')
+              raise SystemExit(0)
+          a='    <uses-permission android:name="android.permission.VIBRATE"/>\n'
+          assert s.count(a)==1
+          s=s.replace(a,a+'    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n')
+          b='        <service\n            android:name=".NovaService"'
+          assert s.count(b)==1
+          act='        <activity\n            android:name=".PatternSetupActivity"\n            android:exported="true"\n            android:label="NOVA Pattern">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN"/>\n                <category android:name="android.intent.category.LAUNCHER"/>\n            </intent-filter>\n        </activity>\n'
+          s=s.replace(b,act+b)
+          open(p,'w',encoding='utf-8').write(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "bot@example.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add pattern setup screen to manifest"
+          git push
