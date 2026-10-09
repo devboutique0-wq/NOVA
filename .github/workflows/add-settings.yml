@@ -1,0 +1,123 @@
+name: Add Groq box and wait time
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write ExtCfg.kt
+        run: |
+          cat > app/src/main/java/com/nova/assistant/ExtCfg.kt <<'KT'
+          package com.nova.assistant
+
+          import android.content.Context
+
+          /** Extra settings that live in their own small store: how long NOVA waits after you stop speaking. */
+          object ExtCfg {
+              private const val PREF = "nova_ext"
+              private const val WAIT = "wait_sec"
+              const val DEFAULT_WAIT_SEC = 5
+
+              fun waitSec(ctx: Context): Int = try {
+                  ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getInt(WAIT, DEFAULT_WAIT_SEC).coerceIn(2, 10)
+              } catch (e: Exception) { DEFAULT_WAIT_SEC }
+
+              fun setWaitSec(ctx: Context, sec: Int) {
+                  try {
+                      ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putInt(WAIT, sec.coerceIn(2, 10)).apply()
+                  } catch (e: Exception) { }
+              }
+
+              fun waitMs(ctx: Context): Int = waitSec(ctx) * 1000
+          }
+          KT
+      - name: Patch app files
+        run: |
+          python3 - <<'PY'
+          base = 'app/src/main/java/com/nova/assistant/'
+
+          def patch(path, old, new):
+              s = open(path, encoding='utf-8').read()
+              assert s.count(old) == 1, (path, old[:60], s.count(old))
+              open(path, 'w', encoding='utf-8').write(s.replace(old, new))
+
+          # ---- MainActivity: bridge for the wait time
+          OLD = 'fun hasGroqKey(): Boolean = SecureStore.hasGroq(this@MainActivity)'
+          bridge = r'''
+
+                  /** Seconds NOVA waits after you stop speaking (2 to 10). */
+                  @JavascriptInterface
+                  fun getWaitSec(): Int = ExtCfg.waitSec(this@MainActivity)
+
+                  @JavascriptInterface
+                  fun setWaitSec(sec: Int): String { ExtCfg.setWaitSec(this@MainActivity, sec); return "ok" }'''
+          patch(base + 'MainActivity.kt', OLD, OLD + bridge)
+
+          # ---- NovaService: use the saved wait time
+          patch(base + 'NovaService.kt',
+                'else if (answerCapture) 1500 else Logic.END_SILENCE_MS',
+                'else if (answerCapture) 1500 else ExtCfg.waitMs(this)')
+          patch(base + 'NovaService.kt',
+                'val maxMs = if (dictCapture) Logic.MAX_DICTATION_MS else if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS',
+                'val maxMs = if (dictCapture) Logic.MAX_DICTATION_MS else if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS + ExtCfg.waitMs(this)')
+
+          # ---- ui.html: two new boxes and their script
+          ui = 'app/src/main/assets/ui.html'
+          html_box = r'''<div class="box">
+          <label style="margin-top:0">GROQ KEY (OPTIONAL, SUNNE KE LIYE) <span id="groqst"></span>
+          <input type="password" id="g_key" placeholder="Groq key yahan paste karo" autocomplete="off"></label>
+          <small>Hindi aur Hinglish behtar samajhne ke liye. Key Android Keystore me encrypted rehti hai aur kabhi wapas screen par nahi dikhti. Key hone par aapki awaaz internet se Groq ko jaati hai. Sirf apni key rakho.</small>
+          <div class="row"><button class="sm" id="g_save">GROQ SAVE</button><button class="sm" id="g_del">GROQ HATAO</button></div>
+          </div>
+
+          <div class="box">
+          <label style="margin-top:0">WAIT TIME <span id="w_val"></span>
+          <input type="range" id="w_sec" min="2" max="10" step="1" value="5"></label>
+          <small>Aap bolna band karte ho, uske itne second baad NOVA kaam shuru karta hai. Slider chhodte hi turant save ho jata hai.</small>
+          </div>
+
+          '''
+          patch(ui, '<div id="smsg"></div>', html_box + '<div id="smsg"></div>')
+
+          js = r'''(function(){
+            function g(id){return document.getElementById(id)}
+            function say(t,ok){var m=g("smsg");if(!m)return;m.textContent=t;m.className=ok?"ok":"bad"}
+            function gst(){var e=g("groqst");if(!e)return;var h=false;try{h=Android.hasGroqKey()}catch(x){}e.textContent=h?"- key saved":"- optional";e.className=h?"ok":""}
+            function wst(){var v=g("w_val");var s=g("w_sec");if(!s)return;var n=5;try{n=Android.getWaitSec()}catch(x){}s.value=n;if(v)v.textContent=n+" sec"}
+            var sv=g("w_sec");
+            if(sv){
+              sv.addEventListener("input",function(){var v=g("w_val");if(v)v.textContent=sv.value+" sec"});
+              sv.addEventListener("change",function(){
+                try{Android.setWaitSec(parseInt(sv.value,10));say("Wait time save ho gaya: "+sv.value+" sec",true)}
+                catch(x){say("Wait time save nahi hua",false)}
+              });
+            }
+            var b1=g("g_save");
+            if(b1){b1.addEventListener("click",function(){
+              var f=g("g_key");var r="fail";
+              try{r=Android.saveGroqKey(f.value)}catch(x){}
+              if(r==="ok"){f.value="";say("Groq key save ho gayi",true)}
+              else if(r==="invalid"){say("Key galat lag rahi hai (kam se kam 20 akshar, bina space)",false)}
+              else{say("Groq key save nahi hui",false)}
+              gst();
+            })}
+            var b2=g("g_del");
+            if(b2){b2.addEventListener("click",function(){
+              try{Android.clearGroqKey()}catch(x){}
+              say("Groq key hata di",true);gst();
+            })}
+            gst();wst();
+          })();
+          '''
+          ANCH = 'var $=function(id){return document.getElementById(id)};'
+          patch(ui, ANCH, js + ANCH)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "Add Groq key box and wait time setting"
+          git push
