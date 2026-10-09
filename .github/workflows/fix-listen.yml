@@ -1,0 +1,38 @@
+name: Fix listening length
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: |
+          python3 - <<'PY'
+          def patch(path, old, new):
+              s = open(path, encoding='utf-8').read()
+              assert s.count(old) == 1, (path, old, s.count(old))
+              open(path, 'w', encoding='utf-8').write(s.replace(old, new))
+
+          base = 'app/src/main/java/com/nova/assistant/'
+          patch(base + 'Logic.kt',
+                'const val END_SILENCE_MS = 600',
+                'const val END_SILENCE_MS = 5000')
+          patch(base + 'NovaService.kt',
+                'endpoint = !dictCapture;',
+                'endpoint = false;')
+          patch(base + 'NovaService.kt',
+                'val silenceMs = if (dictCapture) Logic.DICTATION_SILENCE_MS else Logic.END_SILENCE_MS',
+                'val silenceMs = if (dictCapture) Logic.DICTATION_SILENCE_MS else if (answerCapture) 1500 else Logic.END_SILENCE_MS')
+          patch('app/src/test/java/com/nova/assistant/LogicTest.kt',
+                'Logic.END_SILENCE_MS in 300..1200',
+                'Logic.END_SILENCE_MS in 300..6000')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "Wait for full command (5 s silence)"
+          git push
