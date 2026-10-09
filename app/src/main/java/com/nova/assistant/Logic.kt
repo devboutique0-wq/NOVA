@@ -253,4 +253,138 @@ object Logic {
     data class Cmd(val kind: String, val arg: String = "", val num: Int = 0)
 
     private val FILLER = setOf(
-        "please", "the", "my", "nova", "hey", "n
+        "please", "the", "my", "nova", "hey", "n   
+    /**
+     * Whole-word command matching. Returns null when the sentence is not a simple local command,
+     * in which case the caller may use the cloud (only if the user configured a key).
+     */
+    fun classify(text: String): Cmd? {
+        val n = norm(text)
+        if (n.isEmpty() || n.length > 120) return null
+        val t = n.split(" ")
+        val s = t.toSet()
+        val size = t.size
+        fun has(vararg w: String): Boolean = w.any { it in s }
+        val core = t.filter { it !in FILLER }.joinToString(" ")
+        val nav = t.filter { it !in FILLER && it !in NAVFILL }.joinToString(" ")
+        val wantsSettings = has("settings", "setting")
+
+        if (core in setOf("stop", "cancel", "chup", "quiet", "ruko", "be quiet", "shut up")) return Cmd("stop")
+
+        if (core in setOf("check updates", "check update", "any updates", "any update", "update check", "updates", "kuch naya hai", "kuch naya")) {
+            return Cmd("update_check")
+        }
+
+        // ---- quiet replies on / off (default on: replies are shown in the chat, not spoken)
+        if (core in setOf("quiet mode on", "silent replies on", "voice replies off")) return Cmd("quiet_on")
+        if (core in setOf("quiet mode off", "silent replies off", "voice replies on")) return Cmd("quiet_off")
+
+        // ---- driving mode (read messages aloud, fixed quick replies). Checked before the free-text "type" rule.
+        Driving.command(n, core)?.let { return it }
+
+        // ---- screen control (needs Accessibility). Checked early because typed text may contain any word.
+        Regex("^(?:(?:please|nova|hey)\\s+)*(?:type|likho|write)\\s+(.+)$").find(n)?.let {
+            val txt = Control.cleanTyped(it.groupValues[1])
+            if (txt.isNotEmpty()) return Cmd("type", txt)
+        }
+        if (has("scroll", "swipe")) {
+            val d = Control.direction(t)
+            if (d != null && size <= 5) return Cmd("scroll", d)
+        }
+        Regex("^(?:tap|click|press|dabao|dabana)(?:\\s+on)?\\s+(.+)$").find(core)?.let {
+            val label = it.groupValues[1].removeSuffix(" button").trim()
+            if (label.isNotEmpty() && label.length <= 40 && label.split(" ").size <= 5) return Cmd("tap", label)
+        }
+        Regex("^(.+?)\\s+(?:dabao|dabana)$").find(core)?.let {
+            val label = it.groupValues[1].removeSuffix(" button").trim()
+            if (label.isNotEmpty() && label.length <= 40 && label.split(" ").size <= 5) return Cmd("tap", label)
+        }
+
+        if (has("monitor", "monitoring")) {
+            if (has("off", "stop", "band", "bandh", "disable")) return Cmd("monitor_off")
+            if (size <= 4) return Cmd("monitor_on")
+            return null
+        }
+
+        if (has("screen") &&
+            (has("analyze", "analyse", "analysis", "dekho", "check", "read", "summarize", "summary") ||
+                (has("what") && has("on")))
+        ) return Cmd("analyze")
+
+        if (!wantsSettings && size <= 6 && has("battery", "charging", "charge")) return Cmd("battery")
+
+        val timeBlock = has("timer", "alarm", "zone", "set", "remind", "reminder", "countdown")
+        if (!wantsSettings && size <= 5 && !timeBlock && (has("time", "samay") || n.contains("kitne baje"))) {
+            return Cmd("time")
+        }
+        if (!wantsSettings && size <= 5 && has("date", "tarikh", "tareekh")) return Cmd("date")
+
+        if (has("torch", "flashlight", "flashlite")) {
+            if (has("off", "band", "bandh", "stop")) return Cmd("torch_off")
+            if (has("on", "chalu", "chalao", "start")) return Cmd("torch_on")
+            return null
+        }
+
+        if (has("volume", "awaaz", "awaz")) {
+            if (has("mute", "silent")) return Cmd("volume", "mute")
+            if (has("max", "maximum", "full")) return Cmd("volume", "max")
+            if (has("down", "lower", "decrease", "kam", "reduce", "low")) return Cmd("volume", "down")
+            if (has("up", "raise", "increase", "badha", "badhao", "higher", "high")) return Cmd("volume", "up")
+            val num = parseNumber(t)
+            if (num != null) return Cmd("volume", "set", num.coerceIn(0, 100))
+            return null
+        }
+
+        if (has("brightness", "brightnes")) {
+            val num = parseNumber(t)
+            if (num != null) return Cmd("brightness_set", "", num.coerceIn(0, 100))
+            if (has("max", "maximum", "full")) return Cmd("brightness_set", "", 100)
+            if (has("min", "minimum", "lowest")) return Cmd("brightness_set", "", 5)
+            if (has("up", "increase", "higher", "badha", "badhao", "more", "brighter")) return Cmd("brightness_step", "", 10)
+            if (has("down", "decrease", "lower", "kam", "less", "reduce", "dim")) return Cmd("brightness_step", "", -10)
+            return null
+        }
+
+        val mediaWords = setOf(
+            "pause", "play", "resume", "continue", "music", "media", "song", "track", "video",
+            "playback", "next", "previous", "last", "agla", "pichla", "gana", "it", "stop"
+        )
+        if (size <= 4 && t.all { it in mediaWords || it in FILLER }) {
+            if (has("pause")) return Cmd("media", "pause")
+            if (has("stop") && has("music", "media", "song", "playback")) return Cmd("media", "pause")
+            if (has("next", "agla")) return Cmd("media", "next")
+            if (has("previous", "pichla") || (has("last") && has("song", "track", "gana"))) return Cmd("media", "previous")
+            if (has("resume", "continue") || (has("play") && has("music", "media", "song", "playback"))) {
+                return Cmd("media", "play")
+            }
+        }
+
+        when (nav) {
+            "home", "home screen" -> return Cmd("global", "home")
+            "back" -> return Cmd("global", "back")
+            "recents", "recent", "recent apps", "recent app", "app switcher", "switch apps" -> return Cmd("global", "recents")
+            "notifications", "notification", "notification panel", "notification shade" -> return Cmd("global", "notifications")
+            "quick settings", "quick panel", "quick settings panel" -> return Cmd("global", "quick_settings")
+            "lock", "lock phone", "lock screen", "phone lock", "screen lock" -> return Cmd("global", "lock")
+        }
+
+        // Android does not let an app flip Wi-Fi/Bluetooth; we open the settings page and say so.
+        if (size <= 3 && has("wifi", "bluetooth") && has("on", "off", "chalu", "band", "bandh")) {
+            return Cmd("settings", if (has("wifi")) "wifi" else "bluetooth", 2)
+        }
+
+        val name0: String? =
+            Regex("^(?:open|launch|start|kholo|khol)\\s+(.+)$").find(core)?.let { it.groupValues[1] }
+                ?: Regex("^(.+?)\\s+(?:kholo|khol)$").find(core)?.let { it.groupValues[1] }
+                ?: core.takeIf { settingsPage(it) != null || it == "camera" }
+        if (name0 != null) {
+            val name = name0.removeSuffix(" app").trim()
+            if (name.isEmpty() || name.length > 30 || name.split(" ").size > 4) return null
+            if (name == "camera") return Cmd("camera")
+            val page = settingsPage(name)
+            if (page != null) return Cmd("settings", page)
+            return Cmd("open_app", name)
+        }
+        return null
+    }
+        }
