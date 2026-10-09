@@ -236,6 +236,21 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun stopSpeak() { NovaService.instance?.stopSpeaking() }
 
+        /** The optional Groq key is only ever written here, never sent back to the page. ok / invalid / fail. */
+        @JavascriptInterface
+        fun saveGroqKey(raw: String): String = try {
+            val k = raw.trim()
+            if (k.length < 20 || k.length > 200 || k.any { it.isWhitespace() }) "invalid"
+            else if (SecureStore.saveGroq(this@MainActivity, k)) "ok"
+            else "fail"
+        } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
+        fun hasGroqKey(): Boolean = SecureStore.hasGroq(this@MainActivity)
+
+        @JavascriptInterface
+        fun clearGroqKey() { SecureStore.clearGroq(this@MainActivity) }
+
         @JavascriptInterface
         fun toggle(): String {
             if (NovaService.running) {
@@ -427,6 +442,7 @@ class MainActivity : Activity() {
                 .put("autostart", cfg.autostart)
                 .put("hasKey", hasKey)
                 .put("keyCount", keyCount)
+                .put("hasGroq", SecureStore.hasGroq(this@MainActivity))
                 .put("localMode", !hasKey)
                 .put("acc", NovaAccessibilityService.isEnabled(this@MainActivity))
                 .put("screenMonitor", cfg.screenMonitor)

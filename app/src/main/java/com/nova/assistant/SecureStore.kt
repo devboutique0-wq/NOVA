@@ -108,6 +108,33 @@ object SecureStore {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().remove(ENTRY).apply()
     }
 
+    /** Separate encrypted slot for the optional Groq key (voice listening). Never logged, never shown. */
+    fun saveGroq(ctx: Context, key: String): Boolean = try {
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, secretKey())
+        val ct = c.doFinal(key.trim().toByteArray(Charsets.UTF_8))
+        val blob = Base64.encodeToString(c.iv + ct, Base64.NO_WRAP)
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString("groq_key", blob).commit()
+    } catch (e: Exception) { false }
+
+    fun getGroq(ctx: Context): String = try {
+        val blob = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("groq_key", null)
+        if (blob.isNullOrEmpty()) "" else {
+            val raw = Base64.decode(blob, Base64.NO_WRAP)
+            val iv = raw.copyOfRange(0, 12)
+            val ct = raw.copyOfRange(12, raw.size)
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.DECRYPT_MODE, secretKey(), GCMParameterSpec(128, iv))
+            String(c.doFinal(ct), Charsets.UTF_8)
+        }
+    } catch (e: Exception) { "" }
+
+    fun hasGroq(ctx: Context): Boolean = getGroq(ctx).isNotEmpty()
+
+    fun clearGroq(ctx: Context) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().remove("groq_key").commit()
+    }
+
     /** Old versions kept the key as plain text. Encrypt it once and delete the plain copy. */
     fun migrateOld(ctx: Context) {
         val old = ctx.getSharedPreferences("nova", Context.MODE_PRIVATE)

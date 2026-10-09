@@ -887,7 +887,12 @@ class NovaService : Service() {
         h.post { hud?.setHeard("🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)"))) }
         val c0 = if (text.isBlank()) null else Logic.classify(text)
         val sk = if (c0 == null && text.isNotBlank()) brain.resolve(text) else null   // Layer 1: shortcuts + fuzzy match
-        val c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
+        var c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
+        var groqText = ""
+        if (c == null && pcm.isNotEmpty() && SecureStore.hasGroq(this)) {
+            groqText = groqHear(pcm)
+            if (groqText.isNotBlank()) c = Logic.classify(groqText)
+        }
         val now = System.currentTimeMillis()
         lastTurnLocal = c != null
         lastKind = c?.kind ?: ""
@@ -909,11 +914,11 @@ class NovaService : Service() {
             }
         }
         if (SecureStore.hasKeys(this)) {                           // only when the user added an optional key
-            if (Logic.isJunk(text)) {                             // noise / cough / TV: never sent to the cloud, never acted on
+            if (groqText.isBlank() && Logic.isJunk(text)) {                             // noise / cough / TV: never sent to the cloud, never acted on
                 return tr("Samajh nahi aaya, dobara bolo", "I did not catch that, please say it again")
             }
             lastKind = "cloud"
-            return askCloud(pcm, text)
+            return askCloud(pcm, if (groqText.isNotBlank()) groqText else text)
         }
         return tr(
             "Ye command local mode mein samajh nahi aaya. Battery, torch, volume, ya open YouTube jaise commands bolo. Khule sawaalon ke liye settings mein API key (optional) daalo.",
@@ -948,6 +953,24 @@ class NovaService : Service() {
             tr("Kaam nahi ho paya", "That did not work")
         }
         finishTurn(reply)
+    }
+
+    /** Optional Groq Whisper listening (only when the user added a Groq key). Worker thread. The text can start a normal command, never approve one. */
+    private fun groqHear(pcm: ByteArray): String {
+        val key = SecureStore.getGroq(this)
+        if (key.isBlank()) return ""
+        val r = GroqStt.transcribe(key, pcm)
+        val raw = r.text
+        if (raw == null) {
+            listener?.invoke("sys", tr(
+                "Groq se sunna nahi ho paya (" + GroqStt.failText(r.code) + ")",
+                "Groq could not listen (" + GroqStt.failText(r.code) + ")"
+            ))
+            return ""
+        }
+        if (raw.isBlank()) return ""
+        listener?.invoke("sys", "Groq: \"" + raw + "\"")
+        return Logic.stripWake(HindiRoman.toRoman(raw).lowercase())
     }
 
     /** Registers a dangerous action (call, WhatsApp send). It only runs after a spoken, local "yes". */
