@@ -407,4 +407,22 @@ object Logic {
         }
 
         // Android does not let an app flip Wi-Fi/Bluetooth; we open the settings page and say so.
-        if (size <= 3 && has("wifi", "bluetooth") && has("on",
+        if (size <= 3 && has("wifi", "bluetooth") && has("on", "off", "chalu", "band", "bandh")) {
+            return Cmd("settings", if (has("wifi")) "wifi" else "bluetooth", 2)
+        }
+
+        val name0: String? =
+            Regex("^(?:open|launch|start|kholo|khol)\\s+(.+)$").find(core)?.let { it.groupValues[1] }
+                ?: Regex("^(.+?)\\s+(?:kholo|khol)$").find(core)?.let { it.groupValues[1] }
+                ?: core.takeIf { settingsPage(it) != null || it == "camera" }
+        if (name0 != null) {
+            val name = name0.removeSuffix(" app").trim()
+            if (name.isEmpty() || name.length > 30 || name.split(" ").size > 4) return null
+            if (name == "camera") return Cmd("camera")
+            val page = settingsPage(name)
+            if (page != null) return Cmd("settings", page)
+            return Cmd("open_app", name)
+        }
+        return null
+    }
+}
