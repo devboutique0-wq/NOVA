@@ -1,0 +1,26 @@
+name: Fix false wake
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: |
+          python3 - <<'PY'
+          p = 'app/src/main/java/com/nova/assistant/NovaService.kt'
+          s = open(p, encoding='utf-8').read()
+          old = 'peak < maxOf(400.0, noise * 1.8)'
+          new = 'peak < maxOf(900.0, noise * 3.0)'
+          assert s.count(old) == 1, s.count(old)
+          open(p, 'w', encoding='utf-8').write(s.replace(old, new))
+          PY
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "Stricter wake gate (fewer false wakes)"
+          git push
