@@ -213,3 +213,44 @@ object Logic {
             if (list.isNotEmpty()) list.removeAt(0)
         }
     }
+    // ---------------------------------------------------------------- screen helpers
+
+    /** De-duplicated, shortened text lines for a summary or an explicit analysis request. */
+    fun topLines(lines: List<String>, max: Int, maxLen: Int = 80): List<String> =
+        lines.map { it.trim() }
+            .filter { it.length >= 2 }
+            .distinct()
+            .take(max)
+            .map { shorten(it, maxLen) }
+
+    private val ALERT_PHRASES = listOf(
+        "payment failed", "verification failed", "access denied", "permission denied",
+        "something went wrong", "no internet connection", "not responding", "has stopped",
+        "keeps stopping", "unable to", "could not", "couldn't", "failed", "failure",
+        "error", "warning", "blocked", "crashed"
+    )
+    private val ALERT_RES = ALERT_PHRASES.map { it to Regex("\\b" + Regex.escape(it) + "\\b") }
+
+    /** Obvious error/warning wording in short UI lines (long chat text is ignored). */
+    fun detectAlert(lines: List<String>): String? {
+        for (line in lines) {
+            if (line.length > 100) continue
+            val l = line.lowercase()
+            for ((phrase, re) in ALERT_RES) if (re.containsMatchIn(l)) return phrase
+        }
+        return null
+    }
+
+    /** Alert spam guard. lastAt < 0 means "never announced". */
+    fun shouldAnnounce(now: Long, lastAt: Long, lastKey: String, key: String): Boolean {
+        if (lastAt < 0) return true
+        val gap = now - lastAt
+        return if (key == lastKey) gap >= ALERT_SAME_GAP_MS else gap >= ALERT_MIN_GAP_MS
+    }
+
+    // ---------------------------------------------------------------- local command understanding
+
+    data class Cmd(val kind: String, val arg: String = "", val num: Int = 0)
+
+    private val FILLER = setOf(
+        "please", "the", "my", "nova", "hey", "n
