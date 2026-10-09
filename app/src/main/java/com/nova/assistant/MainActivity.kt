@@ -111,7 +111,8 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         NovaService.uiVisible = true
-        pushFlow("resumed")      // back from an Android settings screen: the page re-checks its permission list
+        pushFlow("resumed")
+        HealthCheck.auto(this, web)      // back from an Android settings screen: the page re-checks its permission list
     }
 
     override fun onPause() {
