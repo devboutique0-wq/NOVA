@@ -550,7 +550,7 @@ class NovaService : Service() {
                     val done = wk.acceptWaveForm(buf, n)
                     val txt = if (done) wk.getResult() else wk.getPartialResult()
                     val wakeNow = Logic.heardWake(txt, wakeWord)
-                    if (wakeNow && (peak < maxOf(400.0, noise * 1.8) || System.currentTimeMillis() - lastCaptureEnd < Logic.WAKE_COOLDOWN_MS)) {
+                    if (wakeNow && (peak < maxOf(900.0, noise * 3.0) || System.currentTimeMillis() - lastCaptureEnd < Logic.WAKE_COOLDOWN_MS)) {
                         wk.reset()                 // too faint or too soon: a false wake (TV, room noise, echo of our voice)
                     } else if (wakeNow) {
                         pending = null // a new command cancels any waiting confirmation
