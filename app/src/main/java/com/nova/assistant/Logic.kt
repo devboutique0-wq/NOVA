@@ -109,4 +109,107 @@ object Logic {
 
     /** Replies of these commands are always spoken: the user asked to HEAR something (driving messages, screen text, the mode switch). */
     val LOUD_KINDS: Set<String> = setOf(
-        "drive_on", "drive_off", "drive_read", "drive_clear", "drive_reply", "drive_dictate", "analyze", "quiet_on", "quiet_o
+        "drive_on", "drive_off", "drive_read", "drive_clear", "drive_reply", "drive_dictate", "analyze", "quiet_on", "quiet_off"
+    )
+
+    /** false = show the reply in the chat / card only. A waiting yes/no question is ALWAYS spoken (risky actions stay audible). */
+    fun speakReply(quiet: Boolean, confirmPending: Boolean, kind: String): Boolean =
+        !quiet || confirmPending || kind in LOUD_KINDS
+
+    fun isExpired(createdAt: Long, now: Long, ttlMs: Long): Boolean = now < createdAt || now - createdAt > ttlMs
+
+    // ---------------------------------------------------------------- messages / contacts
+
+    fun normalizeMsg(s: String): String = s.trim().lowercase().replace(Regex("\\s+"), " ")
+
+    fun sameMessage(a: String, b: String): Boolean = normalizeMsg(a) == normalizeMsg(b)
+
+    /** Digits for a wa.me link. 10 digit numbers are treated as Indian (+91). */
+    fun waNumber(raw: String): String {
+        val d = raw.filter { it.isDigit() }
+        return when {
+            d.length == 10 -> "91$d"
+            d.length == 11 && d.startsWith("0") -> "91" + d.substring(1)
+            else -> d
+        }
+    }
+
+    fun shorten(s: String, max: Int = 160): String =
+        if (s.length <= max) s else s.substring(0, max).trimEnd() + "..."
+
+    /** Picks the best contact for a spoken name. Returns index or -1. */
+    fun pickContact(query: String, names: List<String>): Int {
+        if (names.isEmpty()) return -1
+        val q = query.trim().lowercase()
+        val exact = names.indexOfFirst { it.trim().lowercase() == q }
+        if (exact >= 0) return exact
+        val word = names.indices.filter { i -> names[i].lowercase().split(" ", "-").contains(q) }
+        if (word.isNotEmpty()) return word.minByOrNull { names[it].length } ?: -1
+        return names.indices.minByOrNull { names[it].length } ?: -1
+    }
+
+    /** Best installed-app match for a spoken name. Returns index or -1. */
+    fun bestAppIndex(query: String, labels: List<String>): Int {
+        val q = query.trim().lowercase()
+        if (q.isEmpty() || labels.isEmpty()) return -1
+        val l = labels.map { it.trim().lowercase() }
+        val qc = q.replace(" ", "")
+        val lc = l.map { it.replace(" ", "") }
+        val exact = lc.indexOfFirst { it == qc }
+        if (exact >= 0) return exact
+        val starts = l.indices.filter { lc[it].startsWith(qc) }
+        if (starts.isNotEmpty()) return starts.minByOrNull { l[it].length } ?: -1
+        val words = l.indices.filter { l[it].split(" ").contains(q) }
+        if (words.isNotEmpty()) return words.minByOrNull { l[it].length } ?: -1
+        // a very short heard word must not match "somewhere inside" a name (misheard "in" opened random apps)
+        val sub = if (q.length >= 4) l.indices.filter { l[it].contains(q) } else emptyList()
+        return sub.minByOrNull { l[it].length } ?: -1
+    }
+
+    // ---------------------------------------------------------------- API keys / cloud failover
+
+    /** Splits pasted text into plausible keys. Never logs or echoes them. */
+    fun parseKeys(raw: String): List<String> =
+        raw.split(Regex("[\\r\\n,;]+"))
+            .map { it.trim() }
+            .filter { it.length in 20..200 && it.none { c -> c.isWhitespace() } }
+            .distinct()
+            .take(MAX_KEYS)
+
+    enum class Next { SUCCESS, NEXT_KEY, NEXT_MODEL, STOP }
+
+    /**
+     * Deterministic failover rule for ONE http answer.
+     * 598 = network is down (stop at once, retrying only wastes time), 599 = timeout / IO error.
+     */
+    fun nextStep(code: Int, body: String): Next = when {
+        code in 200..299 -> Next.SUCCESS
+        code == 598 -> Next.STOP
+        code == 400 ->
+            if (body.contains("API key", ignoreCase = true) || body.contains("API_KEY_INVALID")) Next.NEXT_KEY
+            else Next.STOP
+        code == 401 || code == 403 -> Next.NEXT_KEY
+        code == 404 -> Next.NEXT_MODEL
+        code == 429 -> Next.NEXT_KEY
+        code == 599 || code in 500..599 -> Next.NEXT_KEY
+        else -> Next.STOP
+    }
+
+    /** nokey | network | key | quota | model | server | other */
+    fun failureKind(code: Int): String = when {
+        code == 0 -> "nokey"
+        code == 598 || code == 599 -> "network"
+        code == 400 || code == 401 || code == 403 -> "key"
+        code == 429 -> "quota"
+        code == 404 -> "model"
+        code in 500..597 -> "server"
+        else -> "other"
+    }
+
+    /** Keeps the newest entries. Entries are stored as user/model pairs, so drop two at a time. */
+    fun <T> boundHistory(list: MutableList<T>, max: Int = HISTORY_MAX) {
+        while (list.size > max) {
+            list.removeAt(0)
+            if (list.isNotEmpty()) list.removeAt(0)
+        }
+    }
