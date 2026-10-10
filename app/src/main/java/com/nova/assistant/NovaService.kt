@@ -1770,12 +1770,26 @@ class NovaService : Service() {
             "Screen padhne ke liye Accessibility permission on karo. Baaki local commands bina iske chalte hain",
             "Turn on the Accessibility permission to read the screen. Other local commands work without it"
         )
-        val snap = NovaAccessibilityService.readScreen(false)   // password-free, non-editable text only
+        var snap = NovaAccessibilityService.readScreen(false)   // password-free, non-editable text only  // FIXSCREEN1
+        if (snap == null || snap.pkg == packageName) {
+            // NOVA's own chat/card is in front: give the user time to open the other app, then read it
+            announce(tr("Jo screen padhni hai wo kholo, main 8 second mein padhungi", "Open the screen you want read, I will read it in 8 seconds"))
+            val until = System.currentTimeMillis() + 9000L
+            while (System.currentTimeMillis() < until) {
+                try { Thread.sleep(700) } catch (e: InterruptedException) { break }
+                val sn = NovaAccessibilityService.readScreen(false)
+                if (sn != null && sn.pkg != packageName && sn.pkg.isNotEmpty()) { snap = sn; break }
+            }
+            if (snap == null || snap.pkg == packageName) return tr(
+                "Mujhe koi dusra app nahi dikha. NOVA se bahar jaakar dobara bolo: screen dekho",
+                "I did not see another app. Leave NOVA and say it again: analyze screen"
+            )
+        }
         val lines = snap?.lines ?: emptyList()
         val top = Logic.topLines(lines, 8)
         if (top.isEmpty()) return tr(
-            "Is screen par padhne layak text nahi mila. Main sirf accessibility text padhta hoon, images nahi. Canvas, game aur secure screens nahi padh sakta",
-            "I found no readable text here. I only read accessibility text, not images, and I cannot read canvas, game or secure screens"
+            "Is screen par padhne layak text nahi mila (app: ${snap?.pkg}). Main sirf accessibility text padhta hoon, images nahi. Canvas, game aur secure screens nahi padh sakta",
+            "I found no readable text here (app: ${snap?.pkg}). I only read accessibility text, not images, and I cannot read canvas, game or secure screens"
         )
         val local = tr(
             "Screen par ye likha hai: " + top.joinToString(", ") + ". Ye sirf accessibility text hai, image nahi.",

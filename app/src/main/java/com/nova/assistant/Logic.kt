@@ -360,8 +360,10 @@ object Logic {
             return null
         }
 
-        if (has("screen") &&
-            (has("analyze", "analyse", "analysis", "dekho", "check", "read", "summarize", "summary") ||
+        if (has("screen") && !has("brightness", "brightnes", "timeout", "lock", "rotate", "rotation", "record", "recording", "shot", "off", "band") && // FIXSCREEN2
+            (has("analyze", "analyse", "analysis", "dekho", "check", "read", "summarize", "summary",
+                "dekh", "dekhna", "dikh", "dikha", "dikhao", "dikhta", "padh", "padho", "padhna", "batao", "bata", "kya", "likha",
+                "describe", "tell", "see") ||
                 (has("what") && has("on")))
         ) return Cmd("analyze")
 

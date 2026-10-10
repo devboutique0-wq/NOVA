@@ -50,10 +50,26 @@ class NovaAccessibilityService : AccessibilityService() {
          */
         fun readScreen(includeEditable: Boolean): Snap? {
             val s = instance ?: return null
-            val root = s.rootInActiveWindow ?: return null
+            var root = s.rootInActiveWindow
+            if (root == null || root.packageName?.toString() == s.packageName) {
+                val alt = otherAppRoot(s)
+                if (alt != null) root = alt
+            }
+            if (root == null) return null
             val out = ArrayList<String>()
             collect(root, 0, out, includeEditable)
             return Snap(root.packageName?.toString() ?: "", out)
+        }
+
+        /** Top application window that is NOT NOVA (used when NOVA's own card or chat has the focus). */
+        private fun otherAppRoot(s: NovaAccessibilityService): AccessibilityNodeInfo? {
+            return try {
+                s.windows
+                    .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
+                    .sortedByDescending { it.layer }
+                    .mapNotNull { it.root }
+                    .firstOrNull { it.packageName?.toString() != s.packageName }
+            } catch (e: Exception) { null }
         }
 
         fun foregroundPackage(): String? = instance?.rootInActiveWindow?.packageName?.toString()
