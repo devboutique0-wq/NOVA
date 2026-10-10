@@ -252,12 +252,12 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 <div id="ldr"><div id="ldt"></div><div class="bar"><i id="ldb"></i><em id="ldp"></em></div><div id="tsd">THINK &nbsp;&middot;&nbsp; SPEAK &nbsp;&middot;&nbsp; DO</div></div></div>
 <div id="flash"></div><div id="shock"></div><div class="dr" id="dr1"></div><div class="dr" id="dr2"></div>
 <div class="wrap" id="app">
-<div class="top"><div class="logo">NOVA<span id="dot"></span></div><div class="ic"><button class="icb" id="snd" aria-label="sound"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button><button class="icb" id="pw" aria-label="sleep"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.8a8 8 0 1011.4 0"/></svg></button></div></div>
+<div class="top"><div class="logo">NOVA<span id="dot"></span></div><div class="ic"><button class="icb hb" id="chatb" aria-label="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg><em>CHAT</em></button><button class="icb hb" id="gear" aria-label="settings"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><em>SETTINGS</em></button><button class="icb" id="snd" aria-label="sound"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button><button class="icb" id="pw" aria-label="sleep"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.8a8 8 0 1011.4 0"/></svg></button></div></div>
 <div class="status" id="st">Offline</div><div class="badge" id="mode">LOCAL MODE - no API key needed</div>
 <div class="orbbox"><canvas id="gl" width="250" height="250" aria-label="NOVA"></canvas></div>
 <div class="feats" id="feats"></div>
 <div class="log" id="log"></div>
-<div class="row"><button id="btn">ACTIVATE</button><button class="sm" id="quiet">CHUP</button><button class="sm" id="chatb">CHAT</button><button class="sm" id="gear">SETTINGS</button></div>
+<div class="row"><button id="btn">ACTIVATE</button><button class="sm" id="quiet">CHUP</button></div>
 </div>
 <style>/* FIXIMG-UI */
 .imr{display:flex;gap:8px;align-items:center;padding-top:8px;flex-wrap:wrap}
@@ -278,6 +278,7 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 <div id="uc"><div class="ucb" id="ucb"></div></div>
 <div id="panel">
 <h2>SETTINGS</h2>
+<div class="box" id="fcc"><label style="margin-top:0">SAARE FEATURES <span id="fcc_n"></span></label><small>Har feature ki asli sthiti (ON/OFF) aur uska option ek jagah. Button dabao: ya to Android ki sahi setting khulegi, ya neeche wala option chamkega.</small><div id="fcc_l"></div></div>
 <div id="st_box"><!-- FIXTEST-UI -->
 <b>SELF TEST (sab kuch asli mein)</b>
 <small>Pehle saari permissions allow karo aur home par ACTIVATE dabao. Phir SAB TEST KARO. Test lagbhag 40 second chalta hai: torch ek second jalegi, volume thoda badhega-ghategi, aur Android Settings screen khulke wapas aayegi. Koi call, message ya payment nahi hota.</small>
@@ -1187,4 +1188,109 @@ g('st_share').onclick=function(){try{Android.shareText(rep||out.textContent)}cat
 window.onSelfTest=function(l){add(l)};
 window.onSelfTestDone=function(r){rep=r;out.textContent=r;g('st_copy').textContent='COPY REPORT'};
 })();
-</script></body></html>
+</script><style id="fccstyle">
+.hb{width:auto;min-width:46px;height:46px;padding:0 5px;flex-direction:column;gap:2px}
+.hb svg{width:18px;height:18px}.hb em{font-style:normal;font-size:7px;letter-spacing:.8px;opacity:.85}
+.top .ic{gap:6px}
+#fcc_l .fh{margin:12px 0 4px;font-size:10px;letter-spacing:2px;opacity:.6;color:var(--c1)}
+#fcc_l .fr{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(120,200,255,.12)}
+#fcc_l .fr b{flex:1;font-size:12px;font-weight:500;letter-spacing:.3px;line-height:1.25}
+#fcc_l .fr b i{display:block;font-style:normal;font-size:10px;opacity:.6;margin-top:2px}
+#fcc_l .fd{width:9px;height:9px;border-radius:50%;background:#556;flex:0 0 9px}
+#fcc_l .fd.on{background:#7CFC9A;box-shadow:0 0 8px #7CFC9A}
+#fcc_l .fd.al{background:#2fb8ff;box-shadow:0 0 8px #2fb8ff}
+#fcc_l button.sm{padding:6px 10px;font-size:9px;letter-spacing:1px;flex:0 0 auto}
+.fhl{animation:fhl 1.6s ease-out}@keyframes fhl{0%,40%{box-shadow:0 0 0 2px #2fb8ff,0 0 24px #2fb8ff}100%{box-shadow:0 0 0 0 transparent}}
+</style>
+<script>/* FEATURE CENTER: shows real status, uses only existing bridge methods and existing controls */
+(function(){
+function g(i){return document.getElementById(i)}
+function J(f){try{return JSON.parse(Android[f]())}catch(e){return {}}}
+function B(f){try{return Android[f]()===true}catch(e){return false}}
+function go(id){var e=g(id);if(!e)return;var b=e.closest('.box')||e.parentNode;e.scrollIntoView({behavior:'smooth',block:'center'});b.classList.remove('fhl');void b.offsetWidth;b.classList.add('fhl')}
+function call(f){return function(){try{Android[f]()}catch(e){}}}
+function fill(){
+ var st=J('getStatus'),se=J('getSettings'),mc=0;try{mc=Number(Android.getMemoryCount())||0}catch(e){}
+ var R=[
+ ['AI AUR AWAAZ'],
+ ['Wake word',true,'"'+(se.wake||'nova')+'"','CHANGE',function(){go('s_wake')}],
+ ['Awaaz (bhasha, speed, pitch)',true,(se.lang==='en'?'English':'Hindi'),'CHANGE',function(){go('s_lang')}],
+ ['Gemini AI key (sawaal, image, photo edit)',!!se.hasKey,se.hasKey?(se.keyCount||1)+' key':'key nahi','KEY',function(){go('s_key')}],
+ ['Groq key (Hindi sunna)',B('hasGroqKey'),'','KEY',function(){go('g_key')}],
+ ['Free online AI (Groq, OpenRouter, Pollinations)',B('getFreeChain'),'','OPTION',function(){go('fc_on')}],
+ ['OpenRouter key',B('hasOpenRouterKey'),'','KEY',function(){go('or_key')}],
+ ['Free image backup',B('getFreeImg'),B('hasImgKey')?'image key saved':'','OPTION',function(){go('i_on')}],
+ ['Yaad (personal memory)',mc>0,mc+' baatein','OPEN',function(){go('mem_ch')}],
+ ['Screen monitoring',!!se.screenMonitor,'','OPTION',function(){go('s_screen')}],
+ ['Wait time (bolna band karne ke baad)',true,'','SLIDER',function(){go('w_sec')}],
+ ['PHONE CONTROL AUR PERMISSIONS'],
+ ['Accessibility (back/home, WhatsApp send)',!!st.acc,'','SET',call('openAccessibility')],
+ ['Driving mode (notification access)',!!st.notifAccess,'','SET',call('openNotificationAccess')],
+ ['Contacts (naam se call/message)',!!st.contacts,'','ALLOW',call('requestContacts')],
+ ['Brightness control',!!st.writeSettings,'','ALLOW',call('openWriteSettings')],
+ ['Popup / overlay',!!st.overlay,'','ALLOW',call('openOverlaySettings')],
+ ['Battery unrestricted',!!st.battery,'','SET',call('openBatterySettings')],
+ ['NOVA ko default assistant banao',!!st.assistant,'','SET',call('openAssistantSettings')],
+ ['Pattern lock',!!st.pattern,'','SET',call('openPatternSetup')],
+ ['Restart ke baad auto-start',!!se.autostart,'','OPTION',function(){go('s_boot')}],
+ ['App updates (feed + install)',!!st.feedUrl,st.installOk?'install allowed':'install band','OPEN',function(){go('u_feed')}],
+ ['HAMESHA ON (switch nahi)'],
+ ['Phone commands: torch, volume, battery, apps, wifi',null,'offline'],
+ ['Calculator, unit, tarikh, emergency numbers',null,'offline'],
+ ['Timer, alarm, reminder',null,'offline'],
+ ['Knowledge pack: 193 jawab',null,'offline'],
+ ['Hindi (Devanagari) typing support',null,'']
+ ];
+ var L=g('fcc_l');if(!L)return;L.textContent='';var on=0,tot=0;
+ R.forEach(function(r){
+  if(r.length===1){var h=document.createElement('div');h.className='fh';h.textContent=r[0];L.appendChild(h);return}
+  var row=document.createElement('div');row.className='fr';
+  var d=document.createElement('span');d.className='fd'+(r[1]===null?' al':(r[1]?' on':''));
+  var b=document.createElement('b');b.textContent=r[0];
+  if(r[2]){var i=document.createElement('i');i.textContent=(r[1]===null?'ALWAYS ON \u00b7 ':(r[1]?'ON \u00b7 ':'OFF \u00b7 '))+r[2];b.appendChild(i)}
+  else{var i2=document.createElement('i');i2.textContent=r[1]===null?'ALWAYS ON':(r[1]?'ON':'OFF');b.appendChild(i2)}
+  row.appendChild(d);row.appendChild(b);
+  if(r[3]){var bt=document.createElement('button');bt.className='sm';bt.textContent=r[3];bt.onclick=r[4];row.appendChild(bt)}
+  L.appendChild(row);if(r[1]!==null){tot++;if(r[1])on++}
+ });
+ var n=g('fcc_n');if(n)n.textContent='('+on+'/'+tot+' ON)';
+}
+window.fccFill=fill;
+var o=window.openPanel;if(typeof o==='function'){window.openPanel=function(){var r=o.apply(this,arguments);try{fill()}catch(e){}return r}}
+document.addEventListener('visibilitychange',function(){try{if(document.visibilityState==='visible'&&g('panel')&&g('panel').style.display==='block')fill()}catch(e){}});
+})();
+</script>
+<style id="glowpack">/* NOVA GLOW PACK: look + motion only, no logic. Off in lowfx / reduced-motion. */
+body:after{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;
+background:radial-gradient(38% 30% at 20% 22%,rgba(0,240,255,.20),transparent 70%),radial-gradient(34% 30% at 82% 30%,rgba(140,80,255,.22),transparent 70%),radial-gradient(40% 32% at 55% 85%,rgba(42,107,255,.20),transparent 70%),radial-gradient(22% 20% at 10% 80%,rgba(255,70,180,.11),transparent 70%);
+animation:gpDrift 22s ease-in-out infinite alternate}
+#gp-stars{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+#gp-stars i{position:absolute;border-radius:50%;background:#bfeaff;box-shadow:0 0 8px #2fb8ff;opacity:0;animation:gpTwinkle 9s ease-in-out infinite}
+.logo{animation:gpLogo 4.5s ease-in-out infinite}
+.badge{animation:gpBadge 3.2s ease-in-out infinite}
+.status{text-shadow:0 0 12px rgba(0,240,255,.35)}
+.f{background:linear-gradient(160deg,rgba(47,184,255,.20),rgba(140,80,255,.07) 60%,rgba(255,255,255,.02));box-shadow:0 8px 22px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.10)}
+.f:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,transparent 38%,rgba(255,255,255,.16) 50%,transparent 62%);transform:translateX(-130%);animation:gpSheen 7s ease-in-out infinite}
+.f:nth-child(2):after{animation-delay:1.1s}.f:nth-child(3):after{animation-delay:2.2s}.f:nth-child(4):after{animation-delay:3.3s}.f:nth-child(5):after{animation-delay:4.4s}.f:nth-child(n+6):after{animation-delay:5.5s}
+.f:active{transform:translateY(2px) scale(.96)}
+.f svg{filter:drop-shadow(0 0 6px rgba(0,240,255,.7))}
+#btn{background-image:linear-gradient(100deg,rgba(0,240,255,.16),rgba(140,80,255,.22),rgba(0,240,255,.16));background-size:220% 100%;animation:gpShift 5s linear infinite}
+.wrap>.row{padding:10px;border-radius:30px;background:rgba(10,16,40,.55);border:1px solid rgba(120,200,255,.18);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.msg{box-shadow:0 6px 18px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.07)}
+.msg.ai{background:linear-gradient(160deg,rgba(47,184,255,.16),rgba(140,80,255,.08));border:1px solid rgba(100,200,255,.28)}
+.icb{box-shadow:0 0 12px rgba(0,240,255,.25)}
+.greet{box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px rgba(0,240,255,.10)}
+@keyframes gpDrift{0%{transform:translate3d(-3%,-2%,0) scale(1)}100%{transform:translate3d(3%,3%,0) scale(1.12)}}
+@keyframes gpTwinkle{0%,100%{opacity:0;transform:translateY(0) scale(.6)}50%{opacity:.85;transform:translateY(-16px) scale(1.1)}}
+@keyframes gpLogo{0%,100%{text-shadow:0 0 12px #2fb8ff,0 0 26px #1b7cff}50%{text-shadow:0 0 20px #7fdcff,0 0 44px #8c50ff}}
+@keyframes gpBadge{0%,100%{box-shadow:0 0 0 rgba(124,252,154,0)}50%{box-shadow:0 0 14px rgba(124,252,154,.45)}}
+@keyframes gpSheen{0%,55%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
+@keyframes gpShift{0%{background-position:0 0}100%{background-position:220% 0}}
+html.lowfx body:after,html.lowfx #gp-stars,html.lowfx .f:after{display:none}
+html.lowfx .logo,html.lowfx .badge,html.lowfx #btn{animation:none}
+@media (prefers-reduced-motion:reduce){body:after,.f:after,.logo,.badge,#btn{animation:none}#gp-stars{display:none}}
+</style>
+<script>/* NOVA GLOW PACK stars */
+(function(){try{var d=document,r=Math.random;if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;var c=d.createElement('div');c.id='gp-stars';for(var i=0;i<14;i++){var s=d.createElement('i'),z=1+r()*2;s.style.cssText='left:'+(r()*100)+'%;top:'+(20+r()*75)+'%;width:'+z+'px;height:'+z+'px;animation-delay:'+(-r()*9)+'s;animation-duration:'+(7+r()*7)+'s';c.appendChild(s)}d.body.appendChild(c)}catch(e){}})();
+</script>
+</body></html>
