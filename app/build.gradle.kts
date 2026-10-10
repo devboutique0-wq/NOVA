@@ -49,19 +49,6 @@ android {
 dependencies {
     implementation("net.java.dev.jna:jna:5.13.0@aar")
     implementation("com.alphacephei:vosk-android:0.3.47")
-    // Offline AI engine (llama.cpp for Android). Coordinates seen on Maven Central; API read from the library's demo app.
-    implementation("io.github.ljcamargo:llamacpp-kotlin:0.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     testImplementation("junit:junit:4.13.2")
-}
-
-// Fix: pin versions so the build works with AGP 8.5.2, compileSdk 34 and Kotlin 1.9.0.
-configurations.all {
-    resolutionStrategy {
-        force(
-            "androidx.core:core:1.13.1",
-            "androidx.core:core-ktx:1.13.1",
-            "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
-        )
-    }
 }
