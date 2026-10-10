@@ -1,0 +1,16 @@
+name: Cleanup old files
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove old zip and cache files
+        run: |
+          git rm -r -f --ignore-unmatch NOVA_v6_full_handover_v2.zip tools/__pycache__
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git commit -m "Remove old handover zip and pyc cache" || echo "nothing to remove"
+          git push
