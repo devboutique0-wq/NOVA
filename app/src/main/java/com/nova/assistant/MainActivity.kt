@@ -302,6 +302,19 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    // FIXFREE2: tests each free image provider one by one (text-only prompt, no photo)
+    private fun runFreeImageTest() {
+        imgBusy = true
+        Thread {
+            try {
+                FreeImage.testAll(this) { l -> runJs("onSelfTest(" + JSONObject.quote(l) + ")") }
+            } catch (e: Throwable) {
+                runJs("onSelfTest(" + JSONObject.quote("FAIL  Free image test beech mein ruk gaya") + ")")
+            }
+            imgBusy = false
+        }.start()
+    }
+
     inner class Bridge {
         @JavascriptInterface
         fun vibrate(ms: Int) { vibe(ms.toLong().coerceIn(5L, 400L)) }
@@ -345,6 +358,32 @@ class MainActivity : Activity() {
                 { rep -> runJs("onSelfTestDone(" + JSONObject.quote(rep) + ")") }
             )
             return "started"
+        }
+
+        @JavascriptInterface
+        fun getFreeImg(): Boolean = FreeImage.enabled(this@MainActivity)
+
+        @JavascriptInterface
+        fun setFreeImg(on: Boolean): String {
+            FreeImage.setEnabled(this@MainActivity, on)
+            return "ok"
+        }
+
+        @JavascriptInterface
+        fun selfTestFree(): String {
+            if (imgBusy) return "busy"
+            runOnUiThread {
+                try {
+                    android.app.AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Free image test karein?")
+                        .setMessage("Har free provider ko ek chhota text prompt jaayega (koi photo nahi). Together aur Hugging Face tabhi jab unki key saved ho. Hugging Face par paise lag sakte hain. 1-2 minute lag sakte hain.")
+                        .setPositiveButton("HAAN") { _, _ -> runFreeImageTest() }
+                        .setNegativeButton("NAHI", null)
+                        .show()
+                } catch (e: Exception) {
+                }
+            }
+            return "asking"
         }
 
         @JavascriptInterface
@@ -450,6 +489,24 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun clearGroqKey() { SecureStore.clearGroq(this@MainActivity) }
+
+        // FIXFREE1: optional free image provider keys (together / hf). Written only here, never sent back to the page.
+        @JavascriptInterface
+        fun saveImgKey(slot: String, raw: String): String = try {
+            val k = raw.trim()
+            if (slot != "together" && slot != "hf") "invalid"
+            else if (k.length < 10 || k.length > 300 || k.any { it.isWhitespace() }) "invalid"
+            else if (SecureStore.saveSlot(this@MainActivity, slot, k)) "ok"
+            else "fail"
+        } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
+        fun hasImgKey(slot: String): Boolean = (slot == "together" || slot == "hf") && SecureStore.hasSlot(this@MainActivity, slot)
+
+        @JavascriptInterface
+        fun clearImgKey(slot: String) {
+            if (slot == "together" || slot == "hf") SecureStore.clearSlot(this@MainActivity, slot)
+        }
 
         @JavascriptInterface
         fun toggle(): String {

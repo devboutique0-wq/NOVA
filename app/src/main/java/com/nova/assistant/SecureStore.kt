@@ -135,6 +135,33 @@ object SecureStore {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().remove("groq_key").commit()
     }
 
+    /** FIXFREE1: encrypted slots for optional free image providers (together, hf). Never logged, never shown. */
+    fun saveSlot(ctx: Context, slot: String, key: String): Boolean = try {
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, secretKey())
+        val ct = c.doFinal(key.trim().toByteArray(Charsets.UTF_8))
+        val blob = Base64.encodeToString(c.iv + ct, Base64.NO_WRAP)
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString("slot_" + slot, blob).commit()
+    } catch (e: Exception) { false }
+
+    fun getSlot(ctx: Context, slot: String): String = try {
+        val blob = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("slot_" + slot, null)
+        if (blob.isNullOrEmpty()) "" else {
+            val raw = Base64.decode(blob, Base64.NO_WRAP)
+            val iv = raw.copyOfRange(0, 12)
+            val ct = raw.copyOfRange(12, raw.size)
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.DECRYPT_MODE, secretKey(), GCMParameterSpec(128, iv))
+            String(c.doFinal(ct), Charsets.UTF_8)
+        }
+    } catch (e: Exception) { "" }
+
+    fun hasSlot(ctx: Context, slot: String): Boolean = getSlot(ctx, slot).isNotEmpty()
+
+    fun clearSlot(ctx: Context, slot: String) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().remove("slot_" + slot).commit()
+    }
+
     /** Old versions kept the key as plain text. Encrypt it once and delete the plain copy. */
     fun migrateOld(ctx: Context) {
         val old = ctx.getSharedPreferences("nova", Context.MODE_PRIVATE)

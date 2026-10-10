@@ -23,7 +23,7 @@ import java.net.URL
  * The key goes in a request header only, never in a URL or a log.
  */
 object ImageGen {
-    class Out(val ok: Boolean, val msg: String, val img: ByteArray? = null)
+    class Out(val ok: Boolean, val msg: String, val img: ByteArray? = null, val code: Int = 0)
 
     // newest first; older ones are only tried when a newer id answers 404
     private val MODELS = listOf("gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "gemini-2.5-flash-image")
@@ -66,11 +66,11 @@ object ImageGen {
         }
     }
 
-    fun generate(ctx: Context, prompt: String, photo: ByteArray?): Out {
+    private fun generateGemini(ctx: Context, prompt: String, photo: ByteArray?): Out {
         val keys = SecureStore.getKeys(ctx)
             .ifEmpty { listOf(SecureStore.getKey(ctx)).filter { it.isNotBlank() } }
             .distinct()
-        if (keys.isEmpty()) return Out(false, "Gemini key nahi hai. Settings mein key daalo.")
+        if (keys.isEmpty()) return Out(false, "Gemini key nahi hai. Settings mein key daalo.", null, -1)
         val parts = JSONArray()
         parts.put(JSONObject().put("text", prompt))
         if (photo != null) {
@@ -84,7 +84,7 @@ object ImageGen {
         var code0 = 404
         for (model in MODELS) {
             for (key in keys) {
-                if (System.currentTimeMillis() > deadline) return Out(false, failMsg(code0))
+                if (System.currentTimeMillis() > deadline) return Out(false, failMsg(code0), null, code0)
                 val r = post(model, key, body)
                 val code = r.first
                 if (code in 200..299) {
@@ -101,7 +101,25 @@ object ImageGen {
                 code0 = code
             }
         }
-        return Out(false, failMsg(code0))
+        return Out(false, failMsg(code0), null, code0)
+    }
+
+    // FIXFREE2: when Gemini fails for a technical reason (quota, key, network, model) and there is no photo,
+    // the free providers in FreeImage may be tried, but ONLY if the user switched the fallback on in Settings.
+    // code 0 = Gemini refused on content policy: never retried elsewhere.
+    fun generate(ctx: Context, prompt: String, photo: ByteArray?): Out {
+        val g = generateGemini(ctx, prompt, photo)
+        if (g.ok || g.code == 0) return g
+        if (photo != null) {
+            return Out(false, g.msg + " Photo edit sirf Gemini se hota hai, free options sirf text se image banate hain.", null, g.code)
+        }
+        if (!FreeImage.enabled(ctx)) {
+            return Out(false, g.msg + " Free option try karne ke liye Settings mein FREE FALLBACK ON karo.", null, g.code)
+        }
+        val f = FreeImage.run(ctx, prompt)
+        val fimg = f.img
+        if (f.ok && fimg != null) return Out(true, f.msg, fimg)
+        return Out(false, g.msg + " Free options bhi nahi chale: " + f.msg, null, g.code)
     }
 
     fun failMsg(code: Int): String = when (code) {

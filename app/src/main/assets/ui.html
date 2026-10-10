@@ -198,7 +198,7 @@ html.lowfx .f{clip-path:none}
 <div id="st_box"><!-- FIXTEST-UI -->
 <b>SELF TEST (sab kuch asli mein)</b>
 <small>Pehle saari permissions allow karo aur home par ACTIVATE dabao. Phir SAB TEST KARO. Test lagbhag 40 second chalta hai: torch ek second jalegi, volume thoda badhega-ghategi, aur Android Settings screen khulke wapas aayegi. Koi call, message ya payment nahi hota.</small>
-<div class="row"><button class="sm" id="st_run">SAB TEST KARO</button><button class="sm" id="st_img">IMAGE TEST</button></div>
+<div class="row"><button class="sm" id="st_run">SAB TEST KARO</button><button class="sm" id="st_img">IMAGE TEST</button><button class="sm" id="st_free">FREE IMAGE TEST</button></div>
 <pre id="st_out"></pre>
 <div class="row"><button class="sm" id="st_copy">COPY REPORT</button><button class="sm" id="st_share">SHARE</button></div>
 </div>
@@ -270,6 +270,16 @@ html.lowfx .f{clip-path:none}
 <div class="row"><button class="sm" id="g_save">GROQ SAVE</button><button class="sm" id="g_del">GROQ HATAO</button></div>
 </div>
 
+<!-- FIXFREE-UI2 -->
+<div class="box">
+<label style="margin-top:0">FREE IMAGE (OPTIONAL) <span id="imgst"></span></label>
+<label class="chk"><input type="checkbox" id="i_on"> FREE FALLBACK ON: Gemini se image na bane to free options try karo</label>
+<input type="password" id="i_tog" placeholder="Together AI key (free FLUX, optional)" autocomplete="off">
+<input type="password" id="i_hf" placeholder="Hugging Face token (optional, paise lag sakte hain)" autocomplete="off">
+<small>Switch ON hone par aur Gemini ke quota/limit se fail hone par NOVA ye try karta hai: Together AI (key chahiye), Pollinations (bina key, limit kam) aur Hugging Face (token chahiye, free account par credits nahi milte, paise lag sakte hain). Ye sirf text se image banate hain. Photo inko kabhi nahi jaati, par aapka likha prompt jaata hai. Bina account wali service par prompt public ho sakta hai, private baatein mat likho. English me likhoge to image behtar banti hai. Keys Android Keystore me encrypted rehti hain aur screen par wapas nahi aati.</small>
+<div class="row"><button class="sm" id="i_save">IMAGE KEYS SAVE</button><button class="sm" id="i_del">IMAGE KEYS HATAO</button></div>
+</div>
+
 <div class="box">
 <label style="margin-top:0">WAIT TIME <span id="w_val"></span>
 <input type="range" id="w_sec" min="2" max="10" step="1" value="5"></label>
@@ -307,7 +317,31 @@ html.lowfx .f{clip-path:none}
     try{Android.clearGroqKey()}catch(x){}
     say("Groq key hata di",true);gst();
   })}
-  gst();wst();
+  function ist(){var e=g("imgst");if(!e)return;var a=false,b=false,on=false;try{a=Android.hasImgKey("together");b=Android.hasImgKey("hf");on=Android.getFreeImg()}catch(x){}
+    var t=[];if(on)t.push("fallback ON");if(a)t.push("Together saved");if(b)t.push("HF saved");
+    e.textContent=t.length?("- "+t.join(", ")):"- OFF";e.className=on?"ok":"";
+    var c=g("i_on");if(c)c.checked=!!on}
+  var ic=g("i_on");
+  if(ic){ic.addEventListener("change",function(){
+    try{Android.setFreeImg(ic.checked);say(ic.checked?"Free image fallback ON":"Free image fallback OFF",true)}catch(x){say("Switch save nahi hua",false)}
+    ist();
+  })}
+  var ib1=g("i_save");
+  if(ib1){ib1.addEventListener("click",function(){
+    var t=g("i_tog"),h=g("i_hf");var n=0,bad=0;
+    if(t&&t.value.trim()){var r1="fail";try{r1=Android.saveImgKey("together",t.value)}catch(x){}if(r1==="ok"){t.value="";n++}else{bad++}}
+    if(h&&h.value.trim()){var r2="fail";try{r2=Android.saveImgKey("hf",h.value)}catch(x){}if(r2==="ok"){h.value="";n++}else{bad++}}
+    if(bad){say("Key galat lag rahi hai (kam se kam 10 akshar, bina space) ya save nahi hui",false)}
+    else if(n){say("Image key save ho gayi",true)}
+    else{say("Pehle koi key paste karo",false)}
+    ist();
+  })}
+  var ib2=g("i_del");
+  if(ib2){ib2.addEventListener("click",function(){
+    try{Android.clearImgKey("together");Android.clearImgKey("hf")}catch(x){}
+    say("Image keys hata di",true);ist();
+  })}
+  gst();wst();ist();
 })();
 var $=function(id){return document.getElementById(id)};
 var log=$('log'),st=$('st'),app=$('app'),btn=$('btn'),panel=$('panel');
@@ -950,6 +984,11 @@ g('st_img').onclick=function(){
   var r='';try{r=Android.selfTestImage()}catch(e){r='fail'}
   if(r==='nokey')add('Image test ke liye Gemini key chahiye');
   else if(r==='busy')add('Image kaam pehle se chal raha hai')
+};
+g('st_free').onclick=function(){
+  var r='';try{r=Android.selfTestFree()}catch(e){r='fail'}
+  if(r==='busy')add('Image kaam pehle se chal raha hai');
+  else if(r==='fail')add('Free image test shuru nahi hua')
 };
 g('st_copy').onclick=function(){var t=rep||out.textContent;var r='';try{r=Android.copyText(t)}catch(e){}g('st_copy').textContent=(r==='ok')?'COPY HO GAYA':'COPY NAHI HUA'};
 g('st_share').onclick=function(){try{Android.shareText(rep||out.textContent)}catch(e){}};
