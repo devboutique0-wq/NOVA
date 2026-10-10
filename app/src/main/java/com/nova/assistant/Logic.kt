@@ -58,17 +58,47 @@ object Logic {
     /** Raw spoken text of a Vosk JSON result (wake word included). */
     private fun rawText(json: String): String = TEXT_RE.find(json)?.groupValues?.get(1)?.trim() ?: ""
 
-    private val WAKE_PREFIX = Regex("^(?:(?:the|hey|a)\\s+)?" + DEFAULT_WAKE + "\\b\\s*")
+    private fun wakePrefixFor(w: String): Regex =
+        Regex("^(?:(?:the|hey|a)\\s+)?(?:" + DEFAULT_WAKE + "|" + w + ")\\b\\s*")
 
-    /** Removes the wake word ("nova", "the nova", "hey nova") from the START of a command, so it is never part of the command. */
+    @Volatile private var wakePrefix: Regex = wakePrefixFor(DEFAULT_WAKE)
+
+    /** The wake word chosen in Settings. "nova" is always stripped too. Called by NovaService when the listener starts. */
+    fun setWake(w: String) { wakePrefix = wakePrefixFor(cleanWake(w) ?: DEFAULT_WAKE) }
+
+    /** Removes the wake word ("nova", "the nova", "hey nova", or the custom one) from the START of a command, so it is never part of the command. */
     fun stripWake(s: String): String {
         var x = s.trim()
+        val re = wakePrefix
         while (true) {
-            val y = WAKE_PREFIX.replace(x, "").trim()
+            val y = re.replace(x, "").trim()
             if (y == x) break
             x = y
         }
         return x
+    }
+
+    // ---------------------------------------------------------------- smart end of speech
+
+    const val FAST_END_MIN_SILENCE_MS = 600     // only look at the live text after this much silence
+    const val FAST_END_MS = 1200                // a complete simple command: stop waiting after this much silence
+    const val FAST_END_OPEN_APP_MS = 1800       // app names can have several words: a little longer
+
+    private val FAST_KINDS = setOf(
+        "battery", "time", "date", "torch_on", "torch_off", "volume", "brightness_set", "brightness_step",
+        "media", "global", "settings", "camera", "monitor_on", "monitor_off", "quiet_on", "quiet_off",
+        "update_check", "analyze", "drive_on", "drive_off", "drive_read", "drive_clear", "drive_reply", "unlock"
+    )
+
+    /**
+     * How much silence is enough when the live text already is ONE complete, simple local command. 0 = keep the normal wait.
+     * Never for typed text, taps or dictated replies (they may continue after a pause).
+     */
+    fun fastEndMs(liveText: String): Int {
+        if (liveText.isBlank()) return 0
+        val c = classify(liveText) ?: return 0
+        if (c.kind == "open_app") return FAST_END_OPEN_APP_MS
+        return if (c.kind in FAST_KINDS) FAST_END_MS else 0
     }
 
     /** Reads the spoken COMMAND text out of a Vosk JSON result (the leading wake word is removed). */
@@ -313,7 +343,7 @@ object Logic {
      * in which case the caller may use the cloud (only if the user configured a key).
      */
     fun classify(text: String): Cmd? {
-        val n = norm(text)
+        val n = stripWake(norm(text))   // a custom wake word at the start is never part of the command
         if (n.isEmpty() || n.length > 120) return null
         val t = n.split(" ")
         val s = t.toSet()
@@ -324,6 +354,9 @@ object Logic {
         val wantsSettings = has("settings", "setting")
 
         if (core in setOf("stop", "cancel", "chup", "quiet", "ruko", "be quiet", "shut up")) return Cmd("stop")
+
+        // ---- NOVA's own pattern unlock (only works when the user switched it ON in the NOVA Pattern screen)
+        if (core in setOf("unlock", "unlock phone", "phone unlock", "unlock karo", "phone unlock karo", "unlock the phone", "unlock screen")) return Cmd("unlock")
 
         if (core in setOf("check updates", "check update", "any updates", "any update", "update check", "updates", "kuch naya hai", "kuch naya")) {
             return Cmd("update_check")

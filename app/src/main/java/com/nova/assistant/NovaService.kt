@@ -434,6 +434,7 @@ class NovaService : Service() {
             model = md
             val wakeWord = resolveWake()
             curWake = wakeWord
+            Logic.setWake(wakeWord)          // a custom wake word must never stay inside the command text
             val wk = Recognizer(md, RATE.toFloat(), Logic.wakeGrammar(wakeWord))
             wake = wk
             val cm = Recognizer(md, RATE.toFloat())
@@ -601,7 +602,15 @@ class NovaService : Service() {
                     val maxMs = if (dictCapture) Logic.MAX_DICTATION_MS else if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS + ExtCfg.waitMs(this)
                     val noSpeechMs = if (dictCapture) Logic.NO_SPEECH_DICTATION_MS else if (answerCapture) Logic.NO_SPEECH_ANSWER_MS else Logic.NO_SPEECH_COMMAND_MS
                     val silenceMs = if (dictCapture) Logic.DICTATION_SILENCE_MS else if (answerCapture) 1500 else ExtCfg.waitMs(this)
-                    val end = endpoint || (heard && silentMs >= silenceMs) ||
+                    // Smart end of speech: once the live text already is ONE complete simple command, a short pause is enough
+                    // (instead of the full wait). Never for yes/no answers, dictated replies, typing or taps.
+                    var fastDone = false
+                    if (!answerCapture && !dictCapture && heard && silentMs >= Logic.FAST_END_MIN_SILENCE_MS) {
+                        val live = (cmdText.toString() + " " + Logic.extractText(try { cm.getPartialResult() } catch (e: Exception) { "" })).trim()
+                        val need = Logic.fastEndMs(live)
+                        if (need > 0 && silentMs >= minOf(need, silenceMs)) fastDone = true
+                    }
+                    val end = endpoint || fastDone || (heard && silentMs >= silenceMs) ||
                         totalMs >= maxMs || (!heard && totalMs >= noSpeechMs)
                     if (end) {
                         capturing = false
@@ -1041,8 +1050,28 @@ class NovaService : Service() {
             cfg.quietReplies = false
             tr("Theek hai, ab jawab bol kar bhi dunga", "Okay, I will speak my replies again")
         }
+        "unlock" -> unlockPhone()
         "analyze" -> analyzeScreen()      // PART 1B
         else -> runLocalTool(c)           // PART 1B: torch, volume, brightness, media, global, open_app, settings, camera
+    }
+
+    /** Voice "unlock phone": only when the user switched NOVA's pattern unlock ON. Worker thread (it waits for the result). */
+    private fun unlockPhone(): String {
+        if (!PatternUnlock.enabled(this)) return tr(
+            "Unlock band hai. NOVA Pattern screen mein pattern save karke UNLOCK ON karo",
+            "Unlock is off. Save a pattern and switch UNLOCK ON in the NOVA Pattern screen"
+        )
+        val svc = NovaAccessibilityService.instance ?: return tr(
+            "Pehle Accessibility permission on karo", "Turn on the Accessibility permission first"
+        )
+        val km = getSystemService(android.app.KeyguardManager::class.java)
+        if (!km.isKeyguardLocked) return tr("Phone pehle se unlock hai", "The phone is already unlocked")
+        val latch = java.util.concurrent.CountDownLatch(1)
+        val ok = AtomicBoolean(false)
+        PatternUnlock.run(svc) { r -> ok.set(r); latch.countDown() }
+        try { latch.await(12, java.util.concurrent.TimeUnit.SECONDS) } catch (e: InterruptedException) { }
+        return if (ok.get()) tr("Phone khul gaya", "Phone unlocked")
+        else tr("Phone nahi khula. Kuch phones lock screen par gesture rok dete hain", "The phone did not unlock. Some phones block gestures on the lock screen")
     }
 
     private fun batteryReply(): String {

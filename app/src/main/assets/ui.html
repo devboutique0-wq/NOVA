@@ -507,7 +507,8 @@ var UCP=[
  ['assistant','Default assistant','Home / power button dabake rakhne par NOVA jaage (wake word ke alawa)',0,function(){Android.openAssistantSettings();ucNote('Settings mein Digital assistant app mein NOVA chuno, phir wapas aao.')}],
  ['installOk','Install unknown apps','Sirf naya NOVA version (apk) lagane ke liye',0,function(){Android.openInstallSettings()}],
  ['contacts','Contacts','Naam se call / message ke liye',0,function(){Android.requestContacts()}],
- ['writeSettings','Brightness control','Brightness badhane-ghatane ke liye',0,function(){Android.openWriteSettings()}]];
+ ['writeSettings','Brightness control','Brightness badhane-ghatane ke liye',0,function(){Android.openWriteSettings()}],
+ ['battery','Battery: No restrictions','Phone NOVA ko band na kare (mic chalta rahe)',0,function(){Android.openBatterySettings()}]];
 function ucPerm(k){for(var i=0;i<UCP.length;i++)if(UCP[i][0]===k)return UCP[i];return null}
 function ucNote(t){ucNoteTxt=t;if(UC.classList.contains('on'))ucRender()}
 function ucInstall(o){ucDo(function(){Android.installUpdate(o.id)});ucNote('Download shuru: '+o.title+'. SHA-256 check ke baad hi lagega.');setTimeout(ucRender,700)}

@@ -42,7 +42,7 @@ object HealthCheck {
         val pm = ctx.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val bat = pm != null && pm.isIgnoringBatteryOptimizations(ctx.packageName)
         out.add(Item("Battery unrestricted", bat,
-            "Settings > Apps > NOVA > Battery: No restrictions (and Autostart ON)", false))
+            "Settings > Apps > NOVA > Battery: No restrictions (and Autostart ON)"))
         out.add(Item("NOVA listening", NovaService.running, "Press ACTIVATE in NOVA", false))
         return out
     }

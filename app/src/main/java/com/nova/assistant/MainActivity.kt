@@ -572,9 +572,26 @@ class MainActivity : Activity() {
                 .put("assistant", isDefaultAssistant())
                 .put("contacts", granted(Manifest.permission.READ_CONTACTS))
                 .put("writeSettings", Settings.System.canWrite(this@MainActivity))
+                .put("battery", (getSystemService(POWER_SERVICE) as? android.os.PowerManager)?.isIgnoringBatteryOptimizations(packageName) == true)
                 .put("feedUrl", cfg.feedUrl)
                 .put("running", NovaService.running)
                 .toString()
+        }
+
+        /** Asks Android to stop limiting NOVA's battery use (so the mic service is not killed). The user taps Allow. */
+        @JavascriptInterface
+        fun openBatterySettings() {
+            runOnUiThread {
+                val tries = listOf(
+                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")),
+                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+                )
+                for (i in tries) {
+                    try { startActivity(i); return@runOnUiThread } catch (e: Exception) { }
+                }
+                pushFlow("update_msg:Open Settings > Apps > NOVA > Battery > No restrictions")
+            }
         }
 
         /** Opens Android's own "Default digital assistant app" choice. The user picks NOVA there; NOVA cannot set it by itself. */

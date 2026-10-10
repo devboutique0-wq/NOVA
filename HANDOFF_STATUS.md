@@ -71,3 +71,17 @@ NovaService.wakeNow() + wakeRequest (audio loop starts a capture like the wake w
 Update Center row "Default assistant" opens Android's Digital assistant app screen; the user must pick NOVA there (an app cannot set it by itself).
 NOVA does not use screen/assist data from this door. If the build fails, check first: NovaAssist.kt (VoiceInteractionSession ctor, RecognitionService.Callback override signatures).
 Phone check needed: does NOVA appear in the assistant list, does long-press Home/power wake it.
+
+## Autopsy v8 (2026-10-10) - 4 fixes written, pure-Kotlin part COMPILED + TESTED here, Android part NOT compiled
+Verified in the sandbox with kotlin-compiler-embeddable 2.0.21 + JUnit: Logic, Brain, Control, Driving, HindiRoman, LocalBrain, Updater and 8 test classes
+= 116 tests, all green (incl. new ListenTest.kt). ui.html: node --check passed (5 script blocks). CI guards (`!!`, `catch (_`) clean.
+NOT compiled here (no Android SDK): NovaService.kt, MainActivity.kt, HealthCheck.kt. Check these first if the GitHub build is red.
+1. Smart end of speech: Logic.fastEndMs + NovaService.audioLoop (`fastDone`). A complete simple command now runs after ~1.2 s of silence
+   (open_app ~1.8 s) instead of the 5 s wait. Not used for yes/no answers, dictated replies, typing, taps. The user's wait setting still applies to everything else.
+2. Custom wake word: Logic.setWake()/stripWake()/classify now strip the chosen wake word (and "nova") from the start of a command.
+3. Voice "unlock phone": Logic kind "unlock" -> NovaService.unlockPhone() -> PatternUnlock.run. Works only if UNLOCK ON in the NOVA Pattern screen
+   and Accessibility is on. NOT in Brain.SAFE_KINDS (a shortcut / offline model can never unlock). Anyone who says the wake word can unlock: user's choice.
+4. Battery: new Update Center row "Battery: No restrictions" (Bridge.openBatterySettings, status key "battery", REQUEST_IGNORE_BATTERY_OPTIMIZATIONS),
+   and HealthCheck now treats it as important.
+Phone test needed: say "nova torch on" - reaction in ~1.5 s; "nova go home"; custom wake word + "open youtube"; "nova unlock phone" with phone locked.
+Still open (needs a phone/CI test, see NEXT_ACCOUNT_PROMPT_v8.md): Hindi listening model, unused model-en-in, Hindi yes/no.
