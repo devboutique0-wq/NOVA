@@ -1,0 +1,3137 @@
+{
+"title": "NOVA knowledge pack",
+"version": 1,
+"entries": [
+{
+"id": "daily-20-20-20",
+"q": [
+"aankhon ko thakan se kaise bachayein",
+"20 20 20 rule kya hai",
+"what is the 20 20 20 rule",
+"aankhon ka dard kam karne ka tareeka",
+"digital eye strain kaise kam karein",
+"eyes ko aaram kaise dein"
+],
+"hi": "20-20-20 niyam: har 20 minute baad 20 feet (lagbhag 6 meter) door kisi cheez ko 20 second dekho. Palkein jhapkate raho. Dard bana rahe to aankh ke doctor ko dikhao.",
+"en": "The 20-20-20 rule: every 20 minutes look at something 20 feet (about 6 metres) away for 20 seconds. Blink often. If strain persists, see an eye doctor.",
+"tags": [
+"daily",
+"health"
+]
+},
+{
+"id": "daily-boil-water",
+"q": [
+"pani ko ubalkar kaise saaf karein",
+"how to purify water by boiling",
+"pani kitni der ubalna chahiye",
+"kitni der ubalne se pani peene layak hota hai",
+"boiling se pani safe kaise banta hai",
+"how long to boil water to make it safe"
+],
+"hi": "Pani ko tez ubaal (rolling boil) aane ke baad lagbhag 1 minute ubalo; bahut unchai par 3 minute. Phir use dhak kar thanda hone do aur saaf bartan mein rakho.",
+"en": "Bring the water to a rolling boil and keep it boiling for about 1 minute, or 3 minutes at high altitude. Let it cool covered and store it in a clean container.",
+"tags": [
+"daily"
+]
+},
+{
+"id": "daily-box-breathing",
+"q": [
+"box breathing kya hai",
+"meditation kaise karein",
+"tension kam karne ke liye saans kaise lein",
+"how to do box breathing",
+"stress kam karne ka tareeka",
+"dhyan lagane ka sahi tareeka"
+],
+"hi": "Box breathing: 4 ginti tak saans lo, 4 tak roko, 4 tak chhodo, 4 tak ruko, aur ise kuch minute dohrao. Meditation ke liye shant jagah baitho aur saans par dhyan rakho. Zyada tension rahe to doctor se baat karo.",
+"en": "Box breathing: breathe in for 4 counts, hold for 4, breathe out for 4, hold for 4, and repeat for a few minutes. For meditation sit somewhere quiet and follow your breath. If stress is heavy, talk to a doctor.",
+"tags": [
+"daily",
+"health"
+]
+},
+{
+"id": "daily-clean-phone",
+"q": [
+"phone ko kaise saaf karein",
+"how to clean a phone",
+"mobile saaf karne ka tareeka",
+"phone ki safai kaise karte hain",
+"phone disinfect kaise karein",
+"phone cleaning tips"
+],
+"hi": "Phone band karo aur charger hata do. Naram, rue na chhodne wale kapde ko halka geela karke ya 70% alcohol wipe se poochho. Port ke andar pani ya liquid mat jaane do.",
+"en": "Switch the phone off and unplug it. Wipe it with a soft, lint-free cloth lightly dampened or a 70 percent alcohol wipe. Do not let liquid enter the ports.",
+"tags": [
+"daily",
+"phone"
+]
+},
+{
+"id": "daily-cook-dal",
+"q": [
+"dal kaise banate hain",
+"how to cook dal",
+"dal pakane ka tareeka",
+"dal banane ki vidhi",
+"tadka wali dal kaise banaye",
+"simple dal recipe"
+],
+"hi": "Dal ko dhokar haldi aur pani ke saath narm hone tak pakao (cooker mein lagbhag 3-4 seeti). Phir ghee ya tel mein jeera, lahsun aur lal mirch ka tadka lagao aur namak daalo.",
+"en": "Wash the dal and cook it with turmeric and water until soft (about 3 to 4 whistles in a pressure cooker). Then add a tempering of cumin, garlic and red chilli in ghee or oil, and add salt.",
+"tags": [
+"daily",
+"cooking"
+]
+},
+{
+"id": "daily-cook-rice",
+"q": [
+"chawal kaise banate hain",
+"how to cook rice",
+"chawal pakane ka tareeka",
+"rice banane ki vidhi",
+"chawal aur pani ka anupat kya hota hai",
+"plain rice kaise pakayein"
+],
+"hi": "Chawal 2-3 baar dhoyo. Aam chawal ke liye lagbhag 1 hissa chawal aur 2 hissa pani lo (basmati mein thoda kam), ubaal aane par dhak kar dheemi aanch par 15 minute pakao. Phir 5 minute dhak kar rehne do.",
+"en": "Rinse the rice 2 to 3 times. Use roughly 1 part rice to 2 parts water (a little less for basmati), cover after it boils and cook on low heat for about 15 minutes. Let it rest covered for 5 minutes.",
+"tags": [
+"daily",
+"cooking"
+]
+},
+{
+"id": "daily-earthquake",
+"q": [
+"bhukamp aaye to kya karein",
+"what to do in an earthquake",
+"earthquake mein kaise bachein",
+"bhukamp ke dauran safety tips",
+"drop cover hold on kya hai",
+"bhukamp mein kahan chhupna chahiye"
+],
+"hi": "Drop, Cover, Hold on: neeche jhuko, mazboot mez ke neeche chhupo aur use pakde raho. Khidki, sheeshe aur bhaari saman se door raho. Jhatke ruke to hi bahar niklo.",
+"en": "Drop, Cover and Hold on: get down, shelter under a sturdy table and hold on. Stay away from windows, glass and heavy furniture. Go outside only after the shaking stops.",
+"tags": [
+"daily",
+"safety"
+]
+},
+{
+"id": "daily-egg-freshness",
+"q": [
+"ande ki taazgi kaise check karein",
+"egg fresh hai ya nahi kaise pata karein",
+"how to check if an egg is fresh",
+"egg float test kya hai",
+"kharab anda kaise pehchane",
+"float test for eggs"
+],
+"hi": "Anda thande pani ke glass mein daalo. Taza anda neeche baith jata hai, purana khada ya upar tairta hai. Tairne wale ande ko sungho aur shak ho to phenk do.",
+"en": "Put the egg in a glass of cold water. A fresh egg sinks, an old one stands up or floats. Smell a floating egg and throw it away if in doubt.",
+"tags": [
+"daily",
+"cooking"
+]
+},
+{
+"id": "daily-english-speaking",
+"q": [
+"english bolna kaise seekhein",
+"how to improve spoken english",
+"english speaking improve kaise karein",
+"english mein fluent kaise bane",
+"english bolne ki practice kaise karein",
+"english seekhne ke tips"
+],
+"hi": "Roz 15-20 minute bolo, chahe khud se ya sheeshe ke saamne. Angrezi sunna, chhote vakya banana aur roz 5 naye shabd seekhna madad karta hai. Galti se mat daro.",
+"en": "Speak for 15 to 20 minutes daily, even to yourself or in a mirror. Listening to English, making short sentences and learning 5 new words a day help. Do not fear mistakes.",
+"tags": [
+"daily",
+"study"
+]
+},
+{
+"id": "daily-exercise",
+"q": [
+"roz kitni kasrat karni chahiye",
+"how much exercise do i need",
+"who ke hisaab se kitna vyayam zaroori hai",
+"ek hafte mein kitni exercise karni chahiye",
+"recommended exercise per week",
+"fit rehne ke liye kitna chalna chahiye"
+],
+"hi": "WHO ke hisaab se bade logon ko hafte mein kam se kam 150 minute madhyam gati ki kasrat, jaise tez chalna, karni chahiye. Bimari ho to shuru karne se pehle doctor se poochho.",
+"en": "The WHO advises adults to do at least 150 minutes of moderate activity such as brisk walking each week. If you have a health condition, ask a doctor before starting.",
+"tags": [
+"daily",
+"health"
+]
+},
+{
+"id": "daily-fire-safety",
+"q": [
+"ghar mein aag lag jaye to kya karein",
+"what to do if there is a fire",
+"aag lagne par kya karna chahiye",
+"fire safety ke niyam",
+"building mein aag lage to lift use karein ya nahi",
+"aag se kaise bachein"
+],
+"hi": "Shant raho, turant bahar niklo aur lift ka istemal mat karo, seedhiyon se jao. Dhuyein mein jhuk kar chalo, bahar nikalkar 101 ya 112 par call karo aur wapas andar mat jao.",
+"en": "Stay calm, get out at once and do not use the lift; take the stairs. Stay low in smoke, call 101 or 112 from outside and do not go back in.",
+"tags": [
+"daily",
+"safety"
+]
+},
+{
+"id": "daily-fresh-vegetables",
+"q": [
+"sabziyan taza kaise rakhein",
+"how to keep vegetables fresh",
+"sabzi fridge mein kaise rakhein",
+"hari sabzi ko kharab hone se kaise bachayein",
+"vegetables ko kaise store karein",
+"sabzi kitne din taza rehti hai"
+],
+"hi": "Sabzi sukhakar fridge ke sabzi wale khane mein rakho, hari patti kagaz mein lapet kar. Dhone ka kaam use karne se pehle karo. Tamatar aur pyaz alag rakho.",
+"en": "Dry the vegetables and keep them in the fridge crisper, with leafy greens wrapped in paper. Wash them just before use. Store tomatoes and onions separately.",
+"tags": [
+"daily",
+"cooking"
+]
+},
+{
+"id": "daily-gas-leak",
+"q": [
+"gas leak ho jaye to kya karein",
+"gas cylinder leak hone par kya karna chahiye",
+"what to do in a gas leak",
+"ghar mein gas ki badbu aaye to",
+"lpg leak safety",
+"gas ki smell aaye to kya karein"
+],
+"hi": "Koi bijli ka switch ya aag mat jalao. Regulator band karo, khidki-darwaze kholo aur sabko bahar nikalo. Bahar se gas company ya 112 par call karo.",
+"en": "Do not touch any electric switch or light a flame. Turn off the regulator, open windows and doors and get everyone outside. Call your gas company or 112 from outside.",
+"tags": [
+"daily",
+"safety"
+]
+},
+{
+"id": "daily-habits",
+"q": [
+"achhi aadat kaise banayein",
+"how to build a good habit",
+"aadat banane mein kitna samay lagta hai",
+"naya habit kaise shuru karein",
+"habit banane ke tips",
+"bad habit kaise chhodein"
+],
+"hi": "Chhoti shuruaat karo, roz ek hi samay par karo aur use kisi purani aadat se jodo. Tracker mein tick lagao. Ek din chhoot jaye to chhodo mat, agle din phir shuru karo.",
+"en": "Start tiny, do it at the same time every day and attach it to an existing habit. Tick it off on a tracker. If you miss a day, do not quit; start again the next day.",
+"tags": [
+"daily"
+]
+},
+{
+"id": "daily-interview-tips",
+"q": [
+"interview ki taiyari kaise karein",
+"how to prepare for an interview",
+"interview mein kya poochha jata hai",
+"interview tips",
+"job interview mein kaise baat karein",
+"interview mein accha impression kaise banayein"
+],
+"hi": "Company aur post ke baare mein padho, 'apne baare mein batao' ka chhota jawab taiyar rakho aur samay se pehle pahucho. Saaf aur sach bolo, aur ant mein ek sawaal khud poochho.",
+"en": "Research the company and role, prepare a short answer to 'tell me about yourself' and arrive early. Speak clearly and honestly, and ask one question yourself at the end.",
+"tags": [
+"daily",
+"career"
+]
+},
+{
+"id": "daily-make-tea",
+"q": [
+"chai kaise banate hain",
+"how to make tea",
+"chai banane ka sahi tareeka",
+"masala chai kaise banti hai",
+"perfect chai recipe",
+"chai banane ki vidhi"
+],
+"hi": "Pani mein adrak aur chai patti ubalo, phir doodh aur cheeni daalo aur 2-3 minute ubalne do. Chhan kar garam garam piyo.",
+"en": "Boil water with ginger and tea leaves, then add milk and sugar and simmer for 2 to 3 minutes. Strain and serve hot.",
+"tags": [
+"daily",
+"cooking"
+]
+},
+{
+"id": "daily-online-fraud",
+"q": [
+"online fraud se kaise bachein",
+"otp kisi ko kyun nahi batana chahiye",
+"how to avoid online fraud",
+"fraud call aaye to kya karein",
+"upi scam se kaise bachein",
+"online thagi ke case mein kya karein"
+],
+"hi": "OTP, PIN, CVV ya password kisi ko mat batao, chahe wo bank ka naam le. Anjaan link par click mat karo. Thagi ho jaye to turant 1930 par call karo ya cybercrime.gov.in par report karo.",
+"en": "Never share your OTP, PIN, CVV or password, even with someone claiming to be the bank. Do not click unknown links. If you are cheated, call 1930 at once or report at cybercrime.gov.in.",
+"tags": [
+"daily",
+"safety"
+]
+},
+{
+"id": "daily-posture",
+"q": [
+"sahi posture kaisa hota hai",
+"baithne ka sahi tareeka",
+"how to sit with good posture",
+"kamar dard se bachne ke liye kaise baithein",
+"good posture tips",
+"reed ki haddi sidhi kaise rakhein"
+],
+"hi": "Peeth kursi se lagi rahe, kandhe dheele, pair zameen par aur kohni lagbhag 90 degree par rakho. Har ghante khade hokar thoda chalo.",
+"en": "Keep your back against the chair, shoulders relaxed, feet flat on the floor and elbows at about 90 degrees. Stand up and walk a little every hour.",
+"tags": [
+"daily",
+"health"
+]
+},
+{
+"id": "daily-resume",
+"q": [
+"acha resume kaise banate hain",
+"how to make a good resume",
+"resume mein kya likhna chahiye",
+"cv kaise banate hain",
+"resume tips for freshers",
+"resume likhne ka tareeka"
+],
+"hi": "Resume 1 page ka rakho: naam aur sampark, chhota parichay, shiksha, anubhav ya projects, skills. Har kaam ke saath natija likho, jaise kitna sudhar hua. Galtiyan check karo aur saaf font rakho.",
+"en": "Keep the resume to 1 page: name and contact, short summary, education, experience or projects, and skills. Write results for each task, such as what improved. Proofread and use a clean font.",
+"tags": [
+"daily",
+"career"
+]
+},
+{
+"id": "daily-save-electricity",
+"q": [
+"bijli kaise bachayein",
+"how to save electricity",
+"bijli ka bill kam kaise karein",
+"electricity bill kam karne ke tareeke",
+"bijli bachane ke upay",
+"ways to reduce power consumption"
+],
+"hi": "LED bulb lagao, khali kamre ki light aur pankhe band karo, AC 24 se 26 degree par chalao aur star rating wale upkaran lo. Charger aur TV ko switch se band karo.",
+"en": "Use LED bulbs, switch off lights and fans in empty rooms, run the AC at 24 to 26 degrees and buy star-rated appliances. Switch off chargers and TVs at the socket.",
+"tags": [
+"daily"
+]
+},
+{
+"id": "daily-save-money",
+"q": [
+"paise kaise bachayein",
+"how to save money",
+"50 30 20 rule kya hai",
+"budget kaise banate hain",
+"bachat karne ke tareeke",
+"what is the 50 30 20 rule"
+],
+"hi": "50/30/20 niyam: kamai ka 50% zaruri kharch, 30% shauk aur 20% bachat ya karz chukane mein. Kharch likho aur kamai aate hi pehle bachat alag karo.",
+"en": "The 50/30/20 rule: 50 percent of income for needs, 30 percent for wants and 20 percent for savings or debt. Track spending and set savings aside as soon as income arrives.",
+"tags": [
+"daily",
+"finance"
+]
+},
+{
+"id": "daily-sleep-better",
+"q": [
+"achhi neend kaise aaye",
+"how to sleep better",
+"neend na aaye to kya karein",
+"better sleep ke tips",
+"raat ko jaldi neend kaise aaye",
+"insomnia ke gharelu upay"
+],
+"hi": "Roz ek hi samay par sona aur uthna, sone se pehle caffeine aur phone se door rehna, kamra andhera aur thanda rakhna madad karta hai. Mahino tak neend na aaye to doctor se milo.",
+"en": "Sleep and wake at the same time daily, avoid caffeine and phone use before bed, and keep the room dark and cool. If sleeplessness lasts for weeks, see a doctor.",
+"tags": [
+"daily",
+"health"
+]
+},
+{
+"id": "daily-strong-password",
+"q": [
+"strong password kaise banate hain",
+"how to make a strong password",
+"achha password kaisa hona chahiye",
+"password banane ke tips",
+"safe password ke niyam",
+"password manager kya hai"
+],
+"hi": "Lamba password (12 ya zyada akshar), shabdon, ank aur chinh ka mel rakho, aur har account ke liye alag rakho. Naam ya janmatithi mat rakho. Password manager madad karta hai aur 2-step verification ON rakho.",
+"en": "Use a long password (12 or more characters) mixing words, digits and symbols, and a different one for every account. Avoid names and birth dates. A password manager helps; turn on 2-step verification.",
+"tags": [
+"daily",
+"safety"
+]
+},
+{
+"id": "daily-study-pomodoro",
+"q": [
+"padhai mein man kaise lagayein",
+"pomodoro technique kya hai",
+"how to study better",
+"what is the pomodoro technique",
+"padhne ka sabse accha tareeka",
+"concentration badhane ke tips"
+],
+"hi": "Pomodoro: 25 minute poore dhyan se padho, phir 5 minute ka break lo. 4 round ke baad 15 se 30 minute ka bada break lo. Phone door rakho.",
+"en": "Pomodoro: study with full focus for 25 minutes, then take a 5-minute break. After 4 rounds take a longer break of 15 to 30 minutes. Keep your phone away.",
+"tags": [
+"daily",
+"study"
+]
+},
+{
+"id": "daily-todo-time",
+"q": [
+"productive din kaise banayein",
+"to do list kaise banate hain",
+"how to plan my day",
+"kaam ki list kaise banayein",
+"productive kaise rahein",
+"time ka sahi istemal kaise karein"
+],
+"hi": "Roz subah 3 sabse zaruri kaam chuno aur pehle wahi karo. Kaam ko chhote hisson mein baanto, aur ek samay mein ek hi kaam karo. Din ke ant mein agle din ki list banao.",
+"en": "Pick the 3 most important tasks each morning and do them first. Break big jobs into small steps and do one thing at a time. At day's end, write tomorrow's list.",
+"tags": [
+"daily"
+]
+},
+{
+"id": "daily-traffic-lights",
+"q": [
+"traffic light ke rang ka matlab kya hai",
+"red light ka matlab kya hota hai",
+"meaning of traffic light colours",
+"signal ke laal peele hare rang ka matlab",
+"what do the traffic signals mean",
+"traffic signal kaise samjhein"
+],
+"hi": "Laal ka matlab ruko, peele ka matlab ruknay ke liye taiyar ho jao, hare ka matlab aage badho jab raasta saaf ho.",
+"en": "Red means stop, yellow (amber) means get ready to stop and green means go when the way is clear.",
+"tags": [
+"daily",
+"safety"
+]
+},
+{
+"id": "daily-wet-phone",
+"q": [
+"phone pani mein gir jaye to kya karein",
+"wet phone ko kaise bachayein",
+"what to do if a phone falls in water",
+"phone geela ho gaya",
+"phone bheeg jaye to kya karein",
+"phone ko chawal mein rakhna chahiye kya"
+],
+"hi": "Phone turant band karo, charge mat karo, cover aur SIM nikalo, bahar se poochho aur hawa wali sookhi jagah rakho. Chawal wali baat ek myth hai, usse madad nahi milti. Service center dikhao.",
+"en": "Switch the phone off at once, do not charge it, remove the case and SIM, wipe it and leave it in a dry, airy place. The rice trick is a myth and does not help. Take it to a service centre.",
+"tags": [
+"daily",
+"phone"
+]
+},
+{
+"id": "health-balanced-diet",
+"q": [
+"santulit aahar kya hota hai",
+"balanced diet kya hai",
+"what is a balanced diet",
+"healthy khana kya hota hai",
+"sehat ke liye kya khana chahiye",
+"healthy diet kaisa hona chahiye"
+],
+"hi": "Roz phal, sabziyan, saabut anaaj, dal ya anya protein khao aur cheeni, namak aur talle khane kam rakho. Poori diet ke liye doctor ya dietitian se poochho.",
+"en": "Eat fruit, vegetables, whole grains and pulses or other protein every day, and keep sugar, salt and fried food low. For a full diet plan ask a doctor or dietitian.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-blood-pressure",
+"q": [
+"normal bp kitna hota hai",
+"blood pressure kitna hona chahiye",
+"what is normal blood pressure",
+"bp ki normal range kya hai",
+"120 by 80 bp kya hota hai",
+"healthy bp kitna hota hai"
+],
+"hi": "Bade logon ka aam taur par normal blood pressure lagbhag 120/80 mmHg mana jata hai. Aapke liye kya theek hai ye doctor tay karte hain. Baar baar zyada reading aaye to doctor ko dikhao.",
+"en": "A normal adult blood pressure is commonly taken as about 120/80 mmHg. A doctor decides what is right for you. If readings are often high, see a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-bmi",
+"q": [
+"bmi kya hota hai",
+"bmi kaise nikalte hain",
+"what is bmi",
+"how to calculate bmi",
+"body mass index formula",
+"bmi ka formula kya hai"
+],
+"hi": "BMI = vajan (kg) ko lambai (meter) ke varg se bhaag do. WHO ke hisaab se bade logon mein 18.5 se 24.9 normal mana jata hai. Ye sirf mota andaza hai, doctor se poochho.",
+"en": "BMI = weight in kg divided by height in metres squared. By the WHO scale 18.5 to 24.9 is normal for adults. It is only a rough guide, so ask a doctor.",
+"tags": [
+"health",
+"math"
+]
+},
+{
+"id": "health-body-temperature",
+"q": [
+"sharir ka normal taapmaan kitna hota hai",
+"normal body temperature",
+"bukhar kitne degree se shuru hota hai",
+"what is normal body temperature",
+"98.6 fahrenheit kya hai",
+"fever kitne degree par hota hai"
+],
+"hi": "Sharir ka aam taapmaan lagbhag 37 degree Celsius (98.6 Fahrenheit) hota hai. Lagbhag 38 degree Celsius (100.4 Fahrenheit) se upar ko bukhar maana jata hai. Shak ho to doctor se poochho.",
+"en": "Normal body temperature is about 37 degrees Celsius (98.6 Fahrenheit). A reading from about 38 degrees Celsius (100.4 Fahrenheit) is counted as fever. Ask a doctor if unsure.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-brushing-teeth",
+"q": [
+"daant kitni baar brush karne chahiye",
+"how often should i brush my teeth",
+"brush karne ka sahi tareeka",
+"daanton ki safai kaise karein",
+"how long should i brush",
+"teeth brush kitni der karna chahiye"
+],
+"hi": "Din mein do baar, har baar 2 minute, naram brush aur fluoride wale toothpaste se brush karo. Brush har 3 mahine mein badlo aur roz floss karo. Dantkaar ko saal mein ek ya do baar dikhao.",
+"en": "Brush twice a day for 2 minutes each time with a soft brush and fluoride toothpaste. Replace the brush every 3 months and floss daily. Visit a dentist once or twice a year.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-choking",
+"q": [
+"gale mein kuch atak jaye to kya karein",
+"someone is choking",
+"khana gale mein phans gaya",
+"what to do if a person is choking",
+"choking ho to kya karna chahiye",
+"saans ki nali mein khana atak gaya"
+],
+"hi": "Agar vyakti khansi kar pa raha hai to use khansne do. Agar wo khans, bol ya saans na le paye to madad ke liye chillao, 112 karo aur kandhon ke beech mein zor se thapki do. Pet dabane ka tareeka kisi first-aid course mein seekho; doctor ya 112 se salah lo.",
+"en": "If the person can cough, let them cough. If they cannot cough, speak or breathe, shout for help, call 112 and give firm back blows between the shoulder blades. Learn the abdominal thrust method in a first-aid course and ask a doctor or call 112.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-cpr",
+"q": [
+"cpr kaise karte hain",
+"cpr kya hota hai",
+"what is cpr",
+"how is cpr done",
+"cpr ke basic steps",
+"dil band ho jaye to cpr kaise dete hain"
+],
+"hi": "Agar vyakti behosh hai aur saans normal nahi le raha, pehle 112 karo. Phir seene ke beech mein hathon se tez aur gehra dabao, lagbhag 100 se 120 baar ek minute mein. CPR kisi manyata prapt course mein seekhna sabse accha hai.",
+"en": "If the person is unresponsive and not breathing normally, call 112 first. Then push hard and fast in the centre of the chest, about 100 to 120 times a minute. It is best to learn CPR in a certified course.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-dehydration",
+"q": [
+"dehydration ke lakshan kya hain",
+"pani ki kami ke signs",
+"signs of dehydration",
+"sharir mein pani ki kami kaise pata chale",
+"dehydration kya hota hai",
+"what is dehydration"
+],
+"hi": "Zyada pyaas, gaadha peela peshab, sookha muh, sar dard aur chakkar aana dehydration ke lakshan hain. Dheere dheere pani ya ORS ke ghoont lo. Zyada kamzori ya behoshi ho to doctor ya 112.",
+"en": "Strong thirst, dark yellow urine, a dry mouth, headache and dizziness are signs of dehydration. Sip water or ORS slowly. If there is severe weakness or fainting, see a doctor or call 112.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-electric-shock",
+"q": [
+"bijli ka jhatka lage to kya karein",
+"electric shock lag jaye to",
+"what to do in an electric shock",
+"karant lag gaya to kya karna chahiye",
+"bijli ki taar se jhatka lage to",
+"electric shock ka first aid"
+],
+"hi": "Bijli chalu ho to vyakti ko chhuo mat, pehle main switch band karo. Phir 112 karo aur saans dekho. Halka jhatka ho tab bhi doctor ko dikhao.",
+"en": "Do not touch the person while the power is on; switch off at the main switch first. Then call 112 and check breathing. See a doctor even after a mild shock.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-eye-irritation",
+"q": [
+"aankh mein kuch chala jaye to kya karein",
+"aankh mein jalan ho to",
+"what to do if something gets in the eye",
+"aankh mein dhool chali gayi",
+"eye irritation ka upay",
+"aankh lal ho gayi kya karein"
+],
+"hi": "Aankh ko masalo mat aur saaf bahte pani se kuch minute dhoyo. Rasayan ya tez dard ho to 15 minute dhote raho aur turant hospital jao, bina salah ke dawa na daalo.",
+"en": "Do not rub the eye and rinse it with clean running water for a few minutes. For a chemical or severe pain, keep rinsing for 15 minutes and go to a hospital at once, and use no drops without advice.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-fainting",
+"q": [
+"koi behosh ho jaye to kya karein",
+"someone fainted",
+"chakkar aakar gir gaya",
+"what to do when a person faints",
+"behoshi ke baad kya karna chahiye",
+"kisi ko chakkar aa jaye to"
+],
+"hi": "Use seedha litao, pair thode upar rakho aur kasa hua kapda dhila karo. Saans dekho; ek minute mein hosh na aaye ya saans na aaye to turant 112 karo. Hosh aane ke baad bhi doctor ko dikhao.",
+"en": "Lay the person flat, raise the legs a little and loosen tight clothing. Check breathing; if they do not wake within a minute or are not breathing, call 112 at once. Ask a doctor even after they recover.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-fever-doctor",
+"q": [
+"bukhar mein doctor ko kab dikhana chahiye",
+"when to see a doctor for fever",
+"kitne din ke bukhar ke baad doctor ke paas jayein",
+"fever kab khatarnak hota hai",
+"bukhar ke danger signs",
+"when is fever serious"
+],
+"hi": "Bukhar 3 din se zyada rahe, bahut tez ho, ya saath mein akdi hui gardan, daane, saans ki dikkat ya bhram ho to doctor ko dikhao. Chhote bachchon, buzurgon aur garbhvati mahilaon mein der mat karo.",
+"en": "See a doctor if a fever lasts more than 3 days, is very high, or comes with a stiff neck, rash, breathing trouble or confusion. Do not wait in young babies, older people or pregnant women.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-first-aid-kit",
+"q": [
+"first aid box mein kya kya hona chahiye",
+"first aid kit mein kya rakhna chahiye",
+"what should be in a first aid kit",
+"first aid kit contents",
+"ghar ke first aid box ka saman",
+"first aid kit kaise banayein"
+],
+"hi": "Patti aur saaf gauze, medical tape, antiseptic wipes, kainchi, chimta, dastane, thermometer aur zaroori phone numbers rakho. Doctor ki likhi apni dawaiyan alag rakho. Samay samay par expiry check karo.",
+"en": "Keep bandages, clean gauze, medical tape, antiseptic wipes, scissors, tweezers, gloves, a thermometer and emergency numbers. Keep your own prescribed medicines separately and check expiry dates now and then.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-handwashing",
+"q": [
+"haath kitni der tak dhona chahiye",
+"haath dhone ka sahi tareeka",
+"how long should i wash my hands",
+"handwashing kaise karein",
+"haath dhone se kya fayda hota hai",
+"how to wash hands properly"
+],
+"hi": "Haath gile karke sabun lagao aur kam se kam 20 second malo, ungliyon ke beech aur nakhoon ke neeche bhi. Phir saaf pani se dhoyo aur sukha lo. Khana khane se pehle aur toilet ke baad zaroor dhoyo.",
+"en": "Wet your hands, apply soap and rub for at least 20 seconds, including between the fingers and under the nails. Rinse with clean water and dry. Always wash before eating and after the toilet.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-headache-red-flags",
+"q": [
+"sar dard kab khatarnak hota hai",
+"headache ke danger signs",
+"sar dard mein doctor ko kab dikhayein",
+"when is a headache serious",
+"headache red flags",
+"tez sar dard ke saath kya dikkat ho to hospital jayein"
+],
+"hi": "Achanak bahut tez sar dard, bukhar ke saath akdi gardan, chot ke baad sar dard, nazar dhundhli hona, kamzori ya bhram ho to turant doctor ya 112 se sampark karo. Baar baar hone wale sar dard ke liye bhi doctor ko dikhao.",
+"en": "A sudden very severe headache, headache with fever and a stiff neck, after an injury, or with blurred vision, weakness or confusion needs a doctor or 112 at once. See a doctor for headaches that keep coming back too.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-heart-attack",
+"q": [
+"heart attack ke lakshan kya hain",
+"heart attack ke signs",
+"signs of a heart attack",
+"dil ka daura padne par kya hota hai",
+"chhati mein dard heart attack to nahi",
+"heart attack symptoms"
+],
+"hi": "Seene mein dabav ya dard jo haath, jabde ya peeth tak jaye, pasina, saans phoolna, ji machlana aur chakkar aana ye lakshan ho sakte hain. Turant 112 karo, aaram se baitho aur khud gaadi mat chalao. Doctor ko dikhana zaroori hai.",
+"en": "Chest pressure or pain that spreads to the arm, jaw or back, sweating, breathlessness, nausea and dizziness can be signs. Call 112 at once, sit down and rest, and do not drive yourself. A doctor must check it.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-heat-stroke",
+"q": [
+"heat stroke kya hota hai",
+"loo lagne par kya karein",
+"lu lag gayi to kya karna chahiye",
+"what to do in heat stroke",
+"heatstroke ke lakshan",
+"garmi se behosh ho jana"
+],
+"hi": "Bahut tez garmi mein sharir ka taapmaan bahut badh sakta hai: bhram, tez sar dard, behoshi ho sakti hai. Vyakti ko chhaon aur thandi jagah le jao, sharir par thanda paani ya geela kapda lagao aur 112 karo. Doctor ko zaroor dikhao.",
+"en": "In very hot weather body temperature can rise dangerously, causing confusion, a bad headache or fainting. Move the person to shade, cool the body with water or a wet cloth and call 112. Ask a doctor in every case.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-insect-sting",
+"q": [
+"bhanwre ya madhumakkhi ke katne par kya karein",
+"bee sting ka ilaj",
+"what to do for an insect sting",
+"keede ke dank par kya karein",
+"ter ya bichhu ke dank ke baad",
+"wasp sting kya karein"
+],
+"hi": "Dank ka kaanta ho to naakhun ya card se kharoch kar nikalo, jagah dhoyo aur thanda kapda lagao. Chehre ya gale mein sujan, saans mein dikkat ya chakkar ho to turant 112 karo. Doctor ko dikhao.",
+"en": "If a stinger is left, scrape it out with a nail or card, wash the area and apply a cold cloth. Swelling of the face or throat, trouble breathing or dizziness needs 112 at once. Ask a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-motion-sickness",
+"q": [
+"gaadi mein ulti kyun aati hai",
+"motion sickness se kaise bachein",
+"safar mein ji machlana kaise rokein",
+"how to avoid motion sickness",
+"bus mein ulti ka upay",
+"travel sickness ka ilaj"
+],
+"hi": "Saamne sadak ya kshitij ki taraf dekho, gaadi ke beech ya aage ki seat lo, taazi hawa aane do aur safar mein padhna ya phone mat dekho. Halka khana khao. Zyada dikkat ho to doctor se salah lo.",
+"en": "Look at the road ahead or the horizon, sit in the front or middle, let in fresh air and avoid reading or using the phone while travelling. Eat lightly. Ask a doctor if it is severe.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-ors",
+"q": [
+"ors kya hai",
+"ors kaise banate hain",
+"what is ors",
+"ors ka istemal kab karte hain",
+"oral rehydration solution kya hota hai",
+"ors ghol kaise banta hai"
+],
+"hi": "ORS pani aur namak-cheeni ka santulit mix hai jo dast ya ulti mein khoye pani ki bharpai karta hai. Packet par jaise likha ho waise hi saaf paani mein ghoolo, cheeni ya namak apni marzi se mat badlo. Bachchon ya zyada dast mein doctor se poochho.",
+"en": "ORS is a balanced mix of salts and sugar that replaces water lost in diarrhoea or vomiting. Mix it in clean water exactly as printed on the packet and do not add extra sugar or salt. Ask a doctor for children or serious diarrhoea.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-poisoning",
+"q": [
+"zeher kha liya to kya karein",
+"poisoning ho jaye to kya karna chahiye",
+"what to do in case of poisoning",
+"galti se kuch zehreela pi liya",
+"kisi ne dawai ya chemical nigal liya",
+"poison swallowed kya karein"
+],
+"hi": "Turant 112 karo ya vyakti ko seedha hospital le jao. Doctor ke kehne ke bina ulti mat karwao. Jis cheez ka sevan hua ho uska dibba ya packet saath le jao.",
+"en": "Call 112 at once or take the person straight to a hospital. Do not make them vomit unless a doctor says so. Take the container or packet of what was swallowed with you.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-pulse",
+"q": [
+"normal pulse rate kitna hota hai",
+"naadi ki gati kitni honi chahiye",
+"resting pulse kitna hona chahiye",
+"what is a normal resting pulse",
+"normal heart rate kya hai",
+"pulse kitni honi chahiye"
+],
+"hi": "Aaram ki halat mein bade logon ki naadi aam taur par 60 se 100 baar ek minute mein hoti hai. Sehat aur fitness ke hisaab se thodi alag ho sakti hai. Chinta ho to doctor se poochho.",
+"en": "At rest an adult's pulse is usually 60 to 100 beats a minute. It can differ a little with fitness and health. Ask a doctor if you are worried.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-scrape",
+"q": [
+"skin chhil jaye to kya karein",
+"chhil gayi skin par kya lagayein",
+"kharonch lag gayi to kya karna chahiye",
+"what to do for a minor scrape",
+"scraped knee care",
+"graze ka first aid"
+],
+"hi": "Chhili hui jagah ko saaf bahte pani aur halke sabun se dhoyo, phir saaf patti se dhak do. Gehri, gandi ya lal hoti aur sujti jagah ho to doctor ko dikhao.",
+"en": "Wash the scraped skin with clean running water and mild soap, then cover it with a clean bandage. If it is deep, dirty, or turns red and swollen, see a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-seizure",
+"q": [
+"mirgi ka daura pade to kya karein",
+"seizure aaye to kya karna chahiye",
+"what to do during a seizure",
+"daura padne par kya karein",
+"fits aa jaye to kya karein",
+"epilepsy attack mein madad"
+],
+"hi": "Vyakti ko chot se bachao, aas paas ki cheezein hata do aur muh mein kuch mat daalo. Daura khatam ho to use karwat par litao. Daura 5 minute se zyada chale ya pehli baar pade to 112 karo aur doctor ko dikhao.",
+"en": "Protect the person from injury, clear things around them and put nothing in the mouth. When it ends, turn them onto their side. If it lasts more than 5 minutes or it is the first one, call 112 and see a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-sleep-hours",
+"q": [
+"kitne ghante sona chahiye",
+"how many hours of sleep do we need",
+"adults ko kitni neend chahiye",
+"bachchon ko kitni neend zaroori hai",
+"recommended sleep hours",
+"ek din mein kitni neend leni chahiye"
+],
+"hi": "Bade logon ko aam taur par 7 se 9 ghante, kishoron ko 8 se 10 ghante aur school jaane wale bachchon ko 9 se 12 ghante ki neend chahiye. Chhote bachchon ko aur zyada. Neend ki dikkat ho to doctor se milo.",
+"en": "Adults usually need 7 to 9 hours of sleep, teenagers 8 to 10 hours and school-age children 9 to 12 hours. Younger children need even more. See a doctor if you have trouble sleeping.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-sprain",
+"q": [
+"moch aa jaye to kya karein",
+"sprain ka ilaj kya hai",
+"pair mudne par kya karna chahiye",
+"what to do for a sprain",
+"rice method for sprain",
+"ankle twist ho jaye to"
+],
+"hi": "RICE yaad rakho: Rest (aaram), Ice (kapde mein lipti baraf, 20 minute tak), Compression (halki patti), Elevation (pair upar). Sujan zyada ho, bhaar na pad sake ya dard na ghate to doctor ko dikhao.",
+"en": "Remember RICE: Rest, Ice (wrapped in cloth, up to 20 minutes at a time), Compression with a light bandage, and Elevation. If swelling is severe, you cannot put weight on it or the pain does not ease, see a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-stroke",
+"q": [
+"stroke ke lakshan kya hain",
+"stroke ki pehchaan kaise karein",
+"signs of a stroke",
+"what is the fast test for stroke",
+"lakwa kya hota hai",
+"stroke fast ka matlab kya hai"
+],
+"hi": "FAST yaad rakho: Face (chehra ek taraf latakna), Arm (ek haath kamzor), Speech (bolne mein dikkat), Time (turant 112 karo). Samay bahut keemti hai, der mat karo. Doctor ke paas jaldi pahunchna zaroori hai.",
+"en": "Remember FAST: Face drooping on one side, Arm weakness, Speech difficulty, Time to call 112. Every minute counts, so do not wait. Getting to a doctor quickly is essential.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-sunburn",
+"q": [
+"sunburn ho jaye to kya karein",
+"dhoop se skin kaali ya lal ho gayi",
+"what to do for sunburn",
+"sunburn se kaise bachein",
+"sunburn ka ilaj"
+],
+"hi": "Dhoop se hat jao, thande (baraf ke nahi) pani ka kapda lagao, bahut pani piyo aur halka moisturiser lagao. Dhoop se bachne ke liye kapde, topi aur sunscreen use karo. Chhale, bukhar ya zyada dard ho to doctor ko dikhao.",
+"en": "Get out of the sun, apply a cool (not icy) wet cloth, drink plenty of water and use a light moisturiser. To prevent it use clothing, a hat and sunscreen. If there are blisters, fever or severe pain, see a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-toothache",
+"q": [
+"daant dard ho to kya karein",
+"toothache ka gharelu upay",
+"what to do for a toothache",
+"daant mein dard ka ilaj",
+"toothache kab khatarnak hai",
+"daant dard mein dentist ko kab dikhayein"
+],
+"hi": "Gungune pani se kulla karo, daanton ke beech halke se floss karo aur bahut garam ya thanda khane se bacho. Daant ke dard ka asli ilaj dentist hi kar sakte hain, jaldi dikhao. Sujan ya bukhar ho to turant.",
+"en": "Rinse with lukewarm water, floss gently between the teeth and avoid very hot or cold food. Only a dentist can fix the cause, so go soon, and at once if there is swelling or fever. Ask a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "health-water-intake",
+"q": [
+"din mein kitna pani peena chahiye",
+"how much water should i drink",
+"roz kitne glass pani peena chahiye",
+"daily water intake kitna hona chahiye",
+"kitna paani peena sehat ke liye theek hai",
+"how many glasses of water a day"
+],
+"hi": "Mote taur par bahut se bade log din mein lagbhag 8 glass (kareeb 2 litre) pani peete hain. Garmi, kasrat ya bimari mein zyada chahiye. Gurde ya dil ki bimari ho to doctor se poochho.",
+"en": "As a rough guide many adults drink about 8 glasses (around 2 litres) of water a day. You need more in heat, exercise or illness. If you have kidney or heart disease, ask a doctor.",
+"tags": [
+"health"
+]
+},
+{
+"id": "india-aadhaar",
+"q": [
+"aadhaar number kitne digit ka hota hai",
+"aadhaar kya hai",
+"what is aadhaar",
+"aadhar card mein kitne ank hote hain",
+"how many digits in aadhaar",
+"aadhaar kaun jaari karta hai"
+],
+"hi": "Aadhaar 12 ank ki pehchan sankhya hai jo UIDAI jaari karta hai. Apna Aadhaar number aur OTP anjaan logon ko mat do.",
+"en": "Aadhaar is a 12-digit identity number issued by UIDAI. Do not share your Aadhaar number or OTP with strangers.",
+"tags": [
+"india",
+"safety"
+]
+},
+{
+"id": "india-capital",
+"q": [
+"india ki rajdhani kya hai",
+"bharat ki rajdhani kaun si hai",
+"capital of india",
+"india capital city",
+"what is the capital of india",
+"bharat ki capital kya hai"
+],
+"hi": "Bharat ki rajdhani New Delhi hai. Sarkar aur Sansad yahin se chalti hain.",
+"en": "The capital of India is New Delhi, where the central government and Parliament work.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-chandrayaan3",
+"q": [
+"chandrayaan 3 kab utra",
+"chandrayaan 3 ki landing kab hui",
+"when did chandrayaan 3 land on the moon",
+"chandrayaan 3 kya hai",
+"chandrayaan 3 kahan utra tha",
+"chandrayaan 3 landing kab hui thi"
+],
+"hi": "ISRO ka Chandrayaan-3 23 August 2023 ko chand ke dakshini dhruv ke paas safalta se utra. Bharat chand par utarne wala chautha desh bana.",
+"en": "ISRO's Chandrayaan-3 landed successfully near the Moon's south pole on 23 August 2023. India became the fourth country to land on the Moon.",
+"tags": [
+"india",
+"space"
+]
+},
+{
+"id": "india-constitution",
+"q": [
+"bharat ka samvidhan kab bana",
+"indian constitution kisne likha",
+"constitution of india kab adopt hua",
+"samvidhan banane wali drafting committee ke adhyaksh kaun the",
+"who is the father of the indian constitution",
+"samvidhan kab apnaya gaya"
+],
+"hi": "Samvidhan sabha ne Samvidhan 26 November 1949 ko apnaya aur ye 26 January 1950 se lagu hua. Drafting committee ke adhyaksh Ambedkar the.",
+"en": "The Constituent Assembly adopted the Constitution on 26 November 1949 and it came into force on 26 January 1950. Ambedkar chaired the Drafting Committee.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-currency",
+"q": [
+"india ki mudra kya hai",
+"currency of india",
+"bharat ka paisa kya kehlata hai",
+"rupee ke notes kaun chhapta hai",
+"who issues indian rupee notes",
+"rbi kya hai"
+],
+"hi": "Bharat ki mudra rupaya (₹) hai. Notes Reserve Bank of India (RBI) jaari karta hai, jo desh ka kendriya bank hai.",
+"en": "India's currency is the rupee (₹). Notes are issued by the Reserve Bank of India (RBI), the country's central bank.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-diwali",
+"q": [
+"diwali kya hai",
+"diwali kyun manate hain",
+"what is diwali",
+"why is diwali celebrated",
+"deepawali ke baare mein batao",
+"diwali ka tyohar kab manate hain"
+],
+"hi": "Diwali (Deepawali) roshni ka tyohar hai jo ghar mein diye jalakar, mithai baantkar aur Lakshmi pujan karke manaya jata hai. Ye aam taur par October ya November mein aata hai, tithi har saal badalti hai.",
+"en": "Diwali (Deepawali) is the festival of lights, celebrated with diyas, sweets and Lakshmi puja. It falls in October or November and the date changes every year.",
+"tags": [
+"india",
+"festival"
+]
+},
+{
+"id": "india-first-pm",
+"q": [
+"bharat ke pehle pradhanmantri kaun the",
+"first prime minister of india",
+"india ke pehle pm kaun the",
+"who was the first pm of india",
+"swatantra bharat ke pehle pradhanmantri",
+"pehle pradhan mantri ka naam"
+],
+"hi": "Swatantra Bharat ke pehle pradhanmantri Jawaharlal Nehru the.",
+"en": "The first Prime Minister of independent India was Jawaharlal Nehru.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-first-president",
+"q": [
+"bharat ke pehle rashtrapati kaun the",
+"first president of india",
+"india ke pehle president kaun the",
+"who was the first president of india",
+"swatantra bharat ke pehle rashtrapati",
+"pehle rashtrapati ka naam"
+],
+"hi": "Bharat ke pehle rashtrapati Dr Rajendra Prasad the.",
+"en": "The first President of India was Rajendra Prasad.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-flag",
+"q": [
+"tiranga mein kaun kaun se rang hote hain",
+"colours of the indian flag",
+"bharat ke jhande mein kitne rang hain",
+"indian flag colours",
+"tirange ka chakra kaisa hai",
+"how many spokes in the ashoka chakra"
+],
+"hi": "Tirange mein upar kesariya, beech mein safed aur neeche hara rang hota hai. Safed patti ke beech neele rang ka Ashoka chakra hai, jisme 24 tiliyan hoti hain.",
+"en": "The Indian flag has saffron on top, white in the middle and green at the bottom. The navy blue Ashoka Chakra in the white band has 24 spokes.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-gandhi-jayanti",
+"q": [
+"gandhi jayanti kab hoti hai",
+"mahatma gandhi ka janm kab hua",
+"when is gandhi jayanti",
+"gandhi ji kab paida hue the",
+"mahatma gandhi birthday",
+"2 october ko kya hota hai"
+],
+"hi": "Gandhi Jayanti har saal 2 October ko hoti hai. Mahatma Gandhi ka janm 2 October 1869 ko Porbandar (Gujarat) mein hua tha.",
+"en": "Gandhi Jayanti is on 2 October every year. Mahatma Gandhi was born on 2 October 1869 in Porbandar, Gujarat.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-gate",
+"q": [
+"india gate kahan hai",
+"india gate kisne banwaya",
+"india gate kis liye bana hai",
+"where is india gate",
+"what is india gate",
+"india gate ke baare mein batao"
+],
+"hi": "India Gate New Delhi mein ek yaad-gaar (war memorial) hai, jo pehle vishwa yuddh mein shaheed hue Bharatiya sainikon ki yaad mein banaya gaya. Iska design Edwin Lutyens ne banaya tha.",
+"en": "India Gate is a war memorial in New Delhi, built in memory of Indian soldiers who died in the First World War. It was designed by Edwin Lutyens.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-highest-peak",
+"q": [
+"india ki sabse unchi choti kaun si hai",
+"highest peak in india",
+"bharat ka sabse ooncha parvat kaun sa hai",
+"kangchenjunga kitna uncha hai",
+"how high is kangchenjunga",
+"india ka sabse uncha pahad"
+],
+"hi": "Kangchenjunga (lagbhag 8,586 meter) Bharat ki sabse unchi choti hai. Ye Sikkim aur Nepal ki seema par hai aur duniya ki teesri sabse unchi choti hai.",
+"en": "Kangchenjunga (about 8,586 metres) is the highest peak in India. It lies on the Sikkim-Nepal border and is the third highest mountain in the world.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-holi",
+"q": [
+"holi kya hai",
+"holi kyun manate hain",
+"what is holi",
+"why is holi celebrated",
+"holi ke baare mein batao",
+"holi ka tyohar kab aata hai"
+],
+"hi": "Holi rangon ka tyohar hai jo basant ritu mein, aam taur par March mein manaya jata hai. Log ek doosre par rang lagate aur mithai baantte hain.",
+"en": "Holi is the festival of colours, usually celebrated in March at the start of spring. People play with colours and share sweets.",
+"tags": [
+"india",
+"festival"
+]
+},
+{
+"id": "india-independence-day",
+"q": [
+"india ko azadi kab mili",
+"when did india get independence",
+"swatantrata diwas kab hota hai",
+"15 august 1947 ko kya hua tha",
+"bharat azad kab hua",
+"india independence day kab hai"
+],
+"hi": "Bharat 15 August 1947 ko angrezi raj se azad hua. Isliye har saal 15 August ko Swatantrata Diwas manaya jata hai.",
+"en": "India became independent from British rule on 15 August 1947, so Independence Day is celebrated every year on 15 August.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-isro",
+"q": [
+"isro kya hai",
+"isro ka full form kya hai",
+"what is isro",
+"india ki space agency kaun si hai",
+"isro ka matlab",
+"full form of isro"
+],
+"hi": "ISRO ka matlab Indian Space Research Organisation hai. Ye Bharat ki antariksh agency hai jo satellite aur rocket banati aur chhodti hai.",
+"en": "ISRO stands for Indian Space Research Organisation. It is India's space agency and builds and launches satellites and rockets.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-largest-state",
+"q": [
+"india ka sabse bada rajya kaun sa hai",
+"largest state in india by area",
+"kshetrafal mein sabse bada rajya",
+"bharat ka sabse bada state kaun sa hai",
+"which is the biggest state of india",
+"rajasthan kitna bada rajya hai"
+],
+"hi": "Kshetrafal ke hisaab se Rajasthan Bharat ka sabse bada rajya hai.",
+"en": "By area, Rajasthan is the largest state of India.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-longest-river",
+"q": [
+"india ki sabse lambi nadi kaun si hai",
+"longest river in india",
+"bharat ki sabse badi nadi kaun si hai",
+"ganga kitni lambi hai",
+"how long is the ganga river",
+"bharat mein sabse lambi nadi"
+],
+"hi": "Ganga Bharat ki sabse lambi nadi hai, lagbhag 2,525 km lambi. Brahmaputra aur Sindhu zyada lambi hain par unka bada hissa Bharat ke bahar behta hai.",
+"en": "The Ganga is India's longest river at about 2,525 km. The Brahmaputra and the Indus are longer overall, but much of their course is outside India.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-most-populous-state",
+"q": [
+"india ka sabse zyada aabadi wala rajya kaun sa hai",
+"most populous state in india",
+"sabse zyada jansankhya wala rajya",
+"bharat ka sabse badi aabadi wala state",
+"which state has the highest population in india",
+"uttar pradesh ki aabadi sabse zyada hai kya"
+],
+"hi": "2011 ki janganana ke hisaab se Uttar Pradesh Bharat ka sabse zyada aabadi wala rajya hai.",
+"en": "As per the 2011 census, Uttar Pradesh is the most populous state of India.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-animal",
+"q": [
+"india ka rashtriya janwar kaun sa hai",
+"national animal of india",
+"bharat ka rashtriya pashu kya hai",
+"india national animal kya hai",
+"what is the national animal of india",
+"rashtriya janwar kaun hai"
+],
+"hi": "Bharat ka rashtriya janwar Bengal tiger (baagh) hai.",
+"en": "The national animal of India is the Bengal tiger.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-anthem",
+"q": [
+"india ka rashtra gaan kya hai",
+"national anthem of india",
+"jana gana mana kisne likha",
+"bharat ka rashtriya gaan kaun sa hai",
+"who wrote the indian national anthem",
+"rashtra gan kisne likha"
+],
+"hi": "Bharat ka rashtra gaan Jana Gana Mana hai. Ise Rabindranath Tagore ne likha tha.",
+"en": "India's national anthem is Jana Gana Mana, written by Rabindranath Tagore.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-bird",
+"q": [
+"india ka rashtriya pakshi kaun sa hai",
+"national bird of india",
+"bharat ka rashtriya pakshi kya hai",
+"india national bird kya hai",
+"what is the national bird of india",
+"rashtriya pakshi kaun hai"
+],
+"hi": "Bharat ka rashtriya pakshi mor (Indian peacock) hai.",
+"en": "The national bird of India is the Indian peacock.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-flower",
+"q": [
+"india ka rashtriya phool kaun sa hai",
+"national flower of india",
+"bharat ka rashtriya phool kya hai",
+"india national flower kya hai",
+"what is the national flower of india",
+"rashtriya phool kaun sa hai"
+],
+"hi": "Bharat ka rashtriya phool kamal (lotus) hai.",
+"en": "The national flower of India is the lotus.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-fruit",
+"q": [
+"india ka rashtriya phal kaun sa hai",
+"national fruit of india",
+"bharat ka rashtriya phal kya hai",
+"india national fruit kya hai",
+"what is the national fruit of india",
+"rashtriya phal kaun sa hai"
+],
+"hi": "Bharat ka rashtriya phal aam (mango) hai.",
+"en": "The national fruit of India is the mango.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-language",
+"q": [
+"india ki rashtriya bhasha kya hai",
+"national language of india",
+"bharat ki rashtra bhasha kaun si hai",
+"kya hindi rashtriya bhasha hai",
+"is hindi the national language of india",
+"india mein kitni official languages hain"
+],
+"hi": "Bharat ke Samvidhan mein koi rashtriya bhasha tay nahi hai. Kendra sarkar ki official bhashayein Hindi aur Angrezi hain, aur Aathvi Anusuchi mein 22 bhashayein hain.",
+"en": "India's Constitution names no national language. Hindi and English are the official languages of the Union government, and 22 languages are listed in the Eighth Schedule.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-song",
+"q": [
+"india ka rashtriya geet kya hai",
+"national song of india",
+"vande mataram kisne likha",
+"bharat ka rashtriya geet kaun sa hai",
+"who wrote vande mataram",
+"rashtriya geet kisne likha"
+],
+"hi": "Bharat ka rashtriya geet Vande Mataram hai. Ise Bankim Chandra Chatterjee ne likha tha.",
+"en": "India's national song is Vande Mataram, written by Bankim Chandra Chatterjee.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-national-tree",
+"q": [
+"india ka rashtriya ped kaun sa hai",
+"national tree of india",
+"bharat ka rashtriya vriksh kya hai",
+"india national tree kya hai",
+"what is the national tree of india",
+"rashtriya ped kaun sa hai"
+],
+"hi": "Bharat ka rashtriya ped bargad (banyan) hai.",
+"en": "The national tree of India is the banyan.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-neighbours",
+"q": [
+"india ke padosi desh kaun se hain",
+"neighbouring countries of india",
+"bharat ki seema kin deshon se lagti hai",
+"which countries share a land border with india",
+"india ke padosi mulk",
+"bharat ke padosi deshon ke naam"
+],
+"hi": "Bharat ki zameen ki seema Pakistan, China, Nepal, Bhutan, Bangladesh aur Myanmar se lagti hai.",
+"en": "India shares land borders with Pakistan, China, Nepal, Bhutan, Bangladesh and Myanmar.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-parliament",
+"q": [
+"sansad mein kitne sadan hote hain",
+"lok sabha mein kitni seats hain",
+"how many seats in lok sabha",
+"rajya sabha mein kitne sadasya hote hain",
+"indian parliament houses",
+"lok sabha aur rajya sabha kya hai"
+],
+"hi": "Bharat ki Sansad ke do sadan hain: Lok Sabha (543 nirvachit seat) aur Rajya Sabha (adhiktam 250 sadasya).",
+"en": "India's Parliament has two houses: the Lok Sabha (543 elected seats) and the Rajya Sabha (a maximum of 250 members).",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-pin-code",
+"q": [
+"pin code mein kitne digit hote hain",
+"pin code kya hota hai",
+"how many digits in an indian pin code",
+"what is a pin code",
+"postal pin code kitne number ka hota hai",
+"pincode ka matlab"
+],
+"hi": "Bharat ka PIN code 6 ank ka hota hai. Pehla ank ilake (zone) ko dikhata hai aur aakhri ank us dak ghar ko.",
+"en": "An Indian PIN code has 6 digits. The first digit shows the postal zone and the last digits point to the delivery post office.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-red-fort",
+"q": [
+"lal qila kahan hai",
+"lal kila kisne banwaya",
+"who built the red fort",
+"where is the red fort",
+"red fort kahan hai",
+"lal qila ke baare mein batao"
+],
+"hi": "Lal Qila Delhi mein hai. Ise Mughal badshah Shah Jahan ne lal balua pathar se banwaya tha, aur 15 August ko pradhanmantri yahin se tiranga fahrate hain.",
+"en": "The Red Fort is in Delhi. The Mughal emperor Shah Jahan built it from red sandstone, and the Prime Minister hoists the flag there on 15 August.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-republic-day",
+"q": [
+"gantantra diwas kab manaya jata hai",
+"republic day kab hai",
+"26 january 1950 ko kya hua tha",
+"26 january kyun manate hain",
+"why is republic day celebrated on 26 january",
+"republic day kyun manaya jata hai"
+],
+"hi": "26 January 1950 ko Bharat ka Samvidhan lagu hua aur Bharat gantantra bana. Isliye har saal 26 January ko Gantantra Diwas manate hain.",
+"en": "The Constitution of India came into effect on 26 January 1950 and India became a republic. That is why Republic Day is celebrated on 26 January.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-smallest-state",
+"q": [
+"india ka sabse chhota rajya kaun sa hai",
+"smallest state in india",
+"kshetrafal mein sabse chhota rajya",
+"bharat ka sabse chota state kaun sa hai",
+"which is the smallest state of india",
+"goa kitna bada rajya hai"
+],
+"hi": "Kshetrafal ke hisaab se Goa Bharat ka sabse chhota rajya hai.",
+"en": "By area, Goa is the smallest state of India.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-states-count",
+"q": [
+"india mein kul kitne rajya hain",
+"how many states in india",
+"bharat mein kitne states hain",
+"number of states in india",
+"kul kitne rajya aur kendra shasit pradesh hain",
+"how many states and union territories does india have"
+],
+"hi": "Bharat mein 28 rajya aur 8 kendra shasit pradesh (union territory) hain.",
+"en": "India has 28 states and 8 union territories.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-states-list",
+"q": [
+"india ke saare rajyon ke naam",
+"list of all states in india",
+"bharat ke rajyon ki list",
+"names of indian states",
+"28 rajya kaun kaun se hain",
+"india ke states ke naam batao"
+],
+"hi": "28 rajya: Andhra Pradesh, Arunachal Pradesh, Assam, Bihar, Chhattisgarh, Goa, Gujarat, Haryana, Himachal Pradesh, Jharkhand, Karnataka, Kerala, Madhya Pradesh, Maharashtra, Manipur, Meghalaya, Mizoram, Nagaland, Odisha, Punjab, Rajasthan, Sikkim, Tamil Nadu, Telangana, Tripura, Uttar Pradesh, Uttarakhand, West Bengal.",
+"en": "The 28 states: Andhra Pradesh, Arunachal Pradesh, Assam, Bihar, Chhattisgarh, Goa, Gujarat, Haryana, Himachal Pradesh, Jharkhand, Karnataka, Kerala, Madhya Pradesh, Maharashtra, Manipur, Meghalaya, Mizoram, Nagaland, Odisha, Punjab, Rajasthan, Sikkim, Tamil Nadu, Telangana, Tripura, Uttar Pradesh, Uttarakhand, West Bengal.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-taj-mahal",
+"q": [
+"taj mahal kahan hai",
+"taj mahal kisne banwaya",
+"who built the taj mahal",
+"where is the taj mahal",
+"taj mahal kab bana",
+"taj mahal ke baare mein batao"
+],
+"hi": "Taj Mahal Agra (Uttar Pradesh) mein Yamuna nadi ke kinare hai. Ise Mughal badshah Shah Jahan ne apni begum Mumtaz Mahal ki yaad mein banwaya tha.",
+"en": "The Taj Mahal is in Agra, Uttar Pradesh, on the banks of the Yamuna. The Mughal emperor Shah Jahan built it in memory of his wife Mumtaz Mahal.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-time-zone",
+"q": [
+"india ka time zone kya hai",
+"ist ka matlab kya hai",
+"india standard time utc se kitna aage hai",
+"what is ist",
+"indian time zone kya hai",
+"india mein kitne time zone hain"
+],
+"hi": "Bharat ka standard samay IST (Indian Standard Time) hai, jo UTC se 5 ghante 30 minute aage hai. Poore desh mein ek hi samay chalta hai.",
+"en": "Indian Standard Time (IST) is UTC plus 5 hours 30 minutes. The whole country follows this one time zone.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-upi",
+"q": [
+"upi kya hai",
+"upi se paise kaise bhejte hain",
+"what is upi",
+"upi ka full form",
+"upi pin kya hota hai",
+"upi payment kaise kaam karta hai"
+],
+"hi": "UPI se aap phone se seedhe bank khate se paise bhej sakte ho. UPI PIN sirf paise bhejne ke waqt daalna hota hai, paise lene ke liye nahi. PIN kisi ko mat batao.",
+"en": "UPI lets you send money straight from your bank account using your phone. The UPI PIN is needed only to send money, never to receive it. Never share your PIN with anyone.",
+"tags": [
+"india",
+"safety"
+]
+},
+{
+"id": "india-uts-list",
+"q": [
+"india ke kendra shasit pradesh kaun se hain",
+"union territories of india list",
+"bharat ke 8 union territory ke naam",
+"names of union territories in india",
+"kendra shasit pradesh ke naam batao",
+"list of union territories"
+],
+"hi": "8 kendra shasit pradesh: Andaman aur Nicobar Islands, Chandigarh, Dadra aur Nagar Haveli aur Daman aur Diu, Delhi, Jammu aur Kashmir, Ladakh, Lakshadweep, Puducherry.",
+"en": "The 8 union territories: Andaman and Nicobar Islands, Chandigarh, Dadra and Nagar Haveli and Daman and Diu, Delhi, Jammu and Kashmir, Ladakh, Lakshadweep and Puducherry.",
+"tags": [
+"india"
+]
+},
+{
+"id": "india-voting-age",
+"q": [
+"india mein vote dene ki umar kitni hai",
+"voting age in india",
+"kitne saal ki umar mein vote de sakte hain",
+"minimum age to vote in india",
+"matdan ki nyunatam aayu",
+"vote dene ki age kya hai"
+],
+"hi": "Bharat mein 18 saal ya usse zyada umar ke nagrik vote de sakte hain.",
+"en": "In India, citizens aged 18 or above can vote.",
+"tags": [
+"india"
+]
+},
+{
+"id": "math-area-circle",
+"q": [
+"circle ka area kaise nikalte hain",
+"area of a circle formula",
+"vritt ka kshetrafal",
+"gole ka kshetrafal kya hota hai",
+"how to find the area of a circle",
+"circle area formula"
+],
+"hi": "Vritt (circle) ka kshetrafal = pi x trijya x trijya, yani pi x r x r.",
+"en": "Area of a circle = pi x radius x radius, that is pi x r x r.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-area-rectangle",
+"q": [
+"rectangle ka area kaise nikalte hain",
+"area of a rectangle formula",
+"aayat ka kshetrafal",
+"rectangle ka kshetrafal kya hota hai",
+"how to find the area of a rectangle",
+"rectangle area formula"
+],
+"hi": "Aayat ka kshetrafal = lambai x chaudai.",
+"en": "Area of a rectangle = length x width.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-area-square",
+"q": [
+"square ka area kaise nikalte hain",
+"area of a square formula",
+"varg ka kshetrafal",
+"square ka kshetrafal kya hota hai",
+"how to find the area of a square",
+"square area formula"
+],
+"hi": "Varg (square) ka kshetrafal = bhuja x bhuja.",
+"en": "Area of a square = side x side.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-area-triangle",
+"q": [
+"triangle ka area kaise nikalte hain",
+"area of a triangle formula",
+"tribhuj ka kshetrafal",
+"triangle ka kshetrafal kya hota hai",
+"how to find the area of a triangle",
+"triangle area formula"
+],
+"hi": "Tribhuj ka kshetrafal = aadha x aadhar x unchai.",
+"en": "Area of a triangle = half x base x height.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-average",
+"q": [
+"average kaise nikalte hain",
+"ausat ka formula kya hai",
+"how to calculate average",
+"average formula",
+"mean kaise nikalte hain",
+"ausat nikalne ka tareeka"
+],
+"hi": "Ausat = sab sankhyaon ka jod / sankhyaon ki ginti. Jaise 4, 6 aur 8 ka ausat = 18 / 3 = 6.",
+"en": "Average = sum of all the numbers / how many numbers there are. For example the average of 4, 6 and 8 is 18 / 3 = 6.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-bodmas",
+"q": [
+"bodmas kya hai",
+"bodmas ka rule",
+"what is bodmas",
+"order of operations in maths",
+"pemdas kya hota hai",
+"sankhyaon ke sawal mein pehle kya karein"
+],
+"hi": "BODMAS ka kram: Brackets, Orders (ghaat), Division, Multiplication, Addition, Subtraction. Pehle bracket, phir ghaat, phir bhaag aur guna, aakhir mein jod aur ghata (baayen se daayen).",
+"en": "BODMAS is the order of operations: Brackets, Orders (powers), Division, Multiplication, Addition, Subtraction. Do brackets first, then powers, then division and multiplication, and addition and subtraction last, left to right.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-celsius-fahrenheit-formula",
+"q": [
+"celsius ko fahrenheit mein kaise badalte hain",
+"fahrenheit ko celsius mein kaise badlein",
+"celsius fahrenheit ka formula",
+"formula to change celsius to fahrenheit",
+"temperature scale badalne ka formula",
+"c se f ka formula"
+],
+"hi": "Celsius se Fahrenheit: C x 9 / 5 + 32. Fahrenheit se Celsius: (F - 32) x 5 / 9.",
+"en": "Celsius to Fahrenheit: C x 9 / 5 + 32. Fahrenheit to Celsius: (F - 32) x 5 / 9.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-circumference",
+"q": [
+"circle ki paridhi kaise nikalte hain",
+"circumference of a circle formula",
+"vritt ki paridhi kya hoti hai",
+"circle ka perimeter",
+"how to find the circumference of a circle",
+"paridhi ka formula"
+],
+"hi": "Vritt ki paridhi = 2 x pi x trijya.",
+"en": "Circumference of a circle = 2 x pi x radius.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-compound-interest",
+"q": [
+"compound interest ka formula kya hai",
+"chakravriddhi byaj kaise nikalte hain",
+"compound interest formula",
+"how to calculate compound interest",
+"ci ka formula batao",
+"chakravridhi byaj ka formula"
+],
+"hi": "Chakravriddhi byaj mein mishradhan A = P x (1 + r/100) ki ghaat n hoti hai, jahan P mool dhan, r saalana dar aur n saal hain. Byaj = A - P.",
+"en": "In compound interest the amount A = P x (1 + r/100) raised to the power n, where P is the principal, r the yearly rate and n the years. Interest = A - P.",
+"tags": [
+"math",
+"finance"
+]
+},
+{
+"id": "math-discount-formula",
+"q": [
+"discount kaise nikalte hain",
+"chhoot ka formula kya hai",
+"how to calculate discount",
+"discount percentage formula",
+"chhoot ke baad rate kaise nikalte hain",
+"chhoot ke baad kimat kaise nikalein"
+],
+"hi": "Chhoot ki rakam = mool mulya x chhoot percent / 100. Bikri mulya = mool mulya - chhoot ki rakam.",
+"en": "Discount amount = original price x discount percent / 100. Sale price = original price - discount amount.",
+"tags": [
+"math",
+"finance"
+]
+},
+{
+"id": "math-even-odd",
+"q": [
+"even odd number kya hote hain",
+"sam aur visham sankhya kya hoti hai",
+"what are even and odd numbers",
+"even number kise kehte hain",
+"odd number kya hota hai",
+"even aur odd mein kya fark hai"
+],
+"hi": "Jo sankhya 2 se poori bhaag ho wo sam (even) hai, jaise 2, 4, 6. Baaki visham (odd) hain, jaise 1, 3, 5.",
+"en": "A number that divides exactly by 2 is even, like 2, 4, 6. The rest are odd, like 1, 3, 5.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-fraction-percent",
+"q": [
+"fraction ko percentage mein kaise badlein",
+"bhinn ko pratishat mein kaise badalte hain",
+"how to convert a fraction to a percentage",
+"fraction to percent",
+"decimal ko percent mein kaise badlein",
+"fraction se percent nikalna"
+],
+"hi": "Bhinn ko pratishat banane ke liye upar wali sankhya ko neeche wali se bhaag do aur 100 se guna karo. Jaise 3/4 = 0.75 x 100 = 75 percent.",
+"en": "To turn a fraction into a percentage, divide the top number by the bottom number and multiply by 100. For example 3/4 = 0.75 x 100 = 75 percent.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-lakh-crore",
+"q": [
+"1 lakh mein kitne hazaar hote hain",
+"crore mein kitne lakh hote hain",
+"lakh crore million billion ka relation",
+"ek crore mein kitne lakh",
+"1 million mein kitne lakh hote hain",
+"how many lakhs make a crore"
+],
+"hi": "1 lakh = 1,00,000 (100 hazaar). 1 crore = 100 lakh = 1,00,00,000. 1 million = 10 lakh aur 1 billion = 100 crore.",
+"en": "1 lakh = 100,000. 1 crore = 100 lakh = 10,000,000. 1 million = 10 lakh and 1 billion = 100 crore.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-lcm-hcf",
+"q": [
+"lcm aur hcf kya hote hain",
+"lcm kaise nikalte hain",
+"hcf kaise nikalte hain",
+"what are lcm and hcf",
+"how to find the lcm",
+"lasaapavartya aur mahattam samapavartak"
+],
+"hi": "LCM wo sabse chhoti sankhya hai jo dono sankhyaon se poori bhaag ho. HCF wo sabse badi sankhya hai jo dono ko poora bhaag kare. Dono ka sambandh: LCM x HCF = pehli sankhya x doosri sankhya.",
+"en": "The LCM is the smallest number divisible by both numbers. The HCF is the largest number that divides both. For two numbers, LCM x HCF = first number x second number.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-leap-year",
+"q": [
+"leap year kaise pehchante hain",
+"leap year ka rule kya hai",
+"kaun sa saal leap year hota hai",
+"how do you know if a year is a leap year",
+"leap year rule",
+"adhik varsh kise kehte hain"
+],
+"hi": "Jo saal 4 se bhaag ho wo leap year hai, par sau wale saal (jaise 1900) tab tak nahi jab tak 400 se bhaag na hon. Isliye 2000 leap year tha aur 1900 nahi.",
+"en": "A year divisible by 4 is a leap year, but century years like 1900 are leap years only if divisible by 400. So 2000 was a leap year and 1900 was not.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-length-units",
+"q": [
+"1 km mein kitne meter hote hain",
+"kilometre aur meter ka sambandh",
+"meter mein kitne centimetre hote hain",
+"1 meter mein kitne cm",
+"length ki units ka relation",
+"lambai ki ikaiyan kaun si hain"
+],
+"hi": "1 kilometre = 1000 meter, 1 meter = 100 centimetre aur 1 centimetre = 10 millimetre.",
+"en": "1 kilometre = 1000 metres, 1 metre = 100 centimetres and 1 centimetre = 10 millimetres.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-percentage",
+"q": [
+"percentage kaise nikalte hain",
+"percentage ka formula kya hai",
+"how to calculate percentage",
+"percentage formula",
+"pratishat kaise nikalte hain",
+"percent nikalne ka tareeka"
+],
+"hi": "Pratishat = (hissa / kul) x 100. Jaise 20 mein se 5 ka pratishat = 5 / 20 x 100 = 25.",
+"en": "Percentage = (part / whole) x 100. For example 5 out of 20 is 5 / 20 x 100 = 25 percent.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-perimeter-rectangle",
+"q": [
+"rectangle ka perimeter kaise nikalte hain",
+"perimeter of a rectangle formula",
+"aayat ki paridhi",
+"rectangle ki paridhi kya hoti hai",
+"how to find the perimeter of a rectangle",
+"rectangle perimeter formula"
+],
+"hi": "Aayat ki paridhi = 2 x (lambai + chaudai).",
+"en": "Perimeter of a rectangle = 2 x (length + width).",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-pi",
+"q": [
+"pi ki value kitni hoti hai",
+"pi kya hota hai",
+"what is the value of pi",
+"value of pi kya hai",
+"pai ka maan kitna hota hai",
+"what is pi in maths"
+],
+"hi": "Pi vritt ki paridhi aur vyas ka anupat hai. Iska maan lagbhag 3.14159 hai (aksar 3.14 ya 22/7 liya jata hai).",
+"en": "Pi is the ratio of a circle's circumference to its diameter. Its value is about 3.14159 (often taken as 3.14 or 22/7).",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-prime",
+"q": [
+"prime number kya hota hai",
+"ghatak sankhya kise kehte hain",
+"what is a prime number",
+"prime number ki definition",
+"abhajya sankhya kya hoti hai",
+"first few prime numbers"
+],
+"hi": "Abhajya (prime) sankhya wo hai jo sirf 1 aur khud se bhaag hoti hai, jaise 2, 3, 5, 7, 11. 2 sabse chhoti prime hai aur ekmatra even prime bhi.",
+"en": "A prime number is divisible only by 1 and itself, like 2, 3, 5, 7, 11. 2 is the smallest prime and the only even prime.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-pythagoras",
+"q": [
+"pythagoras theorem kya hai",
+"pythagoras ka niyam",
+"pythagorean theorem formula",
+"what is the pythagoras theorem",
+"samkon tribhuj ka pythagoras prameya",
+"pythagoras formula batao"
+],
+"hi": "Samkon tribhuj mein karn ka varg baaki do bhujaon ke vargon ke jod ke barabar hota hai: a x a + b x b = c x c, jahan c sabse badi bhuja (karn) hai.",
+"en": "In a right-angled triangle the square of the hypotenuse equals the sum of the squares of the other two sides: a x a + b x b = c x c, where c is the longest side.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-roman-numerals",
+"q": [
+"roman numerals kya hote hain",
+"roman numbers kaise likhte hain",
+"roman numeral ke symbols",
+"what are roman numerals",
+"roman v x l c d m ka matlab",
+"roman ank kaise likhte hain"
+],
+"hi": "Roman ank: I=1, V=5, X=10, L=50, C=100, D=500, M=1000. Chhota ank bade ke pehle ho to ghatate hain (IV=4), baad mein ho to jodte hain (VI=6).",
+"en": "Roman numerals: I=1, V=5, X=10, L=50, C=100, D=500, M=1000. A smaller symbol before a larger one is subtracted (IV=4), after it is added (VI=6).",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-simple-interest",
+"q": [
+"simple interest ka formula kya hai",
+"sadharan byaj kaise nikalte hain",
+"simple interest formula",
+"how to calculate simple interest",
+"sa byaj ka formula",
+"si ka formula batao"
+],
+"hi": "Sadharan byaj (SI) = (mool dhan x dar x samay) / 100, jahan dar saalana percent mein aur samay saal mein ho.",
+"en": "Simple interest (SI) = (principal x rate x time) / 100, with the rate in percent per year and time in years.",
+"tags": [
+"math",
+"finance"
+]
+},
+{
+"id": "math-speed-distance-time",
+"q": [
+"speed distance formula batao",
+"chaal doori aur samay ka sambandh",
+"speed kaise nikalte hain",
+"formula of speed distance and time",
+"raftaar kaise nikalte hain",
+"how to calculate speed"
+],
+"hi": "Chaal = doori / samay. Isi se doori = chaal x samay aur samay = doori / chaal.",
+"en": "Speed = distance / time. From it, distance = speed x time and time = distance / speed.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-square-cube",
+"q": [
+"square aur cube kya hote hain",
+"varg aur ghan kya hota hai",
+"what are squares and cubes",
+"cube number kya hota hai",
+"ghan kise kehte hain",
+"square number aur cube number mein fark"
+],
+"hi": "Kisi sankhya ka varg = wo sankhya x wohi sankhya, jaise 5 ka varg 25. Ghan = sankhya x sankhya x sankhya, jaise 3 ka ghan 27.",
+"en": "The square of a number is the number times itself, like 25 for 5. The cube is the number times itself three times, like 27 for 3.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-time-units",
+"q": [
+"1 ghante mein kitne minute hote hain",
+"ek din mein kitne ghante hote hain",
+"1 minute mein kitne second hote hain",
+"1 saal mein kitne hafte hote hain",
+"samay ki ikaiyan kaun si hain",
+"ghanta minute second ka relation"
+],
+"hi": "1 minute = 60 second, 1 ghanta = 60 minute, 1 din = 24 ghante, 1 hafta = 7 din aur 1 saal = 365 din (leap year mein 366).",
+"en": "1 minute = 60 seconds, 1 hour = 60 minutes, 1 day = 24 hours, 1 week = 7 days and 1 year = 365 days (366 in a leap year).",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-volume-formulas",
+"q": [
+"cube ka volume kaise nikalte hain",
+"volume of a cuboid formula",
+"ghanabh ka ayatan kaise nikalein",
+"volume of a cube",
+"sphere aur cylinder ka volume",
+"ayatan ke formula kya hain"
+],
+"hi": "Ghan (cube) ka ayatan = bhuja ki teesri ghaat, ghanabh = lambai x chaudai x unchai, belan = pi x r x r x unchai, gola = 4/3 x pi x r ki teesri ghaat.",
+"en": "Volume of a cube = side cubed, cuboid = length x width x height, cylinder = pi x r x r x height, sphere = 4/3 x pi x r cubed.",
+"tags": [
+"math"
+]
+},
+{
+"id": "math-weight-units",
+"q": [
+"1 kg mein kitne gram hote hain",
+"kilogram aur gram ka sambandh",
+"1 quintal mein kitne kg hote hain",
+"1 ton mein kitne kilo hote hain",
+"weight ki units ka relation",
+"vajan ki ikaiyan kaun si hain"
+],
+"hi": "1 kilogram = 1000 gram, 1 quintal = 100 kilogram aur 1 ton = 1000 kilogram.",
+"en": "1 kilogram = 1000 grams, 1 quintal = 100 kilograms and 1 tonne = 1000 kilograms.",
+"tags": [
+"math"
+]
+},
+{
+"id": "nova-accessibility",
+"q": [
+"accessibility on kaise karein",
+"how to enable accessibility for nova",
+"accessibility ka kya fayda hai nova mein",
+"restricted settings allow kaise karein",
+"nova ko accessibility permission kaise dein",
+"why does nova need accessibility"
+],
+"hi": "Accessibility Home, Back, tap aur screen padhne jaise kaam ke liye hai. Android 13+ par pehle APP INFO mein jao, upar teen dot dabao, Allow restricted settings chuno. Phir ACCESSIBILITY ON KARO mein NOVA ko ON karo.",
+"en": "Accessibility is for tasks like Home, Back, tapping and reading the screen. On Android 13+ first open APP INFO, tap the three dots and choose Allow restricted settings. Then use ACCESSIBILITY ON KARO and turn NOVA on.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-analyze-screen",
+"q": [
+"analyze command kya karta hai",
+"what does the analyze command do",
+"nova display ka deep analysis kaise karta hai",
+"deep analysis kab hota hai",
+"nova mere display ko kab padhta hai",
+"analyse command ka matlab"
+],
+"hi": "Analyze screen sirf tab chalta hai jab aap khud bolo, aur AI key ho. Tab password-free screen text AI ko jaata hai. Iske liye Accessibility ON honi chahiye.",
+"en": "Analyze screen runs only when you say it yourself and an AI key exists. Then password-free screen text goes to the AI. Accessibility must be ON for it.",
+"tags": [
+"nova",
+"privacy"
+]
+},
+{
+"id": "nova-chat",
+"q": [
+"nova se likhkar kaise poochein",
+"can i type to nova",
+"nova chat kaise kholte hain",
+"nova ko text mein sawaal kaise bhejein",
+"chat box kahan hai nova mein",
+"nova mein typing se baat kaise karein"
+],
+"hi": "Home par CHAT dabao aur NOVA CHAT mein apna sawaal likho ya mic dabao. Jawab wahin dikhta hai.",
+"en": "Press CHAT on the home screen and type your question in NOVA CHAT, or press the mic. The answer appears there.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-confirm-yes",
+"q": [
+"nova kaam karne se pehle poochta kyun hai",
+"why does nova ask yes or no",
+"risky kaam ke pehle haan kyun bolna padta hai",
+"nova ki confirmation kaise kaam karti hai",
+"nova ka yes confirmation kitni der rehta hai",
+"call karne se pehle nova kya poochta hai"
+],
+"hi": "Call ya WhatsApp bhejne jaise risky kaam se pehle NOVA bol kar poochta hai aur sirf aapka saaf haan sunkar hi karta hai. Saaf na ho to ise na maana jata hai. Jawab ke liye 30 second milte hain.",
+"en": "Before risky actions like a call or sending a WhatsApp message NOVA asks aloud and acts only on a clear spoken yes. An unclear answer counts as no. You have 30 seconds to answer.",
+"tags": [
+"nova",
+"safety"
+]
+},
+{
+"id": "nova-default-assistant",
+"q": [
+"nova ko default assistant kaise banayein",
+"how to set nova as default assistant",
+"power button dabake nova kaise jagayein",
+"home button se nova kaise kholein",
+"digital assistant app mein nova kaise chunein",
+"default assistant ka matlab kya hai"
+],
+"hi": "Update Center mein Default assistant dabao, phir Settings ke Digital assistant app mein NOVA chuno. Uske baad Home ya power button dabake rakhne par NOVA jaag jata hai.",
+"en": "Press Default assistant in the Update Center, then choose NOVA under Digital assistant app in Settings. After that, holding the Home or power button wakes NOVA.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-driving-mode",
+"q": [
+"gaadi chalate waqt nova kaise use karein",
+"nova drive karte waqt messages kaise padhta hai",
+"how does nova help while driving",
+"gaadi chalate waqt messages kaise sunein",
+"nova se message kaise padhwayein",
+"read messages aloud while driving"
+],
+"hi": "Bolo driving mode on. Phir NOVA WhatsApp, Telegram aur Messages ke naye message padhta hai (read messages). Jawab ke liye reply driving, reply busy ya reply likho bolo, aur bhejne se pehle aapka haan chahiye; band karne ke liye driving mode off.",
+"en": "Say driving mode on. NOVA then reads new messages from WhatsApp, Telegram and Messages (read messages). To answer say reply driving, reply busy or reply likho, which needs your yes before sending; say driving mode off to stop.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-free-online-ai",
+"q": [
+"free online ai kya hai",
+"nova ka free ai kaise kaam karta hai",
+"what is free online ai in nova",
+"groq openrouter pollinations kya hai",
+"free ai on karne se kya hota hai",
+"bina gemini ke nova jawab kaise deta hai"
+],
+"hi": "FREE ONLINE AI box mein switch ON karo to Gemini na ho ya fail ho jaye tab NOVA Groq, OpenRouter aur Pollinations try karta hai. Sirf aapka bola hua sawaal text mein jaata hai. Pakka free rasta Groq ya OpenRouter key hai; Pollinations bina key fail ho sakta hai.",
+"en": "Switch ON the FREE ONLINE AI box and, when Gemini is missing or fails, NOVA tries Groq, OpenRouter and Pollinations. Only your spoken question is sent, as text. The sure free route is a Groq or OpenRouter key; Pollinations without a key can fail.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-gemini-key",
+"q": [
+"gemini api key kaise daalte hain",
+"how to add a gemini key in nova",
+"gemini key kahan daalni hai",
+"nova mein api key save kaise karein",
+"gemini key ka istemal kya hai",
+"keys save kaise karein"
+],
+"hi": "Settings mein GEMINI API KEYS box mein key paste karo (ek line mein ek key) aur KEYS SAVE dabao. Key Android Keystore mein encrypted rehti hai aur screen par wapas nahi dikhti.",
+"en": "In Settings paste your key into the GEMINI API KEYS box (one key per line) and press KEYS SAVE. The key is stored encrypted in the Android Keystore and is never shown again.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-groq-key",
+"q": [
+"groq key kya hai",
+"groq key kyun daalein",
+"what is the groq key for",
+"hindi samajhne ke liye kaun si key daalein",
+"groq save kaise karein",
+"better hindi listening ke liye kya karein"
+],
+"hi": "Groq key Hindi aur Hinglish behtar samajhne ke liye hai. GROQ KEY box mein paste karke GROQ SAVE dabao. Key hone par aapki awaaz internet se Groq ko jaati hai, aur wahi key free online text jawab mein bhi kaam aati hai.",
+"en": "The Groq key helps NOVA understand Hindi and Hinglish better. Paste it in the GROQ KEY box and press GROQ SAVE. With a key saved your voice goes over the internet to Groq, and the same key also serves the free online text answers.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-keep-alive",
+"q": [
+"nova background mein band ho jata hai",
+"nova ko hamesha chalu kaise rakhein",
+"how to keep nova running in the background",
+"nova apne aap band kyun ho jata hai",
+"phone nova ko kill kar deta hai kya karein",
+"nova ka notification kyun dikhta hai"
+],
+"hi": "Ye aam Android salah hai: NOVA ka notification chalne dein, app ki power setting Unrestricted karein, aur kuch brands (Xiaomi, Oppo, Vivo, Samsung) mein Autostart ya background allow karein. Menu ke naam brand ke hisaab se badalte hain.",
+"en": "This is general Android advice: let NOVA's notification stay, set the app's power usage to Unrestricted, and on some brands such as Xiaomi, Oppo, Vivo and Samsung allow autostart or background activity. Menu names vary by brand.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-knowledge-pack",
+"q": [
+"nova offline kaun se sawaalon ke jawab de sakta hai",
+"what questions can nova answer offline",
+"nova ka knowledge pack kya hai",
+"nova general knowledge ke sawaal jaanta hai kya",
+"offline gk ke jawab nova kaise deta hai",
+"nova ke andar kya jankari bani hui hai"
+],
+"hi": "NOVA mein India, vigyan, sehat, ganit, rozmarra aur khud NOVA ke baare mein kuch sawaalon ke jawab bundled hain, jo bina internet ke milte hain. Ye sirf text jawab hain, koi action nahi karte. Aaj ki khabar ya bhav jaise live sawaal online jaate hain.",
+"en": "NOVA bundles answers about India, science, health, maths, daily life and NOVA itself, available without the internet. They are text only and never perform actions. Live questions like today's news or prices go online instead.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-language",
+"q": [
+"nova ki bhasha kaise badlein",
+"how to change nova's language",
+"nova hindi mein jawab kaise de",
+"nova english mein kaise bole",
+"awaaz ki bhasha kya hai",
+"nova ka jawab english mein kaise milega"
+],
+"hi": "Settings mein AWAAZ KI BHASHA se Hindi ya English chuno. Usi ke hisaab se NOVA jawab deta hai.",
+"en": "Choose Hindi or English under AWAAZ KI BHASHA in Settings. NOVA answers in that language.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-no-key-needed",
+"q": [
+"kya nova chalane ke liye api key chahiye",
+"does nova need an api key",
+"nova activate karne ke liye key zaroori hai kya",
+"bina key ke nova chalega",
+"nova ke liye key kyun chahiye",
+"is an api key required for nova"
+],
+"hi": "Nahi. ACTIVATE karne aur phone commands ke liye koi key nahi chahiye. Key sirf lambe sawaal, web search aur deep screen analysis jaise optional kaam ke liye hai.",
+"en": "No. You need no key to activate NOVA or to run phone commands. A key is only for optional things like long questions, web search and deep screen analysis.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-offline-model",
+"q": [
+"offline brain kya hai",
+"nova ka offline model kaise download karein",
+"what is the offline model in nova",
+"qwen offline model kya hai",
+"bina internet ke ai jawab kaise milein",
+"offline brain download kitna bada hai"
+],
+"hi": "Optional offline model (Qwen2.5-0.5B, lagbhag 491 MB) Update Center mein OFFLINE BRAIN se Wi-Fi par download hota hai. Ye chhota model hai, galti kar sakta hai aur kabhi koi kaam khud nahi karta.",
+"en": "The optional offline model (Qwen2.5-0.5B, about 491 MB) downloads over Wi-Fi from OFFLINE BRAIN in the Update Center. It is small, can make mistakes and never performs any action by itself.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-offline-works",
+"q": [
+"nova bina internet ke kya kya karta hai",
+"what works offline in nova",
+"offline mein nova kya kar sakta hai",
+"internet na ho to nova kaam karega kya",
+"does nova work without internet",
+"nova offline commands"
+],
+"hi": "Bina internet ke torch, volume, brightness, battery, samay aur tarikh, app kholna, timer, calculation, unit badalna aur pehli madad ke jawab chalte hain. Lambe khule sawal aur web search ke liye internet aur key chahiye.",
+"en": "Without internet these work: torch, volume, brightness, battery, time and date, opening apps, timers, calculations, unit conversion and first-aid answers. Long open questions and web search need the internet and a key.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-permissions",
+"q": [
+"nova kaun kaun si permissions maangta hai",
+"what permissions does nova need",
+"contacts brightness popup permission kya hai",
+"nova permissions kyun maangta hai",
+"allow contacts allow brightness kab dabayein",
+"nova ki permission list"
+],
+"hi": "Mic aur notification ke alawa baaki permissions tabhi maangi jaati hain jab aap Settings mein tap karo: ALLOW CONTACTS (naam se call ya message), ALLOW BRIGHTNESS (roshni badalna) aur ALLOW POPUP.",
+"en": "Apart from the microphone and notifications, permissions are asked only when you tap them in Settings: ALLOW CONTACTS (call or message by name), ALLOW BRIGHTNESS (change brightness) and ALLOW POPUP.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-personal-memory",
+"q": [
+"nova ko kuch yaad kaise rakhwayein",
+"how to make nova remember something",
+"nova mujhe kya yaad hai kaise poochein",
+"nova bhool ja kaise bolein",
+"personal memory kaise kaam karti hai",
+"nova ki yaad ki baatein kahan save hoti hain"
+],
+"hi": "Bolo: nova yaad rakh mera naam Shiv hai; dekhne ke liye nova mujhe kya yaad hai; hatane ke liye nova bhool ja mera naam ya nova sab bhool ja. Ye sirf phone mein rehta hai, aur password, OTP, PIN, card ya ID number NOVA yaad nahi rakhta.",
+"en": "Say: nova yaad rakh mera naam Shiv hai; to see it say nova mujhe kya yaad hai; to remove it say nova bhool ja mera naam or nova sab bhool ja. It stays on the phone only, and NOVA does not keep passwords, OTPs, PINs, cards or ID numbers.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-privacy",
+"q": [
+"nova mera data kahan bhejta hai",
+"is nova private",
+"nova privacy kaisi hai",
+"does nova upload my data",
+"nova kya cloud par bhejta hai",
+"mera data nova ke saath safe hai kya"
+],
+"hi": "Phone commands, shortcuts aur yaad ki baatein phone ke andar hi rehti hain. Screen ka text tabhi jaata hai jab aap bolo analyze screen aur key ho. Online AI ko sirf aapka sawaal jaata hai.",
+"en": "Phone commands, shortcuts and remembered facts stay on the phone. Screen text is sent only when you say analyze screen and a key exists. Online AI gets only your question.",
+"tags": [
+"nova",
+"privacy"
+]
+},
+{
+"id": "nova-quiet-mode",
+"q": [
+"nova jawab bolta kyun nahi",
+"how to hear nova replies aloud",
+"quiet mode kya hai",
+"nova ki awaaz mein jawab kaise sunein",
+"voice replies chalu kaise karein",
+"nova chup kyun hai"
+],
+"hi": "Shuru mein jawab chat mein dikhte hain, bole nahi jaate. Bolwane ke liye kaho voice replies on ya quiet mode off. Phir se chup karne ke liye quiet mode on kaho.",
+"en": "By default replies are shown in the chat and not spoken. To hear them say voice replies on or quiet mode off. To silence them again say quiet mode on.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-screen-monitoring",
+"q": [
+"monitoring feature kya hota hai nova mein",
+"monitoring feature ko on kaise karein",
+"what is the monitoring feature in nova",
+"nova mere display par error kaise batata hai",
+"monitoring ka matlab kya hai",
+"monitoring local hai ya cloud"
+],
+"hi": "Screen monitoring shuru mein OFF rehti hai. ON karne par ye phone ke andar hi screen par error ya warning dekhkar bol deta hai; kuch bhi cloud par nahi jaata. Iske liye Accessibility ON honi chahiye.",
+"en": "Screen monitoring is OFF by default. When on, it watches the screen for errors or warnings inside the phone and speaks up; nothing goes to the cloud. Accessibility must be ON for it.",
+"tags": [
+"nova",
+"privacy"
+]
+},
+{
+"id": "nova-self-test",
+"q": [
+"self test kya hai",
+"nova ka sab test karo kaise chalayein",
+"how to run the nova self test",
+"sab test karo button kya karta hai",
+"nova sahi chal raha hai ye kaise check karein",
+"self test mein kya hota hai"
+],
+"hi": "Settings mein SELF TEST ke SAB TEST KARO se chalao. Ye lagbhag 40 second leta hai: torch ek second jalegi, volume thoda badhega-ghategi aur Settings screen khulke wapas aayegi, par koi call, message ya payment nahi hota. COPY REPORT ya SHARE se report bhej sakte ho.",
+"en": "Run it from SAB TEST KARO in the SELF TEST box in Settings. It takes about 40 seconds: the torch lights for a second, the volume moves a little and a Settings screen opens and closes, but no call, message or payment is made. Use COPY REPORT or SHARE to send the report.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-shortcuts",
+"q": [
+"nova shortcut kaise seekhta hai",
+"nova ka shortcut kya hota hai",
+"how does nova learn shortcuts",
+"shortcut banau ka matlab kya hai",
+"nova naye shortcut kaise banata hai",
+"nova memory clear kaise karein"
+],
+"hi": "Aap koi phrase baar baar bolte ho to NOVA poochta hai ki shortcut bana du. Haan bolo to hi save hota hai. Shortcuts sirf phone mein rehte hain; Settings mein CLEAR MEMORY se sab hat jaate hain.",
+"en": "If you often say a phrase, NOVA asks whether to save it as a shortcut. It is saved only if you say yes. Shortcuts stay on the phone, and CLEAR MEMORY in Settings removes them all.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-sleep-mode",
+"q": [
+"nova neend mode mein kyun chala jata hai",
+"sleep mode kya hai nova mein",
+"what is sleep mode in nova",
+"nova sirf wake word par kyun jaagta hai",
+"kaam ke baad nova wapas so jata hai kya",
+"nova galat wake par kya karta hai"
+],
+"hi": "NOVA sirf wake word sunkar jaagta hai aur kaam khatam hote hi wapas so jata hai. Ek akeli awaaz ya shor se nahi jaagta, aur galat wake par chup-chaap so jata hai.",
+"en": "NOVA wakes only on the wake word and goes back to sleep when the job is done. A lone sound or noise does not wake it, and on a false wake it quietly goes back to sleep.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-stop-words",
+"q": [
+"nova ko chup kaise karayein",
+"how to make nova stop talking",
+"nova bol raha hai usse kaise rokein",
+"stop chup ruko kya karta hai",
+"nova ki awaaz band kaise karein",
+"nova ko beech mein kaise rokein"
+],
+"hi": "Bolo stop, chup ya ruko. NOVA turant bolna band kar deta hai. Home screen par CHUP button bhi hai.",
+"en": "Say stop, chup or ruko and NOVA stops speaking at once. There is also a CHUP button on the home screen.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-timer-help",
+"q": [
+"nova se timer kaise lagayein",
+"how to set a timer with nova",
+"timer lagane ka tareeka kya hai",
+"nova reminder kaise lagate hain",
+"timer ke liye kya bolna chahiye",
+"nova mein countdown kaise chalayein"
+],
+"hi": "Bolo: nova set a timer for five minutes, ya nova do minute ka timer laga do. Timer phone ke Clock app se chalta hai isliye NOVA so bhi raha ho to bajta hai. Alarm cancel karna abhi supported nahi hai.",
+"en": "Say: nova set a timer for five minutes, or nova do minute ka timer laga do. The phone's Clock app runs it, so it rings even if NOVA is asleep. Cancelling an alarm is not supported yet.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-update-center",
+"q": [
+"update center kya hai",
+"nova ko update kaise karein",
+"how does nova update itself",
+"nova ka sha 256 check kya hai",
+"update feed kya hota hai",
+"nova naya skill kaise add karta hai"
+],
+"hi": "NOVA khud kuch install nahi karta. Ye aapke diye feed link par naya skill, model ya app dhundta hai, pehle aapse poochta hai aur SHA-256 check hone ke baad hi add karta hai. App install ke liye ALLOW APP INSTALL chahiye.",
+"en": "NOVA never installs anything by itself. It looks for a new skill, model or app at the feed link you give, asks you first and adds it only after the SHA-256 check passes. Installing an app needs ALLOW APP INSTALL.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-voice-speed",
+"q": [
+"nova ki awaaz tez ya dheemi kaise karein",
+"how to change nova's voice speed",
+"nova ki pitch kaise badalte hain",
+"awaaz test kya hai",
+"nova ki bolne ki speed kaise badlein",
+"nova voice pitch setting"
+],
+"hi": "Settings mein BOLNE KI SPEED aur AWAAZ KI PITCH ke slider hilao, phir AWAAZ TEST dabake sunlo.",
+"en": "Move the BOLNE KI SPEED and AWAAZ KI PITCH sliders in Settings, then press AWAAZ TEST to listen.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-wake-word",
+"q": [
+"wake word kaise badlein",
+"how to change the wake word",
+"nova ka naam kaise badalte hain",
+"wake word kya hota hai",
+"jagane wala shabd kaise badlein",
+"change wake word in settings"
+],
+"hi": "Settings mein WAKE WORD box mein naya shabd likho: sirf English akshar, ek shabd, 3 se 12 akshar, aur wo Vosk dictionary mein hona chahiye. SAVE ke baad STOP dabake dobara ACTIVATE karo. Shabd na mila to NOVA khud nova use karega.",
+"en": "In Settings type a new word in the WAKE WORD box: English letters only, one word, 3 to 12 letters, and it must be in the Vosk dictionary. After saving press STOP and then ACTIVATE again. If the word is not found NOVA falls back to nova.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-what-is",
+"q": [
+"nova voice assistant kya hai",
+"what is the nova assistant",
+"nova app kya kaam karta hai",
+"nova assistant kya kar sakta hai",
+"what can the nova app do",
+"nova ke baare mein batao"
+],
+"hi": "NOVA ek Android voice assistant hai. Wake word bolne par ye torch, volume, apps, timer jaise phone ke kaam khud kar deta hai, aur zyadatar kaam bina internet ke chalte hain. AI keys optional hain.",
+"en": "NOVA is a voice assistant app for Android. After the wake word it does phone tasks like torch, volume, apps and timers, and most of them work without the internet. AI keys are optional.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "nova-wifi-bluetooth",
+"q": [
+"nova wifi on kyun nahi karta",
+"can nova turn wifi on or off",
+"wifi bluetooth nova se kaise chalayein",
+"nova bluetooth khud on kyun nahi karta",
+"android app wifi ko on off kyun nahi kar sakti",
+"wifi on karne par settings page kyun khulta hai"
+],
+"hi": "Android kisi app ko Wi-Fi ya Bluetooth khud on-off karne nahi deta. Isliye NOVA us ka Settings page khol deta hai aur wahan aap ek tap se badal sakte ho.",
+"en": "Android does not let an app switch Wi-Fi or Bluetooth on or off itself. So NOVA opens the matching Settings page and you change it with one tap.",
+"tags": [
+"nova"
+]
+},
+{
+"id": "sci-air-gases",
+"q": [
+"hawa mein oxygen kitni hoti hai",
+"hum saans mein kya lete hain",
+"what gases are in the air",
+"air mein kaun si gas kitni hoti hai",
+"how much oxygen is in air",
+"oxygen kya hai"
+],
+"hi": "Hawa mein lagbhag 78 percent nitrogen, 21 percent oxygen aur 1 percent baaki gas hoti hain. Hum saans mein oxygen lete hain aur carbon dioxide bahar nikalte hain.",
+"en": "Air is about 78 percent nitrogen, 21 percent oxygen and 1 percent other gases. We breathe in oxygen and breathe out carbon dioxide.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-atom",
+"q": [
+"atom kya hota hai",
+"parmanu kya hai",
+"what is an atom",
+"atom mein kya kya hota hai",
+"proton neutron electron kya hain",
+"parmanu ki sanrachna"
+],
+"hi": "Parmanu (atom) har padarth ka sabse chhota bhaag hai. Beech mein nucleus hota hai jisme proton aur neutron hote hain, aur bahar electron ghumte hain.",
+"en": "An atom is the basic building block of matter. At the centre is a nucleus of protons and neutrons, and electrons move around it.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-biggest-planet",
+"q": [
+"sabse bada grah kaun sa hai",
+"largest planet in the solar system",
+"biggest planet",
+"sabse bada planet kaun sa hai",
+"jupiter kitna bada hai",
+"which is the biggest planet"
+],
+"hi": "Sabse bada grah Brihaspati (Jupiter) hai. Isme lagbhag 1300 prithviyan sama sakti hain.",
+"en": "The biggest planet is Jupiter. More than 1,300 Earths could fit inside it.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-blood-groups",
+"q": [
+"blood group kitne hote hain",
+"blood groups kaun kaun se hain",
+"how many blood groups are there",
+"khoon ke group kaun se hote hain",
+"universal donor kaun sa blood group hai",
+"types of blood groups"
+],
+"hi": "Mukhya blood group A, B, AB aur O hain, har ek positive ya negative, yani kul 8 prakar. O negative sabko red cells de sakta hai (universal donor) aur AB positive sabse le sakta hai.",
+"en": "The main blood groups are A, B, AB and O, each positive or negative, so 8 types in all. O negative can give red cells to anyone (universal donor) and AB positive can receive from all.",
+"tags": [
+"science",
+"body"
+]
+},
+{
+"id": "sci-bones-count",
+"q": [
+"insaan mein kitni haddiyan hoti hain",
+"how many bones in human body",
+"body mein kitni bones hoti hain",
+"adult mein kitni haddi hoti hai",
+"baby mein kitni haddiyan hoti hain",
+"number of bones in the human body"
+],
+"hi": "Bade insaan mein 206 haddiyan hoti hain. Bachche kareeb 300 chhoti haddiyon ke saath paida hote hain, jo badhte waqt aapas mein jud jati hain.",
+"en": "An adult human has 206 bones. Babies are born with about 300 smaller bones that join together as they grow.",
+"tags": [
+"science",
+"body"
+]
+},
+{
+"id": "sci-day-night",
+"q": [
+"din aur raat kaise hote hain",
+"raat kyun hoti hai",
+"why do we have day and night",
+"prithvi ek chakkar kitne ghante mein lagati hai",
+"earth rotation ka period",
+"how long does earth take to rotate"
+],
+"hi": "Prithvi apni dhuri par lagbhag 24 ghante mein ek chakkar lagati hai. Jo hissa suraj ki taraf hota hai wahan din hota hai, baaki jagah raat.",
+"en": "The Earth spins once on its axis in about 24 hours. The side facing the Sun has day and the other side has night.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-digestion",
+"q": [
+"khana kaise pachta hai",
+"digestion kaise hota hai",
+"how does digestion work",
+"pachan tantra kya hai",
+"khana pet mein jakar kya hota hai",
+"digestive system explained"
+],
+"hi": "Muh mein khana chabane aur laar se tootna shuru hota hai. Phir pet aur chhoti aant mein rason se pachta hai aur poshak tatva khoon mein jate hain. Bacha hua kachra badi aant se bahar nikalta hai.",
+"en": "Digestion starts in the mouth with chewing and saliva. Then the stomach and small intestine break food down with juices and the nutrients enter the blood. The leftover waste leaves through the large intestine.",
+"tags": [
+"science",
+"body"
+]
+},
+{
+"id": "sci-earth-orbit",
+"q": [
+"prithvi suraj ka chakkar kitne din mein lagati hai",
+"earth orbit around sun how long",
+"ek saal mein 365 din kyun hote hain",
+"how long does earth take to go around the sun",
+"leap year kyun hota hai prithvi ka chakkar",
+"saal kitne din ka hota hai"
+],
+"hi": "Prithvi suraj ka ek chakkar lagbhag 365 din aur 6 ghante mein poora karti hai. Ye bacha hua samay jodkar har 4 saal mein ek din badhta hai (leap year).",
+"en": "The Earth goes around the Sun once in about 365 days and 6 hours. Those extra hours add up to one extra day every 4 years, the leap year.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-eclipse",
+"q": [
+"grahan kya hota hai",
+"surya grahan kyun lagta hai",
+"chandra grahan kaise lagta hai",
+"what is an eclipse",
+"solar eclipse kya hai",
+"lunar eclipse explained"
+],
+"hi": "Surya grahan mein chand suraj aur dharti ke beech aa jata hai aur suraj ko dhak leta hai. Chandra grahan mein dharti ki parchhai chand par padti hai. Surya grahan ko seedhe nange aankh se kabhi mat dekho.",
+"en": "In a solar eclipse the Moon passes between the Sun and the Earth and blocks the Sun. In a lunar eclipse the Earth's shadow falls on the Moon. Never look at a solar eclipse with bare eyes.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-electricity-make",
+"q": [
+"bijli kaise banti hai",
+"electricity kaise banti hai",
+"how is electricity generated",
+"bijli ghar tak kaise aati hai",
+"power plant kaise kaam karta hai",
+"bijli ghar kaise banta hai"
+],
+"hi": "Bijli ghar mein generator ko turbine ghumata hai. Turbine ko bhaap (koyle se), behta pani, hawa ya nuclear garmi ghumati hai. Phir taaron ke zariye bijli ghar tak aati hai.",
+"en": "In a power station a turbine spins a generator. The turbine is driven by steam (from coal or nuclear heat), flowing water or wind. The electricity then reaches homes through wires.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-evaporation",
+"q": [
+"evaporation kya hai",
+"vaashpikaran kya hota hai",
+"pani bhaap kaise banta hai",
+"what is evaporation",
+"kapde sukhte kaise hain",
+"how does wet cloth dry"
+],
+"hi": "Vaashpikaran mein pani ke kan garmi se bhaap banke hawa mein mil jate hain. Isi se geele kapde sookhte hain. Dhoop aur hawa isse tez kar dete hain.",
+"en": "In evaporation, water turns into vapour and mixes with the air. This is how wet clothes dry. Sun and wind make it faster.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-fossil-fuel",
+"q": [
+"fossil fuel kya hota hai",
+"koyla aur tel kaise bante hain",
+"what are fossil fuels",
+"non renewable energy kya hai",
+"kaun si urja khatam ho jati hai",
+"what is non renewable energy"
+],
+"hi": "Koyla, kaccha tel aur prakritik gas fossil fuel hain, jo lakhon saal pehle dabe hue paudhon aur jeevon se bane. Ye ek baar khatam hone par dobara nahi banti, isliye inhe non-renewable kehte hain.",
+"en": "Coal, crude oil and natural gas are fossil fuels, formed from plants and animals buried millions of years ago. They cannot be replaced once used up, so they are called non-renewable.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-global-warming",
+"q": [
+"global warming kya hai",
+"greenhouse effect kya hai",
+"what is the greenhouse effect",
+"dharti garam kyun ho rahi hai",
+"what is global warming",
+"climate change kya hota hai"
+],
+"hi": "Carbon dioxide aur methane jaisi greenhouse gases dharti ki garmi ko rok leti hain. Koyla aur tel jalane se ye gases badhti hain aur dharti ka ausat taapman badhta hai, ise global warming kehte hain.",
+"en": "Greenhouse gases like carbon dioxide and methane trap heat around the Earth. Burning coal and oil adds more of them, so the average temperature rises. This is called global warming.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-gravity",
+"q": [
+"gravity kya hai",
+"gurutvakarshan kya hai",
+"cheezein neeche kyun girti hain",
+"why do things fall down",
+"what is gravity",
+"gravity kaise kaam karti hai"
+],
+"hi": "Gravity wo bal hai jo har cheez ko apni taraf kheenchta hai. Prithvi cheezon ko neeche kheenchti hai, isliye girne par unki raftaar har second lagbhag 9.8 meter per second badhti hai.",
+"en": "Gravity is the force by which every mass pulls other masses towards it. Earth pulls things down, so a falling object speeds up by about 9.8 metres per second every second.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-heart",
+"q": [
+"dil kya kaam karta hai",
+"heart ka kaam kya hai",
+"what does the heart do",
+"dil kaise dhadakta hai",
+"heart blood kaise pump karta hai",
+"function of the heart"
+],
+"hi": "Dil ek pump hai jo poore sharir mein khoon pahunchata hai. Aaram ki halat mein bade logon ka dil aam taur par ek minute mein 60 se 100 baar dhadakta hai.",
+"en": "The heart is a pump that sends blood around the whole body. At rest an adult heart usually beats 60 to 100 times a minute.",
+"tags": [
+"science",
+"body"
+]
+},
+{
+"id": "sci-light-speed",
+"q": [
+"light ki speed kitni hai",
+"prakash ki gati kitni hai",
+"speed of light",
+"roshni kitni tez chalti hai",
+"how fast does light travel",
+"prakash ki raftaar"
+],
+"hi": "Roshni ki raftaar lagbhag 3 lakh km (299,792 km) per second hai. Ye brahmand mein sabse tez hai.",
+"en": "Light travels at about 300,000 km (299,792 km) per second, the fastest speed in the universe.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-lightning",
+"q": [
+"bijli kyun chamakti hai",
+"baadal kyun garajte hain",
+"thunder aur lightning kaise hoti hai",
+"what causes thunder and lightning",
+"thunder kya hai",
+"lightning kya hoti hai"
+],
+"hi": "Baadalon mein bijli ka charge jama hota hai aur wo ek bada cheenta bankar girta hai, wahi chamak (lightning) hai. Us se garm hui hawa ki awaaz garaj (thunder) hai. Roshni tez chalti hai isliye chamak pehle dikhti hai, aur garaj ke waqt ghar ke andar rehna chahiye.",
+"en": "Electric charge builds up in clouds and is released as a giant spark, which is lightning. The sound of the heated air is thunder. Light travels faster so you see the flash first, and you should stay indoors during thunderstorms.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-lungs",
+"q": [
+"phephde kya kaam karte hain",
+"lungs ka kaam kya hai",
+"what do the lungs do",
+"saans lene mein lungs kya karte hain",
+"how do we breathe",
+"saans lene ki prakriya kya hai"
+],
+"hi": "Saans lene par hawa naak se phephdon mein jati hai. Wahan oxygen khoon mein mil jati hai aur carbon dioxide bahar nikal jati hai.",
+"en": "When you breathe in, air goes through the nose into the lungs. There oxygen enters the blood and carbon dioxide is sent out.",
+"tags": [
+"science",
+"body"
+]
+},
+{
+"id": "sci-magnet",
+"q": [
+"magnet kaise kaam karta hai",
+"chumbak kya hota hai",
+"how does a magnet work",
+"magnet ke do pole kaun se hote hain",
+"magnetic poles kya hote hain",
+"what is a magnet"
+],
+"hi": "Har chumbak ke do pole hote hain, uttari (N) aur dakshini (S). Alag pole ek doosre ko khinchte hain aur ek jaise pole door dhakelte hain.",
+"en": "Every magnet has two poles, north (N) and south (S). Opposite poles attract each other and like poles push apart.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-moon-distance",
+"q": [
+"chand kitni door hai",
+"distance of moon from earth",
+"dharti se chand kitna door hai",
+"how far is the moon",
+"moon kitni dur hai earth se",
+"earth moon distance"
+],
+"hi": "Chand dharti se ausat lagbhag 3 lakh 84 hazaar km door hai.",
+"en": "The Moon is on average about 384,000 km away from the Earth.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-moon-phases",
+"q": [
+"chand ka aakar roz kyun badalta hai",
+"moon phases",
+"chand ki kalayein kaise banti hain",
+"why does the moon change shape",
+"purnima aur amavasya kya hai",
+"what is full moon and new moon"
+],
+"hi": "Chand khud roshni nahi deta, wo suraj ki roshni se chamakta hai. Chand dharti ka chakkar lagata hai (lagbhag 29.5 din), isliye hum uska alag alag hissa roshan dekhte hain. Poora roshan chand purnima aur bilkul dikhai na dena amavasya hai.",
+"en": "The Moon makes no light of its own, it shines by sunlight. As it orbits the Earth (about 29.5 days) we see different parts of its sunlit half. A fully lit Moon is a full moon and an unseen one is a new moon.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-photosynthesis",
+"q": [
+"photosynthesis kya hai",
+"prakash sanshleshan kya hai",
+"paudhe khana kaise banate hain",
+"how do plants make food",
+"plants apna khana kaise banate hain",
+"what is photosynthesis"
+],
+"hi": "Paudhe patton mein hare rang ke chlorophyll se dhoop, pani aur carbon dioxide leke apna khana (glucose) banate hain. Is kaam mein oxygen nikalti hai, jisse hum saans lete hain.",
+"en": "Plants use the green chlorophyll in their leaves to turn sunlight, water and carbon dioxide into food (glucose). They release oxygen, which we breathe.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-planets",
+"q": [
+"solar system mein kitne planets hain",
+"how many planets are there",
+"grah kitne hain",
+"planets ke naam batao",
+"names of the planets",
+"saur mandal mein kitne grah hain"
+],
+"hi": "Saur mandal mein 8 grah hain: Budh, Shukra, Prithvi, Mangal, Brihaspati, Shani, Arun aur Varun. Pluto ko 2006 se baune grah (dwarf planet) mana jata hai.",
+"en": "There are 8 planets: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus and Neptune. Pluto has been counted as a dwarf planet since 2006.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-rain-cycle",
+"q": [
+"barish kaise hoti hai",
+"water cycle kya hai",
+"jal chakra kya hota hai",
+"how does rain form",
+"rain kaise banta hai",
+"baarish kyun hoti hai"
+],
+"hi": "Suraj ki garmi se samudra aur nadiyon ka pani bhaap banke upar jata hai. Upar thanda hone par wo badal banta hai aur boondon ke roop mein wapas girta hai, ise jal chakra kehte hain.",
+"en": "The Sun heats sea and river water into vapour that rises. Higher up it cools into clouds and falls back as rain. This loop is called the water cycle.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-rainbow",
+"q": [
+"indradhanush kaise banta hai",
+"rainbow kaise banta hai",
+"rainbow kyun dikhta hai",
+"how is a rainbow formed",
+"rainbow mein kitne rang hote hain",
+"indradhanush ke rang kaun se hain"
+],
+"hi": "Baarish ki boondon mein dhoop mudti hai aur alag alag rangon mein bant jati hai, isse indradhanush banta hai. Isme 7 rang hote hain: baingani, jamuni, neela, hara, peela, narangi aur laal.",
+"en": "Sunlight bends and splits into colours inside raindrops, which makes a rainbow. It has 7 colours: violet, indigo, blue, green, yellow, orange and red.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-sea-salt",
+"q": [
+"samundar ka pani khara kyun hota hai",
+"why is sea water salty",
+"sea water namkeen kyun hota hai",
+"samudra mein namak kyun hai",
+"samundar ka pani peene layak kyun nahi",
+"why is the ocean salty"
+],
+"hi": "Nadiyan chattanon se ghule hue khanij samudra mein le jati hain. Pani bhaap banke ud jata hai par namak wahin reh jata hai, isliye samudra khara hota hai.",
+"en": "Rivers carry dissolved minerals from rocks into the sea. The water evaporates but the salt stays behind, so the sea is salty.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-seasons",
+"q": [
+"mausam kyun badalte hain",
+"seasons kaise banti hain",
+"why do seasons change",
+"ritu parivartan kyun hota hai",
+"garmi sardi kyun hoti hai",
+"what causes the seasons"
+],
+"hi": "Prithvi ki dhuri lagbhag 23.5 degree jhuki hui hai. Suraj ke chakkar mein jab koi hissa suraj ki taraf jhukta hai to wahan garmi aur doosri taraf sardi hoti hai.",
+"en": "The Earth's axis is tilted by about 23.5 degrees. As it goes around the Sun, the part tilted towards the Sun gets summer and the part tilted away gets winter.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-sky-blue",
+"q": [
+"aasman neela kyun hota hai",
+"why is the sky blue",
+"sky blue kyun hota hai",
+"aasman ka rang neela kyun",
+"sky ka color blue kyu hai",
+"aakash neela kyun dikhta hai"
+],
+"hi": "Dhoop mein saare rang hote hain. Hawa ke kan neele rang ko sabse zyada failate hain, isliye neela rang har taraf se hamari aankhon tak aata hai.",
+"en": "Sunlight contains all colours. Air molecules scatter blue light the most, so blue reaches our eyes from every direction of the sky.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-smallest-planet",
+"q": [
+"sabse chhota grah kaun sa hai",
+"smallest planet in the solar system",
+"smallest planet",
+"sabse chhota planet kaun sa hai",
+"budh grah kitna chhota hai",
+"which is the smallest planet"
+],
+"hi": "Sabse chhota grah Budh (Mercury) hai. Wo suraj ke sabse paas hai.",
+"en": "The smallest planet is Mercury. It is also the closest planet to the Sun.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-solar-energy",
+"q": [
+"solar energy kya hai",
+"saur urja kya hoti hai",
+"solar panel kaise kaam karta hai",
+"how do solar panels work",
+"suraj se bijli kaise banti hai",
+"what is solar power"
+],
+"hi": "Solar panel mein silicon ke cell hote hain jo dhoop padne par seedhe bijli banate hain. Is bijli ko ghar mein use kiya ja sakta hai ya battery mein jama kiya ja sakta hai.",
+"en": "Solar panels contain silicon cells that turn sunlight directly into electricity. That power can be used at home or stored in a battery.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-sound",
+"q": [
+"sound ki speed kitni hai",
+"awaaz kaise travel karti hai",
+"how does sound travel",
+"speed of sound in air",
+"space mein awaaz kyun nahi sunai deti",
+"why is there no sound in space"
+],
+"hi": "Hawa mein awaaz lagbhag 343 meter per second chalti hai. Awaaz ko chalne ke liye hawa, pani ya thos jaisa madhyam chahiye, isliye khali space mein awaaz nahi sunai deti.",
+"en": "Sound travels at about 343 metres per second in air. It needs a medium such as air, water or a solid, so you cannot hear sound in empty space.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-states-matter",
+"q": [
+"matter ki kitni states hoti hain",
+"solid liquid gas kya hai",
+"padarth ki avasthayein kaun si hain",
+"states of matter",
+"what are solid liquid and gas",
+"thos taral gas kya hota hai"
+],
+"hi": "Padarth ki teen aam avasthayein hain: thos (solid), taral (liquid) aur gas. Bahut garam avastha mein ek chautha roop plasma bhi hota hai.",
+"en": "Matter commonly exists in three states: solid, liquid and gas. A fourth state, plasma, exists at very high temperatures.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-sun-star",
+"q": [
+"suraj kya hai",
+"kya suraj ek tara hai",
+"is the sun a star",
+"suraj tara hai ya grah",
+"what is the sun",
+"suraj kitna door hai"
+],
+"hi": "Suraj ek tara hai, garam gas ka bahut bada gola. Wo dharti se lagbhag 15 crore km door hai aur uski roshni yahan kareeb 8 minute mein pahunchti hai.",
+"en": "The Sun is a star, a huge ball of hot gas. It is about 150 million km from Earth and its light takes about 8 minutes to reach us.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-sunset-red",
+"q": [
+"suraj dhalte waqt laal kyun dikhta hai",
+"why is sunset red",
+"sunset ka rang laal kyun hota hai",
+"sunrise sunset red orange kyun",
+"subah shaam ko aasman laal kyun hota hai",
+"why does the sky turn orange at sunset"
+],
+"hi": "Subah aur shaam ko suraj ki roshni zyada hawa se guzarti hai. Neela rang bikhar jata hai aur laal aur narangi rang bach jate hain.",
+"en": "At sunrise and sunset sunlight travels through more air. The blue light is scattered away and the red and orange light is what remains.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-teeth-count",
+"q": [
+"insaan ke kitne daant hote hain",
+"how many teeth do adults have",
+"bachchon ke kitne daant hote hain",
+"doodh ke daant kitne hote hain",
+"number of teeth in humans",
+"adult mein kitne teeth hote hain"
+],
+"hi": "Bade insaan ke 32 daant hote hain (akal daadh milakar). Bachchon ke 20 doodh ke daant hote hain jo baad mein gir jate hain.",
+"en": "An adult has 32 teeth, including wisdom teeth. Children have 20 baby teeth that fall out later.",
+"tags": [
+"science",
+"body"
+]
+},
+{
+"id": "sci-vitamin-c",
+"q": [
+"vitamin c kis mein hota hai",
+"vitamin c kahan se milta hai",
+"which foods have vitamin c",
+"vitamin c ke sources",
+"vitamin c kya kaam karta hai",
+"what does vitamin c do"
+],
+"hi": "Vitamin C nimbu, santra, amla, amrud aur shimla mirch jaise phal aur sabziyon mein bahut hota hai. Ye chot bharne aur rog se ladne mein madad karta hai. Pakane se thoda kam ho jata hai.",
+"en": "Vitamin C is plentiful in lemon, orange, amla, guava and bell pepper. It helps wounds heal and supports the body against illness. Cooking reduces it a little.",
+"tags": [
+"science",
+"health"
+]
+},
+{
+"id": "sci-vitamin-d",
+"q": [
+"vitamin d kahan se milta hai",
+"vitamin d kaise milta hai",
+"what is vitamin d",
+"vitamin d ke sources kya hain",
+"dhoop se vitamin d kaise banta hai",
+"how do we get vitamin d"
+],
+"hi": "Vitamin D hamari tvacha par dhoop padne se banta hai aur thoda ande, machhli aur fortified doodh se milta hai. Ye haddiyon ko majboot rakhta hai. Supplement lene se pehle doctor se poochho.",
+"en": "Your skin makes vitamin D when sunlight falls on it, and some comes from eggs, fish and fortified milk. It keeps bones strong. Ask a doctor before taking supplements.",
+"tags": [
+"science",
+"health"
+]
+},
+{
+"id": "sci-water-boil",
+"q": [
+"pani kitne degree par ubalta hai",
+"water boiling point",
+"boiling point of water",
+"pani ka boiling point kya hai",
+"at what temperature does water boil",
+"pani kitni garmi par ubalta hai"
+],
+"hi": "Saaf pani samundar tal par 100 degree Celsius (212 Fahrenheit) par ubalta hai. Pahadon par hawa ka dabaav kam hota hai, isliye wahan pani kam temperature par ubal jata hai.",
+"en": "Pure water boils at 100 degrees Celsius (212 Fahrenheit) at sea level. On mountains the air pressure is lower, so water boils at a lower temperature.",
+"tags": [
+"science"
+]
+},
+{
+"id": "sci-water-freeze",
+"q": [
+"pani kitne degree par jamta hai",
+"water freezing point",
+"freezing point of water",
+"pani kab jam jata hai",
+"at what temperature does water freeze",
+"pani ka freezing point kya hai"
+],
+"hi": "Saaf pani 0 degree Celsius (32 Fahrenheit) par baraf mein badal jata hai.",
+"en": "Pure water freezes into ice at 0 degrees Celsius (32 Fahrenheit).",
+"tags": [
+"science"
+]
+}
+]
+}

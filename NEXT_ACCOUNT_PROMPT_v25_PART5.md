@@ -1,0 +1,14 @@
+# NOVA - HANDOVER PROMPT v25 (Parts 1-4 written; PART 5 = integration + CI file LEFT). Written 2026-10-10.
+Paste this whole file as the first message of the next chat and attach the newest NOVA zip. The owner must NOT have to explain anything. If unclear, decide sensibly, say what you decided, continue.
+(Replaces v24. Sections 0,1,2,5,6 of v21 still apply: owner = non-programmer on an Android phone, writes Hinglish, wants short Hinglish replies, numbered steps, nothing fake; never say DONE/WORKING/VERIFIED without evidence; ladder: written < statically checked < compiled + tests run < GitHub CI green < phone tested. Repo https://github.com/devboutique0-wq/NOVA. Return ONE zip named exactly NOVA_v15_assistant.zip with all files at the ROOT; owner uploads at https://github.com/devboutique0-wq/NOVA/upload/main, then Actions > "Unpack zip" > Run workflow, then "Build and Test APK". Workflow files in the zip are ignored, so any .yml is delivered as a separate downloadable file to paste in GitHub web. Owner cannot read long logs: ask only for "the red lines of the failed step".)
+Sandbox: no kotlinc / Android SDK, pip/npm/Maven unreachable; python3 works. Kotlin is only statically checked.
+
+## State (see HANDOFF_STATUS.md v24 and v25)
+- Part 1 free online AI chain, Part 2 personal memory, Part 3 knowledge pack (193 entries, wired in NovaService.handle), Part 4 Hindi/Devanagari input (HindiRoman.kt rule transliteration, converted at the top of handle): all written + statically checked, Python contract tests pass. NOTHING compiled or run on a phone.
+- Python tests: tools/test_chain_contract.py, test_memory_contract.py, test_knowledge_contract.py, test_hindi_contract.py, validate_skillpack.py. Run all five after any change.
+
+## Remaining work
+PART 5: (a) read the whole diff of Parts 1-4 once more, statically: every new Kotlin file compiles in the head (imports, nullability, smart casts, name clashes like Kotlin's own Unit), every test's expected value is reproducible; fix what you find. (b) ONE .github/workflows file named build.yml, delivered as a separate download, that runs the five python3 tests first and then the existing Gradle unit tests + APK build (read the current build.yml from the repo zip and keep everything it already does). (c) HANDOFF_STATUS.md v26 with the honest ladder level, zip + prompt v26 (what the owner does after a green build: install APK, Activate, run SELF TEST, look for "Knowledge pack: 193 entries loaded", try one Hindi typed question and one knowledge question).
+
+## Honest limits to tell the owner
+Nothing is compiled or run on a phone. The first GitHub build with Parts 1-4 may be red: send only the red lines of the failed step. Free online providers need the owner's own free key once (Groq or OpenRouter). Offline Vosk still gives Roman letters only; Devanagari helps for typed text and Groq Whisper.

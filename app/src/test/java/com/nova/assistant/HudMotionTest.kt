@@ -60,3 +60,24 @@ class HudGlassTest {
         }
     }
 }
+
+class HudSpringTest {
+    @org.junit.Test fun springStartsAtZeroAndEndsNearOne() {
+        org.junit.Assert.assertEquals(0f, HudMath.springEase(0f), 0.0001f)
+        org.junit.Assert.assertEquals(1f, HudMath.springEase(1f), 0.01f)
+    }
+
+    @org.junit.Test fun springOvershootsButStaysBounded() {
+        var peak = 0f
+        var i = 0
+        while (i <= 100) { peak = maxOf(peak, HudMath.springEase(i / 100f)); i++ }
+        org.junit.Assert.assertTrue(peak > 1.0f)
+        org.junit.Assert.assertTrue(peak < 1.25f)
+    }
+
+    @org.junit.Test fun entryFlashFadesOutAndIsZeroOutside() {
+        org.junit.Assert.assertEquals(0f, HudMath.entryFlash(0f), 0f)
+        org.junit.Assert.assertTrue(HudMath.entryFlash(0.1f) > HudMath.entryFlash(0.6f))
+        org.junit.Assert.assertEquals(0f, HudMath.entryFlash(1f), 0f)
+    }
+}

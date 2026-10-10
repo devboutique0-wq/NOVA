@@ -96,6 +96,8 @@ class NovaService : Service() {
     @Volatile private var historyAt = 0L                     // when the cloud chat memory was last used
     @Volatile private var cloudCoolUntil = 0L                // after a cloud failure the cloud is skipped until this time (AiRouter.cooldownMs)
     @Volatile private var lastCloudFail = ""                 // Logic.failureKind of the last cloud failure, "" = no failure
+    private val freeCooldowns = Cooldowns()                      // per-provider skip times of the free AI chain (part 1B)
+    @Volatile private var geminiCoolUntil = 0L                   // Gemini alone is skipped until this time; the free chain still runs
     @Volatile private var cloudActed = false                 // true once a cloud tool ran in this request (then no local answer is added)
     @Volatile private var dictatePending: Pending? = null   // the pending that waits for a DICTATED driving reply (not a yes/no)
     @Volatile private var dictTarget: Driving.Msg? = null    // the message that dictated reply answers (memory only)
@@ -211,6 +213,7 @@ class NovaService : Service() {
     override fun onCreate() {
         super.onCreate()
         cfg = Cfg(this)
+        LocalBrains.installEngine(this)
         brain = BrainStore.get(this)
         h.postDelayed(autoCheck, 45_000L)
         hud = NovaHud(this)
@@ -945,9 +948,21 @@ class NovaService : Service() {
         return "$reply. $q"
     }
 
-    private fun handle(pcm: ByteArray, text: String): String {
-        listener?.invoke("me", "🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)")))
-        h.post { hud?.setHeard("🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)"))) }
+    private fun handle(pcm: ByteArray, rawText: String): String {
+        // PART 4: Hindi typed in Devanagari (keyboard or a cloud listener) becomes Roman first; everything below sees Roman words only.
+        val text = if (HindiRoman.hasDevanagari(rawText)) HindiRoman.toRoman(rawText) else rawText
+        // PART 2: a personal-memory command is handled FIRST and never reaches brain.record (that file keeps heard text on disk),
+        // the cloud, the free chain or any model. The words of "yaad rakh ..." are not shown in the chat or on the card.
+        val memCmd = if (text.isBlank()) null else Logic.classify(text)?.takeIf { PersonalMemory.isMemoryKind(it.kind) }
+        val shown = if (memCmd?.kind == PersonalMemory.K_SAVE) tr("(yaad rakhne ka command)", "(remember command)")
+            else if (rawText.isNotBlank()) rawText else tr("(awaaz)", "(voice)")
+        listener?.invoke("me", "🎤 " + shown)
+        h.post { hud?.setHeard("🎤 " + shown) }
+        if (memCmd != null) {
+            lastTurnLocal = true
+            lastKind = memCmd.kind
+            return runCommand(memCmd)
+        }
         val ls = if (text.isBlank()) null else LocalSkills.answer(text, java.time.LocalDate.now(), cfg.lang)   // Layer 0: calc / convert / dates / emergency numbers, offline
         if (ls != null) {
             lastTurnLocal = true
@@ -964,6 +979,18 @@ class NovaService : Service() {
             if (groqText.isNotBlank()) c = Logic.classify(groqText)
         }
         val now = System.currentTimeMillis()
+        if (c == null && c0 == null && sk == null && text.isNotBlank()) {   // PART 3: offline knowledge pack (text only, never an action)
+            val said0 = if (groqText.isNotBlank()) groqText else text
+            if (groqText.isNotBlank() || !Logic.isJunk(text)) {
+                val kn = KnowledgeStore.answer(this, said0, cfg.lang == "en")
+                if (kn != null) {
+                    lastTurnLocal = true
+                    lastKind = "knowledge"
+                    brain.record(now, text, "local", "knowledge")
+                    return kn
+                }
+            }
+        }
         lastTurnLocal = c != null
         lastKind = c?.kind ?: ""
         if (c0 != null) brain.record(now, text, "local", c0.kind)
@@ -986,7 +1013,7 @@ class NovaService : Service() {
             }
         }
         // Answer sources in order: cloud (only with the user's key, not cooling down) and the offline chat model (if installed).
-        val steps = AiRouter.plan(SecureStore.hasKeys(this), now < cloudCoolUntil, LocalBrains.available(this), said)
+        val steps = AiRouter.plan(SecureStore.hasKeys(this) || ExtCfg.freeChain(this), now < cloudCoolUntil, LocalBrains.available(this), said)
         if (steps.isNotEmpty()) {
             if (junk) return tr("Samajh nahi aaya, dobara bolo", "I did not catch that, please say it again")
             val ans = Routing.run(steps, said, { cloudStep(pcm, said) }, { localAnswer(said) },
@@ -1004,9 +1031,66 @@ class NovaService : Service() {
         lastCloudFail = ""
         cloudActed = false
         lastKind = "cloud"
-        val r = askCloud(pcm, said)
-        val fail = lastCloudFail
-        return Routing.CloudResult(r, fail.isEmpty(), cloudActed, if (fail.isEmpty()) "other" else fail)
+        val en = cfg.lang == "en"
+        var geminiFail = ""
+        var geminiText = ""
+        // 1) Gemini (the user's own key, can run phone tools). Skipped while it is cooling down after a failure.
+        if (SecureStore.hasKeys(this) && System.currentTimeMillis() >= geminiCoolUntil) {
+            val r = askCloud(pcm, said)
+            val fail = lastCloudFail
+            if (fail.isEmpty() || cloudActed) return Routing.CloudResult(r, fail.isEmpty(), cloudActed, if (fail.isEmpty()) "other" else fail)
+            geminiFail = fail
+            geminiText = r
+            val cd = AiRouter.cooldownMs(fail)
+            if (cd > 0L) geminiCoolUntil = System.currentTimeMillis() + cd
+        }
+        // 2) Free chain (Groq -> OpenRouter -> Pollinations). TEXT ONLY, never an action. Crisis / live-info questions are
+        //    answered locally by LocalChat.preAnswer and never leave the phone. Only the spoken question is sent.
+        var chainKind = ""
+        if (FreeProviders.canUseChain(ExtCfg.freeChain(this), said)) {
+            FreeProviders.chainPreAnswer(said, en)?.let {
+                lastKind = "local_chat"
+                lastCloudFail = ""
+                return Routing.CloudResult(it, true)
+            }
+            val res = runFreeChain(said, en)
+            val t = res.text
+            if (t != null) {
+                lastKind = "free_chain"
+                lastCloudFail = ""
+                return Routing.CloudResult(LocalChat.guard(said, t, en), true)
+            }
+            chainKind = res.failKind
+        }
+        val (text, kind) = FreeProviders.combinedFailure(geminiFail, geminiText, chainKind, en)
+        lastCloudFail = kind
+        return Routing.CloudResult(text, false, false, kind)
+    }
+
+    /** Up to 3 relevant personal facts for the ONLINE chain's system prompt. "" when the switch is off or nothing matches. */
+    private fun chainFacts(said: String, en: Boolean): String {
+        if (!ExtCfg.memoryInChain(this)) return ""
+        return PersonalMemory.factsBlock(PersonalMemory.relevant(PersonalMemoryStore.load(this), said), en)
+    }
+
+    /** One run of the free chain with the user's own keys. Groq reuses the speech key; OpenRouter has its own slot. */
+    private fun runFreeChain(said: String, en: Boolean): ChainResult {
+        val keyless = ExtCfg.freeKeyless(this)
+        return ProviderChain.run(
+            FreeProviders.ordered(),
+            { name ->
+                when (name) {
+                    "groq" -> SecureStore.getGroq(this)
+                    "openrouter" -> SecureStore.getSlot(this, "openrouter")
+                    else -> ""
+                }
+            },
+            { id -> id != "pollinations" || keyless },
+            FreeProviders.systemPrompt(en) + chainFacts(said, en),
+            said,
+            freeCooldowns,
+            { System.currentTimeMillis() }
+        ) { p, _, body, key -> FreeHttp.post(p, body, key) }
     }
 
     /** The offline chat model as one answer source: TEXT ONLY, never an action. null = nothing to say. */
@@ -1014,7 +1098,7 @@ class NovaService : Service() {
         if (said.isBlank()) return null
         val en = cfg.lang == "en"
         LocalChat.preAnswer(said, en)?.let { lastKind = "local_chat"; return it }   // crisis / live-info questions get a fixed safe answer
-        val a = LocalBrains.chat(this, said, en) ?: return null
+        val a = LocalBrains.chat(this, said, en, PersonalMemory.relevant(PersonalMemoryStore.load(this), said)) ?: return null
         lastKind = "local_chat"
         return (if (en) LocalChat.offlinePrefixEn else LocalChat.offlinePrefixHi) + a
     }
@@ -1111,8 +1195,44 @@ class NovaService : Service() {
             tr("Theek hai, ab jawab bol kar bhi dunga", "Okay, I will speak my replies again")
         }
         "unlock" -> unlockPhone()
+        PersonalMemory.K_SAVE -> memSave(c.arg)
+        PersonalMemory.K_LIST -> memList()
+        PersonalMemory.K_FORGET -> memForget(c.arg)
+        PersonalMemory.K_FORGET_ALL -> memForgetAll()
         "analyze" -> analyzeScreen()      // PART 1B
         else -> runLocalTool(c)           // PART 1B: torch, volume, brightness, media, global, open_app, settings, camera
+    }
+
+    // ---------------------------------------------------------------- personal memory (PART 2)
+
+    private fun memSave(fact: String): String {
+        val en = cfg.lang == "en"
+        val r = PersonalMemory.add(PersonalMemoryStore.load(this), fact)
+        if (r.status == "saved" && !PersonalMemoryStore.save(this, r.list)) {
+            return tr("Yaad rakh nahi paya, phone ne save nahi kiya", "I could not save that on the phone")
+        }
+        return PersonalMemory.saveReply(r, en)
+    }
+
+    private fun memList(): String = PersonalMemory.listReply(PersonalMemoryStore.load(this), cfg.lang == "en")
+
+    private fun memForget(query: String): String {
+        val en = cfg.lang == "en"
+        val r = PersonalMemory.forget(PersonalMemoryStore.load(this), query)
+        if (r.removed > 0 && !PersonalMemoryStore.save(this, r.list)) {
+            return tr("Bhool nahi paya, phone ne save nahi kiya", "I could not forget it, the phone did not save the change")
+        }
+        return PersonalMemory.forgetReply(r, en)
+    }
+
+    /** "sab bhool ja" needs a spoken local yes (askFirst), like every risky action. */
+    private fun memForgetAll(): String {
+        val en = cfg.lang == "en"
+        if (PersonalMemoryStore.count(this) == 0) return tr("Mujhe kuch yaad hi nahi hai", "I am not remembering anything")
+        return askFirst(PersonalMemory.forgetAllPrompt(en)) {
+            if (PersonalMemoryStore.clear(this)) tr("Sab bhool gaya", "I forgot everything")
+            else tr("Bhool nahi paya, phone ne save nahi kiya", "I could not forget, the phone did not save the change")
+        }
     }
 
     /** Voice "unlock phone": only when the user switched NOVA's pattern unlock ON. Worker thread (it waits for the result). */

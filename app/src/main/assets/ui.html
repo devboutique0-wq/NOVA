@@ -80,7 +80,7 @@ button.icb.off{opacity:.45}
 .ucb h3{font-weight:400;letter-spacing:5px;font-size:15px;color:var(--c1);text-shadow:0 0 12px var(--c1)}
 .ucb .ver{font-size:11px;opacity:.6;margin-top:4px;letter-spacing:1px}
 .ucb h4{font-weight:400;letter-spacing:3px;font-size:11px;color:#58b8ff;margin:18px 0 6px}
-.ucb ul{list-style:none}
+.ucb ul{list-style:none;padding:0;margin:0}
 .ucb li{font-size:12.5px;line-height:1.45;padding:5px 0 5px 14px;position:relative;opacity:.9}
 .ucb li:before{content:"";position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:#2fb8ff;box-shadow:0 0 8px #2fb8ff}
 .ucr{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid rgba(47,184,255,.16)}
@@ -222,12 +222,35 @@ input[type=checkbox],input[type=range]{accent-color:var(--c1)}
 .ucr{border-top:1px solid var(--line)}
 *{scrollbar-width:thin;scrollbar-color:rgba(80,150,255,.35) transparent}
 </style>
+<style id="lights-v1">
+#lt{position:absolute;inset:0;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
+#lt .hl{position:absolute;left:50%;top:46%;width:100vmax;height:100vmax;margin:-50vmax 0 0 -50vmax;border-radius:50%;background:radial-gradient(circle,rgba(70,215,255,.6) 0,rgba(47,123,255,.24) 20%,transparent 46%);opacity:0;will-change:transform,opacity}
+#lt .bm{position:absolute;top:-25%;bottom:-25%;left:0;width:38%;background:linear-gradient(90deg,transparent,rgba(130,225,255,.42),rgba(255,255,255,.55),rgba(130,225,255,.42),transparent);filter:blur(7px);opacity:0;transform:translateX(-130%) skewX(-18deg);will-change:transform,opacity}
+#lt .b2{width:22%;background:linear-gradient(90deg,transparent,rgba(190,140,255,.4),rgba(255,255,255,.4),rgba(190,140,255,.4),transparent)}
+#lt .fl{position:absolute;left:-10%;right:-10%;top:46%;height:3px;margin-top:-1px;background:linear-gradient(90deg,transparent,rgba(170,240,255,.95) 50%,transparent);box-shadow:0 0 26px 7px rgba(47,184,255,.65);opacity:0;transform:scaleX(.1);will-change:transform,opacity}
+#flash{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:0;mix-blend-mode:screen;background:radial-gradient(circle at 50% 46%,#fff 0,#c6f2ff 20%,rgba(47,184,255,.55) 52%,transparent 80%)}
+#shock{position:fixed;left:50%;top:46%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;z-index:100;pointer-events:none;opacity:0;border:2px solid rgba(140,235,255,.95);box-shadow:0 0 34px #2fb8ff,inset 0 0 30px rgba(47,184,255,.6);will-change:transform,opacity}
+@media (prefers-reduced-motion:no-preference){
+@keyframes slam{0%{transform:scale(1.08);filter:brightness(2.6) saturate(1.5) blur(6px);opacity:0}40%{opacity:1}70%{filter:brightness(1.25) blur(0)}100%{transform:none;filter:none;opacity:1}}
+.ready #app{animation:slam .6s cubic-bezier(.16,1,.3,1) both}
+@keyframes sweepx{0%{transform:translateX(-120%);opacity:1}100%{transform:translateX(120%);opacity:0}}
+body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:none;background:linear-gradient(104deg,transparent 32%,rgba(130,225,255,.26) 46%,rgba(255,255,255,.34) 50%,rgba(130,225,255,.26) 54%,transparent 68%);transform:translateX(-120%);animation:sweepx 1s .08s cubic-bezier(.3,.6,.2,1) 1 both}
+@keyframes popLight{0%{transform:perspective(900px) translateY(46px) rotateX(-16deg) scale(.86);opacity:0;filter:brightness(2.2) blur(5px)}55%{transform:perspective(900px) translateY(-4px) rotateX(2deg) scale(1.025);opacity:1;filter:brightness(1.3) blur(0)}100%{transform:none;opacity:1;filter:none}}
+@keyframes edgeIn{0%{box-shadow:0 0 0 rgba(47,184,255,0)}35%{box-shadow:0 0 80px 8px rgba(60,210,255,.8)}100%{box-shadow:0 0 34px rgba(47,123,255,.3)}}
+.ucb,#sheet.on .sh{animation:popLight .62s cubic-bezier(.16,1,.3,1) both,edgeIn .9s ease-out both}
+#sheet.out .sh{animation:fold .3s ease-in both}
+@keyframes chatPop{0%{transform:translateY(40px) scale(.95);opacity:0;filter:brightness(1.8) blur(4px)}60%{transform:translateY(-3px) scale(1.01);opacity:1;filter:none}100%{transform:none;opacity:1}}
+#chat.on{animation:chatPop .5s cubic-bezier(.16,1,.3,1) both}
+@keyframes breatheLight{0%,100%{filter:drop-shadow(0 0 10px rgba(47,184,255,.35))}50%{filter:drop-shadow(0 0 26px rgba(80,225,255,.75))}}
+.ready .orbbox canvas{animation:breatheLight 3.2s ease-in-out infinite}
+}
+</style>
 </head>
 <body>
-<div id="intro" class="on"><canvas id="fx"></canvas><div id="cap"><b></b><span></span></div><div id="hint">TAP FOR SOUND</div>
+<div id="intro" class="on"><canvas id="fx"></canvas><div id="lt"><i class="hl"></i><i class="bm b1"></i><i class="bm b2"></i><i class="fl"></i></div><div id="cap"><b></b><span></span></div><div id="hint">TAP FOR SOUND</div>
 <div id="spl"><div class="ring"><b>NOVA</b></div><p id="spt">YOUR AI COMPANION</p></div>
 <div id="ldr"><div id="ldt"></div><div class="bar"><i id="ldb"></i><em id="ldp"></em></div><div id="tsd">THINK &nbsp;&middot;&nbsp; SPEAK &nbsp;&middot;&nbsp; DO</div></div></div>
-<div class="dr" id="dr1"></div><div class="dr" id="dr2"></div>
+<div id="flash"></div><div id="shock"></div><div class="dr" id="dr1"></div><div class="dr" id="dr2"></div>
 <div class="wrap" id="app">
 <div class="top"><div class="logo">NOVA<span id="dot"></span></div><div class="ic"><button class="icb" id="snd" aria-label="sound"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button><button class="icb" id="pw" aria-label="sleep"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.8a8 8 0 1011.4 0"/></svg></button></div></div>
 <div class="status" id="st">Offline</div><div class="badge" id="mode">LOCAL MODE - no API key needed</div>
@@ -330,6 +353,24 @@ input[type=checkbox],input[type=range]{accent-color:var(--c1)}
 <div class="row"><button class="sm" id="g_save">GROQ SAVE</button><button class="sm" id="g_del">GROQ HATAO</button></div>
 </div>
 
+<div class="box">
+<label style="margin-top:0">FREE ONLINE AI <span id="fcst"></span></label>
+<label class="chk"><input type="checkbox" id="fc_on"> FREE AI ON: Gemini na ho ya fail ho to Groq, OpenRouter aur Pollinations khud try honge</label>
+<label class="chk"><input type="checkbox" id="fc_kl"> POLLINATIONS (bina key) bhi try karo - ho sakta hai kaam na kare</label>
+<input type="password" id="or_key" placeholder="OpenRouter key (optional, free models)" autocomplete="off">
+<small>Groq ki key upar wale GROQ box mein hai, wahi text ke liye bhi chalegi. Sirf tumhara bola hua sawaal in services ko jaata hai. Screen, notifications, contacts ya memory kabhi nahi jaate. Pollinations ki nayi docs key maangti hain, isliye bina key wala try fail ho sakta hai (tab NOVA use 10 min ke liye chhod deta hai). Pakka free rasta: Groq key (ya OpenRouter key). Key Android Keystore me encrypted rehti hai aur wapas screen par nahi dikhti.</small>
+<div class="row"><button class="sm" id="or_save">OPENROUTER SAVE</button><button class="sm" id="or_del">OPENROUTER HATAO</button></div>
+</div>
+
+<!-- PART2-MEMORY-UI -->
+<div class="box">
+<label style="margin-top:0">YAAD (PERSONAL MEMORY) <span id="memst"></span></label>
+<label class="chk"><input type="checkbox" id="mem_ch"> Online AI ko bhi do: sirf sawaal se milti-julti max 3 baatein (Gemini ko kabhi nahi)</label>
+<small>Bolo: "nova yaad rakh mera naam Shiv hai", "nova mujhe kya yaad hai", "nova bhool ja mera naam", "nova sab bhool ja". Ye baatein sirf is phone mein rehti hain, kahin upload ya backup nahi hoti. Password, OTP, PIN, card, Aadhaar/PAN/passport, bank account aur lambe number NOVA yaad nahi rakhta.</small>
+<pre id="memtxt" style="display:none;white-space:pre-wrap;margin:8px 0 0"></pre>
+<div class="row"><button class="sm" id="mem_show">DIKHAO</button><button class="sm" id="mem_del">SAB HATAO</button></div>
+</div>
+
 <!-- FIXFREE-UI2 -->
 <div class="box">
 <label style="margin-top:0">FREE IMAGE (OPTIONAL) <span id="imgst"></span></label>
@@ -354,6 +395,34 @@ input[type=checkbox],input[type=range]{accent-color:var(--c1)}
   function g(id){return document.getElementById(id)}
   function say(t,ok){var m=g("smsg");if(!m)return;m.textContent=t;m.className=ok?"ok":"bad"}
   function gst(){var e=g("groqst");if(!e)return;var h=false;try{h=Android.hasGroqKey()}catch(x){}e.textContent=h?"- key saved":"- optional";e.className=h?"ok":""}
+  function cst(){var e=g("fcst");var on=false,kl=true,h=false,gk=false;try{on=Android.getFreeChain();kl=Android.getFreeKeyless();h=Android.hasOpenRouterKey();gk=Android.hasGroqKey()}catch(x){}
+    var t=[];if(gk)t.push("Groq");if(h)t.push("OpenRouter");if(kl)t.push("Pollinations");
+    if(e){e.textContent=on?("- ON ("+(t.length?t.join(", "):"koi provider nahi")+")"):"- OFF";e.className=on?"ok":""}
+    var c1=g("fc_on");if(c1)c1.checked=!!on;var c2=g("fc_kl");if(c2)c2.checked=!!kl}
+  var fo=g("fc_on");
+  if(fo){fo.addEventListener("change",function(){
+    try{Android.setFreeChain(fo.checked);say(fo.checked?"Free online AI ON":"Free online AI OFF",true)}catch(x){say("Switch save nahi hua",false)}
+    cst();
+  })}
+  var fk=g("fc_kl");
+  if(fk){fk.addEventListener("change",function(){
+    try{Android.setFreeKeyless(fk.checked);say(fk.checked?"Bina key wala provider ON":"Bina key wala provider OFF",true)}catch(x){say("Switch save nahi hua",false)}
+    cst();
+  })}
+  var o1=g("or_save");
+  if(o1){o1.addEventListener("click",function(){
+    var f=g("or_key");var r="fail";
+    try{r=Android.saveOpenRouterKey(f.value)}catch(x){}
+    if(r==="ok"){f.value="";say("OpenRouter key save ho gayi",true)}
+    else if(r==="invalid"){say("Key galat lag rahi hai (kam se kam 20 akshar, bina space)",false)}
+    else{say("OpenRouter key save nahi hui",false)}
+    cst();
+  })}
+  var o2=g("or_del");
+  if(o2){o2.addEventListener("click",function(){
+    try{Android.clearOpenRouterKey()}catch(x){}
+    say("OpenRouter key hata di",true);cst();
+  })}
   function wst(){var v=g("w_val");var s=g("w_sec");if(!s)return;var n=5;try{n=Android.getWaitSec()}catch(x){}s.value=n;if(v)v.textContent=n+" sec"}
   var sv=g("w_sec");
   if(sv){
@@ -370,12 +439,12 @@ input[type=checkbox],input[type=range]{accent-color:var(--c1)}
     if(r==="ok"){f.value="";say("Groq key save ho gayi",true)}
     else if(r==="invalid"){say("Key galat lag rahi hai (kam se kam 20 akshar, bina space)",false)}
     else{say("Groq key save nahi hui",false)}
-    gst();
+    gst();cst();
   })}
   var b2=g("g_del");
   if(b2){b2.addEventListener("click",function(){
     try{Android.clearGroqKey()}catch(x){}
-    say("Groq key hata di",true);gst();
+    say("Groq key hata di",true);gst();cst();
   })}
   function ist(){var e=g("imgst");if(!e)return;var a=false,b=false,on=false;try{a=Android.hasImgKey("together");b=Android.hasImgKey("hf");on=Android.getFreeImg()}catch(x){}
     var t=[];if(on)t.push("fallback ON");if(a)t.push("Together saved");if(b)t.push("HF saved");
@@ -401,7 +470,33 @@ input[type=checkbox],input[type=range]{accent-color:var(--c1)}
     try{Android.clearImgKey("together");Android.clearImgKey("hf")}catch(x){}
     say("Image keys hata di",true);ist();
   })}
-  gst();wst();ist();
+  var memArm=false;
+  function mst(){var e=g("memst");var n=0,ch=true;try{n=Android.getMemoryCount();ch=Android.getMemoryInChain()}catch(x){}
+    if(e){e.textContent="- "+n+" baat"+(n===1?"":"en");e.className=n?"ok":""}
+    var c=g("mem_ch");if(c)c.checked=!!ch}
+  var mc=g("mem_ch");
+  if(mc){mc.addEventListener("change",function(){
+    try{Android.setMemoryInChain(mc.checked);say(mc.checked?"Online AI ko kaam ki baatein milengi":"Online AI ko kuch nahi jayega",true)}catch(x){say("Switch save nahi hua",false)}
+    mst();
+  })}
+  var ms=g("mem_show");
+  if(ms){ms.addEventListener("click",function(){
+    var t=g("memtxt");if(!t)return;
+    if(t.style.display!=="none"){t.style.display="none";t.textContent="";ms.textContent="DIKHAO";return}
+    var raw="";try{raw=Android.getMemoryText()}catch(x){}
+    t.textContent=raw?raw:"Abhi kuch yaad nahi hai";t.style.display="block";ms.textContent="CHHUPAO";
+  })}
+  var md=g("mem_del");
+  if(md){md.addEventListener("click",function(){
+    if(!memArm){memArm=true;md.textContent="PAKKA? DOBARA TAP KARO";say("Sab yaad rakhi baatein hat jaayengi. Pakka ho to dobara tap karo",false);
+      setTimeout(function(){memArm=false;md.textContent="SAB HATAO"},5000);return}
+    memArm=false;md.textContent="SAB HATAO";
+    var r="fail";try{r=Android.clearMemory()}catch(x){}
+    var t=g("memtxt");if(t){t.style.display="none";t.textContent=""}var ms2=g("mem_show");if(ms2)ms2.textContent="DIKHAO";
+    say(r==="ok"?"Sab yaad rakhi baatein hata di":"Hata nahi payi",r==="ok");mst();
+  })}
+  mst();
+  gst();wst();ist();cst();
 })();
 var $=function(id){return document.getElementById(id)};
 var log=$('log'),st=$('st'),app=$('app'),btn=$('btn'),panel=$('panel');
@@ -546,6 +641,9 @@ window.onFlow=function(r){
 /* ===== UPDATE CENTER: kya naya hai + permission check + update (har kaam aapki permission se) ===== */
 var UC=$('uc'),ucAutoDone=false,ucNoteTxt='',ucBusy=false,UCV='nova_seen_ver';
 var CHANGES=[
+ 'Naya open animation: lighting beams, glow, achanak flash + shock-wave, phir app "slam" hoke khulta hai. Popups (Update Center, sheets, chat) spring + glow ke saath khulte hain. Wake card bhi spring, slide aur light-sweep ke saath aata hai.',
+ 'Offline AI engine ab asli hai (llama.cpp): Update Center > OFFLINE BRAIN se Qwen2.5-0.5B (491 MB) Wi-Fi par download karo. Chhota model hai, galti kar sakta hai, kabhi koi kaam khud nahi karta.',
+ 'Fix: Microphone/Notification ALLOW button dead ho jata tha (Android popup band kar deta hai). Ab Settings page khulta hai. Update Center ka button ab "FEED URL DALO" par atakta nahi.',
  'Offline timer, reminder aur alarm: "nova das minute baad chai yaad dilao", "set alarm for six thirty am". Phone ka Clock app asli ghanti bajata hai.',
  'Offline skills (bina internet/key): calculator, unit convert (kg/lb, km/miles, C/F, cup/chamach), tarikh ka hisaab (45 din baad), emergency numbers, basic first aid.',
  'SLEEP MODE: NOVA sirf wake word par jaagta hai. Kaam khatam hote hi wapas so jata hai (chat memory bhi saaf).',
@@ -557,7 +655,7 @@ var CHANGES=[
  'Command sunne ke liye Indian-English model (behtar pehchaan).',
  'Default assistant option: Home / power button dabake rakhne par NOVA jaagta hai.',
  'Update Center (yeh screen): kya naya hai, kaunsi permission baaki hai, update install.',
- 'Offline brain (Update Center > OFFLINE BRAIN): model ka download ab ruk kar dobara chalu hota hai, aur net/AI fail hone par jawab offline model se aayega (engine judne ke baad).',
+ 'Offline brain (Update Center > OFFLINE BRAIN): model ka download ab ruk kar dobara chalu hota hai, aur net/AI fail hone par jawab offline model se aayega.',
  'Dhyan: yeh sab abhi phone par test hona baaki hai. Kuch gadbad mile to batao.'];
 function el(tg,cl,tx){var e=document.createElement(tg);if(cl)e.className=cl;if(tx!==undefined)e.textContent=tx;return e}
 function ucStat(){try{return JSON.parse(Android.getStatus())}catch(e){return null}}
@@ -568,8 +666,8 @@ function ucBrainOffer(){var a=ucAll();for(var i=0;i<a.length;i++)if(a[i].id===BR
 function ucBrainGet(){ucDo(function(){var r=Android.offerOfflineBrain();var o=ucBrainOffer();if(r!=='ok'||!o){ucNote('Offline brain abhi offer nahi ho paya: '+r);return}ucInstall(o)})}
 function ucDo(fn){try{fn()}catch(e){ucNote('Ye option is version mein available nahi hai')}}
 var UCP=[
- ['mic','Microphone','Wake word sunne ke liye',1,function(){Android.requestBasics()}],
- ['notif','Notifications','NOVA chalu hai ka nishaan dikhane ke liye',1,function(){Android.requestBasics()}],
+ ['mic','Microphone','Wake word sunne ke liye',1,function(){var r=Android.requestBasics();if(r==='settings')ucNote('Android ne popup band kar diya hai. Settings khuli hai: Permissions mein Microphone aur Notifications ALLOW karo, phir wapas aao.')}],
+ ['notif','Notifications','NOVA chalu hai ka nishaan dikhane ke liye',1,function(){var r=Android.requestBasics();if(r==='settings')ucNote('Android ne popup band kar diya hai. Settings khuli hai: Permissions mein Microphone aur Notifications ALLOW karo, phir wapas aao.')}],
  ['overlay','Display over other apps','Wake par card dikhane ke liye',0,function(){Android.openOverlaySettings()}],
  ['acc','Accessibility','Screen control aur read the screen ke liye',0,function(){Android.openAccessibility()}],
  ['notifAccess','Notification access','Driving mode: messages bol kar sunane ke liye',0,function(){Android.openNotificationAccess()}],
@@ -577,7 +675,8 @@ var UCP=[
  ['installOk','Install unknown apps','Sirf naya NOVA version (apk) lagane ke liye',0,function(){Android.openInstallSettings()}],
  ['contacts','Contacts','Naam se call / message ke liye',0,function(){Android.requestContacts()}],
  ['writeSettings','Brightness control','Brightness badhane-ghatane ke liye',0,function(){Android.openWriteSettings()}],
- ['battery','Battery: No restrictions','Phone NOVA ko band na kare (mic chalta rahe)',0,function(){Android.openBatterySettings()}]];
+ ['battery','Battery: No restrictions','Phone NOVA ko band na kare (mic chalta rahe)',0,function(){Android.openBatterySettings()}],
+ ['pattern','Pattern unlock setup','Voice unlock ke liye pattern save / ON-OFF (optional)',0,function(){Android.openPatternSetup()}]];
 function ucPerm(k){for(var i=0;i<UCP.length;i++)if(UCP[i][0]===k)return UCP[i];return null}
 function ucNote(t){ucNoteTxt=t;if(UC.classList.contains('on'))ucRender()}
 function ucInstall(o){ucDo(function(){Android.installUpdate(o.id)});ucNote('Download shuru: '+o.title+'. SHA-256 check ke baad hi lagega.');setTimeout(ucRender,700)}
@@ -589,7 +688,7 @@ function ucNext(st,of){
     if(o.type==='apk'&&!st.installOk)return{label:'INSTALL PERMISSION ALLOW KARO',run:ucPerm('installOk')[4]};
     return{label:'INSTALL: '+o.title.toUpperCase(),run:function(){ucInstall(o)}};
   }
-  if(!st.feedUrl)return{label:'UPDATE FEED URL DALO',run:function(){ucClose();setTimeout(function(){if(window.novaGo)novaGo('u_feed')},350)}};
+  if(!st.feedUrl)return{label:'SAB TAIYAAR - BAND KARO',run:ucClose};   /* update feed optional hai: pehle yahi button har baar 'FEED URL DALO' dikha kar atka hua lagta tha */
   return{label:'UPDATE CHECK KARO',run:ucCheck};
 }
 function ucRender(){
@@ -609,7 +708,7 @@ function ucRender(){
   (function(){
     var r=el('div','ucr'),t=el('div','t','Offline AI: Qwen2.5-0.5B (491 MB)');
     var bo=ucBrainOffer(),stx=bo?bo.status:'';
-    var why=st.brainInstalled?'Download ho chuka hai.':(!st.engine?'Abhi engine nahi judi hai, isliye download band hai. Engine agle update mein aayegi.':(!st.ramOk?'Is phone mein RAM kam hai ('+st.ramMb+' MB), isliye offer nahi kiya.':'491 MB hai, Wi-Fi par karo. Chhota model hai: galti kar sakta hai, kabhi koi kaam khud nahi karta.'));
+    var why=st.brainInstalled?'Download ho chuka hai.':(!st.engine?'Engine (llama.cpp) judi hai par is phone par abhi tak chali nahi hai.':(!st.ramOk?'Is phone mein RAM kam hai ('+st.ramMb+' MB), isliye offer nahi kiya.':'491 MB hai, Wi-Fi par karo. Chhota model hai: galti kar sakta hai, kabhi koi kaam khud nahi karta.'));
     t.appendChild(el('small',0,why+(stx&&stx!=='offered'?' - '+stx:'')));r.appendChild(t);
     if(stx.indexOf('downloading')===0)ucBusy=true;
     if(st.brainInstalled){var bd=el('button','sm','HATAO');bd.onclick=function(){ucDo(function(){ucNote(Android.rollbackUpdate(BRAIN_ID))});ucRender()};r.appendChild(bd)}
@@ -853,6 +952,18 @@ function stClose(t){var f=[],o=[];for(var i=0;i<NP;i++){f[i]=1;o[i]=1-ez(cl((t-1
  return{f:f,o:o,t:t,lt:0,core:oo*pa,seam:Math.min(1,.15+oo*.7+lock),bu:0,fl:pa,pa:pa,badge:(1-oo)}}
 PL.forEach(function(){});
 function cap(a,b){var e=$('cap');e.firstChild.textContent=a;e.lastChild.textContent=b}
+var LT=$('lt'),Lh=LT.querySelector('.hl'),Lb1=LT.querySelector('.b1'),Lb2=LT.querySelector('.b2'),Lfl=LT.querySelector('.fl'),FLs=$('flash'),SKs=$('shock');
+function gauss(t,c,w){var x=(t-c)/w;return Math.exp(-x*x)}
+function lights(t){
+ var pulse=.5+.5*Math.sin(t/240),core=Math.max(gauss(t,1300,240),gauss(t,3300,300),gauss(t,4500,300)),gone=1-cl((t-5050)/200);
+ Lh.style.opacity=Math.min(1,(.16+.2*pulse+core*.85)*gone);Lh.style.transform='scale('+(.5+.4*cl(t/4500)+core*.18)+')';
+ var p1=cl(t/1300),p2=cl((t-2900)/1400);
+ Lb1.style.opacity=(p1>0&&p1<1)?Math.sin(p1*Math.PI)*.95:0;Lb1.style.transform='translateX('+(-130+p1*360)+'%) skewX(-18deg)';
+ Lb2.style.opacity=(p2>0&&p2<1)?Math.sin(p2*Math.PI)*.85:0;Lb2.style.transform='translateX('+(380-p2*520)+'%) skewX(-18deg)';
+ var f=Math.max(gauss(t,1300,170),gauss(t,4500,230),gauss(t,5110,110));Lfl.style.opacity=Math.min(1,f);Lfl.style.transform='scaleX('+(.1+f*1.05)+')';
+ FLs.style.opacity=Math.min(.95,gauss(t,5120,75)*.95);
+ var ps=cl((t-5090)/650);SKs.style.opacity=(ps>0&&ps<1)?(1-ps)*.9:0;SKs.style.transform='scale('+(1+ps*30)+')'}
+function lightsOff(){Lh.style.opacity=0;Lb1.style.opacity=0;Lb2.style.opacity=0;Lfl.style.opacity=0;FLs.style.opacity=0;SKs.style.opacity=0}
 var seq=null,raf=0,lastCap='';
 function ui(m,t){var a,b,sp=0,ld='',pc=0,show=1;
  if(m==='open'){if(t<900){a='APP LAUNCH';b='Splash screen';sp=cl(t/300)*(1-cl((t-600)/300));pc=20*cl(t/900);ld='LOADING'}
@@ -864,16 +975,16 @@ function ui(m,t){var a,b,sp=0,ld='',pc=0,show=1;
  $('spl').style.opacity=sp;$('spt').textContent=(m==='open')?'YOUR AI COMPANION':'SYSTEM STANDBY';
  $('ldt').textContent=ld;$('ldb').style.width=pc+'%';$('ldp').textContent=Math.round(pc)+'%';$('tsd').style.opacity=(m==='open'&&t<3000)?1:0}
 function frame(){raf=0;if(!seq)return;var t=performance.now()-seq.t0;
- if(seq.m==='open'){draw(stOpen(t));ui('open',t);
+ if(seq.m==='open'){draw(stOpen(t));ui('open',t);lights(t);
   if(t>=5100&&!B.classList.contains('ready')){B.classList.add('ready');greetOnce()}
-  intro.style.opacity=1-cl((t-5100)/500);
-  if(t>=OPEN_END){intro.classList.remove('on');intro.style.opacity='';seq=null;return}}
+  intro.style.opacity=1-cl((t-5100)/200);   /* achanak: flash + burst, intro 0.2 s mein hat jata hai */
+  if(t>=OPEN_END){intro.classList.remove('on');intro.style.opacity='';lightsOff();seq=null;return}}
  else if(seq.m==='close'){draw(stClose(t));ui('close',t);intro.style.opacity=cl(t/250);
   if(t>=CLOSE_END){var P=stClose(CLOSE_END);draw(P);seq={m:'standby'};return}}
  raf=requestAnimationFrame(frame)}
 function startOpen(off){stopSnd();seq={m:'open',t0:performance.now()-(off||0)};lastCap='';intro.classList.add('on');intro.style.opacity=1;B.classList.remove('ready');
  var ok=sOpen((off||0)/1000);var OL=[[2550,30],[3000,45],[3300,35],[4500,120]];for(var q=0;q<NP;q++)OL.push([1550+q*150,16]);vplan(OL,off||0);var A=ac();$('hint').style.display=(snd&&(!A||A.state!=='running'))?'block':'none';if(!raf)raf=requestAnimationFrame(frame)}
-function startClose(){if(seq||busy)return;stopSnd();B.classList.remove('ready');seq={m:'close',t0:performance.now()};lastCap='';intro.classList.add('on');intro.style.opacity=0;sClose();vplan([[100,40],[1150,25],[1200,25],[1250,25],[1300,120]],0);if(!raf)raf=requestAnimationFrame(frame)}
+function startClose(){if(seq||busy)return;lightsOff();stopSnd();B.classList.remove('ready');seq={m:'close',t0:performance.now()};lastCap='';intro.classList.add('on');intro.style.opacity=0;sClose();vplan([[100,40],[1150,25],[1200,25],[1250,25],[1300,120]],0);if(!raf)raf=requestAnimationFrame(frame)}
 function skip(){if(seq&&seq.m==='open'){var t=performance.now()-seq.t0;if(t>700&&t<5000){stopSnd();seq.t0=performance.now()-5000}}}
 intro.addEventListener('pointerdown',function(){var A=ac();if(seq&&seq.m==='open'){if(A&&A.state==='running'&&$('hint').style.display==='block'){$('hint').style.display='none';stopSnd();sOpen((performance.now()-seq.t0)/1000)}else skip()}else if(seq&&seq.m==='standby')startOpen(0)});
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&seq&&!raf)raf=requestAnimationFrame(frame)});

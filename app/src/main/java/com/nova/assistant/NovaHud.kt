@@ -23,6 +23,8 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.sin
 
@@ -55,6 +57,19 @@ internal object HudMath {
         val k = t.coerceIn(0f, 1f)
         val u = 1f - k
         return 1f - u * u * u
+    }
+
+    /** Spring open: 0 -> about 1.04 -> 1 (a damped overshoot), so the card "snaps" in with weight. */
+    fun springEase(t: Float): Float {
+        val x = t.coerceIn(0f, 1f)
+        return 1f - exp(-6f * x) * cos(10f * x)
+    }
+
+    /** Light burst while the card opens: 1 at the start, 0 when fully open (and always 0 outside 0..1). */
+    fun entryFlash(t: Float): Float {
+        if (t <= 0f || t >= 1f) return 0f
+        val u = 1f - t
+        return u * u
     }
 
     /** Brightness 0..1 of the glowing border: a slow breathing, a little stronger while listening. */
@@ -229,6 +244,7 @@ private class HudView(ctx: Context) : View(ctx) {
     private var smooth = 0f
 
     private var t = 0f                     // 0 = hidden, 1 = fully shown
+    private var entering = false           // true only while the card opens (light burst is not played when closing)
     private var anim: ValueAnimator? = null
     private var ticker: ValueAnimator? = null
 
@@ -248,6 +264,8 @@ private class HudView(ctx: Context) : View(ctx) {
     private val sub = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9FB4D6.toInt(); textSize = 12.5f * d }
     private val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEAF2FF.toInt(); textSize = 14.5f * d }
     private val hint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF6F86AD.toInt(); textSize = 13f * d }
+    private val sweep = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val shock = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val rect = RectF()
     private val oval = RectF()
     private var fillShader: LinearGradient? = null
@@ -264,8 +282,8 @@ private class HudView(ctx: Context) : View(ctx) {
 
     fun changeState(s: String) { state = s; invalidate() }
 
-    fun assemble() { run(0f, 1f, 360L, null) }
-    fun disassemble(end: () -> Unit) { run(t, 0f, 240L, end) }
+    fun assemble() { entering = true; run(0f, 1f, 560L, null) }
+    fun disassemble(end: () -> Unit) { entering = false; run(t, 0f, 240L, end) }
     fun cancelAnim() {
         anim?.cancel(); anim = null
         ticker?.cancel(); ticker = null
@@ -327,8 +345,9 @@ private class HudView(ctx: Context) : View(ctx) {
         val bottom = h - margin
         val radius = 24f * d
 
-        val sc = 0.9f + 0.1f * e
+        val sc = 0.78f + 0.22f * HudMath.springEase(t)
         val sv = c.save()
+        c.translate(0f, -(1f - e) * 30f * d)       // slides down from above while it springs open
         c.scale(sc, sc, w / 2f, h / 2f)
         val layer = c.saveLayerAlpha(0f, 0f, w, h, (255 * e).toInt().coerceIn(0, 255))
 
@@ -437,6 +456,24 @@ private class HudView(ctx: Context) : View(ctx) {
         } else if (state == "listen") {
             val lay = build("\u201Copen YouTube\u201D  \u00B7  \u201Ctorch on\u201D  \u00B7  \u201Cvolume badhao\u201D", hint, bodyW, 2)
             c.save(); c.translate(bx0, by); lay.draw(c); c.restore()
+        }
+        // opening light: border flash + a light band sweeping across the glass + one shock ring (only while opening)
+        if (entering && t < 1f) {
+            val fl = HudMath.entryFlash(t)
+            rect.set(left, top, right, bottom)
+            border.strokeWidth = 3.2f * d
+            border.alpha = (255 * fl).toInt().coerceIn(0, 255)
+            c.drawRoundRect(rect, radius, radius, border)
+            val sx = left + (right - left) * (-0.25f + 1.5f * t)
+            sweep.shader = LinearGradient(sx - 70f * d, top, sx + 70f * d, bottom,
+                intArrayOf(0x00FFFFFF, 0x66CFF4FF, 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+            c.drawRoundRect(rect, radius, radius, sweep)
+            sweep.shader = null
+            val g = margin * 0.9f * t
+            rect.set(left - g, top - g, right + g, bottom + g)
+            shock.color = (cyan and 0x00FFFFFF) or ((190 * (1f - t)).toInt().coerceIn(0, 255) shl 24)
+            shock.strokeWidth = 1.6f * d
+            c.drawRoundRect(rect, radius + g, radius + g, shock)
         }
         c.restoreToCount(layer)
         c.restoreToCount(sv)

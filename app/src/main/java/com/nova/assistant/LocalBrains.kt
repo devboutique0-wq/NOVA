@@ -8,8 +8,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Connects the Layer-2 slot to the model file the updater installed (UpdateManager.activeModelPath).
- * No inference engine is bundled yet: [factory] stays null until an engine (MediaPipe / LiteRT / llama.cpp) is
- * added AND compile-tested in CI. Until then [ask] and [chat] always return null and NOVA behaves exactly as before.
+ * The engine is LlamaBrain (llama.cpp). [installEngine] sets [factory]; the model is only loaded when a model file
+ * is installed AND a request needs it. If the native library or the file fails, [active] returns null and NOVA
+ * behaves exactly as without a model.
  *
  * Only ONE request runs at a time ([busy]): a timed-out native call may still be running, so a second request is
  * refused instead of queued (no pile-up, no double RAM use).
@@ -17,6 +18,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 object LocalBrains {
     /** An engine integration sets this: model file path -> a LocalBrain, or null if the file cannot be loaded. */
     @Volatile var factory: ((String) -> LocalBrain?)? = null
+
+    /** Installs the real engine (llama.cpp) once. Safe to call many times. Does not load any model yet. */
+    fun installEngine(ctx: Context) {
+        if (factory != null) return
+        val resolver = ctx.applicationContext.contentResolver
+        factory = { path -> LlamaBrain.create(resolver, path) }
+    }
 
     private val lock = Any()
     private var cached: LocalBrain? = null
@@ -72,9 +80,9 @@ object LocalBrains {
     }
 
     /** A short TEXT answer (never an action) for [text], or null. [en] = answer language for the safety line. */
-    fun chat(ctx: Context, text: String, en: Boolean): String? {
+    fun chat(ctx: Context, text: String, en: Boolean, facts: List<String> = emptyList()): String? {
         val brain = active(ctx) ?: return null
-        val raw = run(brain, LocalChat.buildPrompt(text), LocalChat.TIMEOUT_MS)
+        val raw = run(brain, LocalChat.buildPrompt(text, facts), LocalChat.TIMEOUT_MS)
         val clean = LocalChat.clean(raw) ?: return null
         return LocalChat.guard(text, clean, en)
     }

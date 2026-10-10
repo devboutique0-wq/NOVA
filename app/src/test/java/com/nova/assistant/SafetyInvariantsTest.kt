@@ -61,6 +61,11 @@ class SafetyInvariantsTest {
         }
     }
 
+    @Test fun knowledgeAndLocalSkillAreNotShortcutKinds() {
+        assertFalse("knowledge" in Brain.SAFE_KINDS)
+        assertFalse("local_skill" in Brain.SAFE_KINDS)
+    }
+
     @Test fun skillsCannotHoldTapOrTypeSteps() {
         assertNotNull(Brain.validateSkill(Skill("bad one", listOf("do my thing"), listOf("tap send"), "user")))
         assertNotNull(Brain.validateSkill(Skill("bad two", listOf("do my thing"), listOf("type hello"), "user")))
@@ -118,5 +123,20 @@ class SafetyInvariantsTest {
         assertNull(LocalBrainRules.parseOutput("type hello"))
         assertNull(LocalBrainRules.parseOutput("yes"))
         assertNull(LocalBrainRules.parseOutput("check updates"))
+    }
+
+    // ---- PART 2 personal memory: kinds are never shortcuts, skill steps or model suggestions; secrets are never stored
+    @Test fun memoryKindsAreNeverSafeKindsOrAcceptedFromTheModel() {
+        for (k in PersonalMemory.KINDS) {
+            assertFalse("SAFE_KINDS must not contain $k", k in Brain.SAFE_KINDS)
+            assertFalse("the offline model must not trigger $k", LocalBrainRules.accepted(Logic.Cmd(k, "x")))
+        }
+        assertNotNull(Brain.validateSkill(Skill("mem step", listOf("do memory thing"), listOf("yaad rakh mera naam shiv hai"), "user")))
+    }
+
+    @Test fun secretsAreNeverStoredInPersonalMemory() {
+        for (s in listOf("my otp is 1234", "wifi password hunter2", "atm pin 4321", "card number 4111 1111 1111 1111", "aadhaar 1234 5678 9012")) {
+            assertEquals("must refuse: $s", "refused", PersonalMemory.add(emptyList(), s).status)
+        }
     }
 }

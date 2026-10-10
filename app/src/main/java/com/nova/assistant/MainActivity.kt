@@ -29,6 +29,7 @@ class MainActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         cfg = Cfg(this)
+        LocalBrains.installEngine(this)
         SecureStore.migrateOld(this)
         SecureStore.migrateSingleToPool(this)
         web = WebView(this)
@@ -490,6 +491,49 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun clearGroqKey() { SecureStore.clearGroq(this@MainActivity) }
 
+        /** Optional OpenRouter key for the free AI chain. Written only here, never sent back to the page. ok / invalid / fail. */
+        @JavascriptInterface
+        fun saveOpenRouterKey(raw: String): String = try {
+            val k = raw.trim()
+            if (k.length < 20 || k.length > 200 || k.any { it.isWhitespace() }) "invalid"
+            else if (SecureStore.saveSlot(this@MainActivity, "openrouter", k)) "ok"
+            else "fail"
+        } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
+        fun hasOpenRouterKey(): Boolean = SecureStore.hasSlot(this@MainActivity, "openrouter")
+
+        @JavascriptInterface
+        fun clearOpenRouterKey() { SecureStore.clearSlot(this@MainActivity, "openrouter") }
+
+        @JavascriptInterface
+        fun getFreeChain(): Boolean = ExtCfg.freeChain(this@MainActivity)
+
+        @JavascriptInterface
+        fun setFreeChain(on: Boolean): String { ExtCfg.setFreeChain(this@MainActivity, on); return "ok" }
+
+        // PART 2 personal memory: the page only gets a COUNT, and the text only after the owner taps SHOW.
+        @JavascriptInterface
+        fun getMemoryCount(): Int = PersonalMemoryStore.count(this@MainActivity)
+
+        @JavascriptInterface
+        fun getMemoryText(): String = PersonalMemory.encode(PersonalMemoryStore.load(this@MainActivity))
+
+        @JavascriptInterface
+        fun clearMemory(): String = if (PersonalMemoryStore.clear(this@MainActivity)) "ok" else "fail"
+
+        @JavascriptInterface
+        fun getMemoryInChain(): Boolean = ExtCfg.memoryInChain(this@MainActivity)
+
+        @JavascriptInterface
+        fun setMemoryInChain(on: Boolean): String { ExtCfg.setMemoryInChain(this@MainActivity, on); return "ok" }
+
+        @JavascriptInterface
+        fun getFreeKeyless(): Boolean = ExtCfg.freeKeyless(this@MainActivity)
+
+        @JavascriptInterface
+        fun setFreeKeyless(on: Boolean): String { ExtCfg.setFreeKeyless(this@MainActivity, on); return "ok" }
+
         // FIXFREE1: optional free image provider keys (together / hf). Written only here, never sent back to the page.
         @JavascriptInterface
         fun saveImgKey(slot: String, raw: String): String = try {
@@ -573,6 +617,7 @@ class MainActivity : Activity() {
                 .put("contacts", granted(Manifest.permission.READ_CONTACTS))
                 .put("writeSettings", Settings.System.canWrite(this@MainActivity))
                 .put("battery", (getSystemService(POWER_SERVICE) as? android.os.PowerManager)?.isIgnoringBatteryOptimizations(packageName) == true)
+                .put("pattern", PatternUnlock.isSet(this))
                 .put("feedUrl", cfg.feedUrl)
                 .put("running", NovaService.running)
                 .put("engine", LocalBrains.factory != null)
@@ -609,6 +654,14 @@ class MainActivity : Activity() {
             }
         }
 
+        /** Opens NOVA's own pattern-unlock screen (it no longer has its own launcher icon). */
+        @JavascriptInterface
+        fun openPatternSetup() {
+            runOnUiThread {
+                try { startActivity(Intent(this@MainActivity, PatternSetupActivity::class.java)) } catch (e: Exception) { }
+            }
+        }
+
         /** Opens Android's own "Default digital assistant app" choice. The user picks NOVA there; NOVA cannot set it by itself. */
         @JavascriptInterface
         fun openAssistantSettings() {
@@ -634,6 +687,27 @@ class MainActivity : Activity() {
                 ask.add(Manifest.permission.POST_NOTIFICATIONS)
             }
             if (ask.isEmpty()) return "ok"
+            // Android stops showing the popup after two denials; then the button looked dead and the Update Center
+            // seemed stuck. In that case open this app's settings page instead.
+            val prefs = getSharedPreferences("nova_perm", android.content.Context.MODE_PRIVATE)
+            val askedBefore = prefs.getBoolean("basics_asked", false)
+            val blocked = askedBefore && ask.all { !shouldShowRequestPermissionRationale(it) }
+            if (blocked) {
+                runOnUiThread {
+                    try {
+                        val i = Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.parse("package:" + packageName)
+                        )
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(i)
+                    } catch (e: Exception) {
+                        pushFlow("basics_done")
+                    }
+                }
+                return "settings"
+            }
+            prefs.edit().putBoolean("basics_asked", true).apply()
             runOnUiThread { requestPermissions(ask.toTypedArray(), REQ_BASIC) }
             return "asked"
         }

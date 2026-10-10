@@ -19,4 +19,42 @@ object ExtCfg {
     }
 
     fun waitMs(ctx: Context): Int = waitSec(ctx) * 1000
+
+    private const val FREE_CHAIN = "free_chain"
+    private const val FREE_KEYLESS = "free_keyless"
+
+    /** Free online AI chain (Groq / OpenRouter / Pollinations). Default ON. Only the spoken question is ever sent. */
+    fun freeChain(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(FREE_CHAIN, true)
+    } catch (e: Exception) { true }
+
+    fun setFreeChain(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(FREE_CHAIN, on).apply()
+        } catch (e: Exception) { }
+    }
+
+    private const val MEMORY_IN_CHAIN = "memory_in_chain"
+
+    /** Default ON: at most 3 RELEVANT personal facts may be added to the online free chain's prompt (never to Gemini). */
+    fun memoryInChain(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(MEMORY_IN_CHAIN, true)
+    } catch (e: Exception) { true }
+
+    fun setMemoryInChain(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(MEMORY_IN_CHAIN, on).apply()
+        } catch (e: Exception) { }
+    }
+
+    /** The no-key provider (Pollinations, a public anonymous service). Default ON, can be switched off on its own. */
+    fun freeKeyless(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(FREE_KEYLESS, true)
+    } catch (e: Exception) { true }
+
+    fun setFreeKeyless(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(FREE_KEYLESS, on).apply()
+        } catch (e: Exception) { }
+    }
 }

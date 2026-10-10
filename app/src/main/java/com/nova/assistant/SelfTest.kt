@@ -62,6 +62,9 @@ object SelfTest {
         }
         if (ctx.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) rec("PASS", "Contacts permission", "")
         else rec("WARN", "Contacts permission", "call/message ke liye chahiye")
+        val kn = KnowledgeStore.count(ctx)
+        if (kn > 0) rec("PASS", "Knowledge pack", kn.toString() + " entries loaded")
+        else rec("WARN", "Knowledge pack", "knowledge.json load nahi hua (offline jawab band)")
         val nl = Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners") ?: ""
         if (nl.contains(ctx.packageName)) rec("PASS", "Notification access", "")
         else rec("WARN", "Notification access", "sirf driving mode ke liye (optional)")

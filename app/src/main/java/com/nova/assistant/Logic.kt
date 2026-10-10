@@ -159,7 +159,8 @@ object Logic {
 
     /** Replies of these commands are always spoken: the user asked to HEAR something (driving messages, screen text, the mode switch). */
     val LOUD_KINDS: Set<String> = setOf(
-        "drive_on", "drive_off", "drive_read", "drive_clear", "drive_reply", "drive_dictate", "analyze", "quiet_on", "quiet_off"
+        "drive_on", "drive_off", "drive_read", "drive_clear", "drive_reply", "drive_dictate", "analyze", "quiet_on", "quiet_off",
+        "mem_save", "mem_list", "mem_forget", "mem_forget_all"
     )
 
     /** false = show the reply in the chat / card only. A waiting yes/no question is ALWAYS spoken (risky actions stay audible). */
@@ -385,6 +386,9 @@ object Logic {
         // ---- quiet replies on / off (default on: replies are shown in the chat, not spoken)
         if (core in setOf("quiet mode on", "silent replies on", "voice replies off")) return Cmd("quiet_on")
         if (core in setOf("quiet mode off", "silent replies off", "voice replies on")) return Cmd("quiet_off")
+
+        // ---- personal memory (yaad rakh / mujhe kya yaad hai / bhool ja). Before Timers: "yaad rakh" is not a reminder.
+        PersonalMemory.parse(n)?.let { return it }
 
         // ---- timer / reminder / alarm (offline; the phone's Clock app does the real ringing)
         Timers.parse(t)?.let { return it }

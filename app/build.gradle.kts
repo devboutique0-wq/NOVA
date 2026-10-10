@@ -22,6 +22,8 @@ android {
         targetSdk = 34
         versionCode = (System.getenv("NOVA_VERSION_CODE") ?: "6").toIntOrNull() ?: 6
         versionName = "6.0"
+        // The offline engine (llama.cpp) ships arm64-v8a + x86_64; real phones are arm64. Keeps the APK smaller.
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
     signingConfigs {
         if (haveNovaKeystore) {
@@ -47,5 +49,8 @@ android {
 dependencies {
     implementation("net.java.dev.jna:jna:5.13.0@aar")
     implementation("com.alphacephei:vosk-android:0.3.47")
+    // Offline AI engine (llama.cpp for Android). Coordinates seen on Maven Central; API read from the library's demo app.
+    implementation("io.github.ljcamargo:llamacpp-kotlin:0.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     testImplementation("junit:junit:4.13.2")
 }
