@@ -63,13 +63,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NovaService : Service() {
 
     companion object {
+        private const val MAX_FOLLOW = 3   // v16: at most 3 follow-up listens in a row without the wake word
+        private val NO_FOLLOW_KINDS = setOf("stop", "sleep", "agent", "image", "site", "learn", "publish")
         @Volatile var running = false
         @Volatile var uiVisible = false          // set by MainActivity.onResume/onPause (PART 2)
         var listener: ((String, String) -> Unit)? = null
+        var permRequest: ((String) -> Unit)? = null   // v31: the open app shows the Android permission dialog at the moment a command needs it
+        var publishListener: ((Boolean, String, String) -> Unit)? = null   // v16: voice publish finished -> chat screen (ok, message, url)
+        var learnListener: (() -> Unit)? = null   // v16: a new note arrived -> refresh Settings > KYA SEEKHA
+        @Volatile var lastSiteSubject = ""   // v16: the newest built website, so PUBLISH in the chat can send it
+        @Volatile var lastSiteHtml = ""
+        var siteListener: ((Boolean, String, String, String) -> Unit)? = null   // v16: finished website -> chat screen (ok, message, html, saved place)
+        var imageListener: ((Boolean, String, String, String) -> Unit)? = null   // v30: finished picture -> chat screen (ok, message, base64 thumb, saved place)
         @Volatile var instance: NovaService? = null
         @Volatile private var loopThread: Thread? = null
 
         const val RATE = 16000
+        const val MIN_HEAR_BYTES = 25600   // about 0.8 s of 16 kHz audio: shorter clips are never sent to be transcribed
         private const val HUD_MAX_MS = 35000L
         private const val MAX_READ_ERRORS = 5
     }
@@ -102,6 +112,10 @@ class NovaService : Service() {
     @Volatile private var dictatePending: Pending? = null   // the pending that waits for a DICTATED driving reply (not a yes/no)
     @Volatile private var dictTarget: Driving.Msg? = null    // the message that dictated reply answers (memory only)
     @Volatile private var answerWindow = false
+    @Volatile private var followWindow = false   // v16 conversation mode: listen again after a spoken reply
+    @Volatile private var nextFollow = false
+    @Volatile private var replyUtt = ""
+    @Volatile private var followCount = 0
     @Volatile private var wakeRequest = false        // set by the default-assistant button (long-press Home / power): same as the wake word
     @Volatile private var alive = false             // per-instance: true from onCreate until onDestroy / loop failure
 
@@ -127,7 +141,7 @@ class NovaService : Service() {
         override fun run() {
             val hd = hud ?: return
             if (!hd.isShown) return
-            val waiting = busy || listening || ttsActive || pending != null || answerWindow
+            val waiting = busy || listening || ttsActive || pending != null || answerWindow || followWindow
             val shownMs = hd.visibleForMs()
             if (shownMs > HUD_MAX_MS || (!waiting && shownMs >= NovaHud.MIN_VISIBLE_MS)) hd.hide()
             else h.postDelayed(this, 400)
@@ -147,7 +161,7 @@ class NovaService : Service() {
     /** Only the wake-word listener stays on. Chat memory, last command and the card are cleared. */
     private fun goSleep() {
         if (!alive) return
-        if (busy || listening || ttsActive || pending != null || answerWindow) {
+        if (busy || listening || ttsActive || pending != null || answerWindow || followWindow) {
             h.postDelayed(sleepRun, 1500L)   // still working or waiting for a spoken yes: stay awake, look again soon
             return
         }
@@ -216,6 +230,7 @@ class NovaService : Service() {
         LocalBrains.installEngine(this)
         brain = BrainStore.get(this)
         h.postDelayed(autoCheck, 45_000L)
+        try { registerReceiver(batteryLowRx, IntentFilter(Intent.ACTION_BATTERY_LOW)) } catch (e: Exception) { }
         hud = NovaHud(this)
         SecureStore.migrateOld(this)
         SecureStore.migrateSingleToPool(this)
@@ -263,10 +278,12 @@ class NovaService : Service() {
     override fun onDestroy() {
         alive = false
         LocalBrains.release()
+        VoiceLock.release()
         Driving.enabled = false
         Driving.inbox.clear()
         DrivingBridge.forgetAll()
         if (instance === this) { instance = null; running = false }
+        try { unregisterReceiver(batteryLowRx) } catch (e: Exception) { }
         h.removeCallbacksAndMessages(null)
         try { hud?.destroy() } catch (e: Exception) { }
         hud = null
@@ -307,6 +324,7 @@ class NovaService : Service() {
         if (id == null || id != curUtt) return
         ttsActive = false
         if (finished && id == confirmUtt) answerWindow = true
+        if (finished && id == replyUtt && ExtCfg.convo(this) && followCount < MAX_FOLLOW) followWindow = true
     }
 
     private fun say(text: String, confirm: Boolean = false): Boolean = speak(text, confirm, true)
@@ -326,6 +344,8 @@ class NovaService : Service() {
         val id = "u" + uttSeq.incrementAndGet()
         curUtt = id
         confirmUtt = if (confirm) id else ""
+        replyUtt = if (nextFollow && !confirm) id else ""
+        nextFollow = false
         ttsActive = true                                 // BEFORE speak(), so the loop can never hear our own voice
         ttsDeadline = System.currentTimeMillis() + minOf(60000L, 4000L + text.length * 90L)
         val r = try { t.speak(text, TextToSpeech.QUEUE_FLUSH, null, id) } catch (e: Exception) { TextToSpeech.ERROR }
@@ -446,6 +466,79 @@ class NovaService : Service() {
 
     // ------------------------------------------------------------------ mic loop: wake -> command / answer
 
+    // ---- v17 "only my voice" (SpeakerRules + VoiceLock). The gate runs on the worker thread, never on the mic thread.
+    @Volatile private var voiceMd: Model? = null
+    @Volatile private var enrollLeft = 0
+    private val enrollVecs = ArrayList<DoubleArray>()
+
+    /** Called from Settings. "ok" = enrolment started (chat tells the owner what to say), anything else = a short reason. */
+    fun startVoiceEnroll(): String {
+        if (!alive || voiceMd == null) return "notrunning"
+        Thread({
+            if (!VoiceLock.modelReady(this)) {
+                listener?.invoke("ai", tr("Awaaz pehchaan ka chhota model download ho raha hai (lagbhag 14 MB)...", "Downloading the small voice model (about 14 MB)..."))
+                val err = VoiceLock.downloadModel(this)
+                if (err != null) {
+                    listener?.invoke("ai", tr("Model download nahi hua ($err). Internet check karke dobara dabao.", "The model did not download ($err). Check the internet and try again."))
+                    return@Thread
+                }
+            }
+            synchronized(enrollVecs) { enrollVecs.clear() }
+            enrollLeft = SpeakerRules.ENROLL_SAMPLES
+            listener?.invoke("ai", tr(
+                "Awaaz save: ab 5 baar \"$curWake\" bolo aur 4-5 second ka lamba vaakya bolo (1/5). Shaant jagah par, apni normal awaaz me.",
+                "Voice setup: say \"$curWake\" and then a 4-5 second sentence, 5 times (1/5). Quiet place, normal voice."
+            ))
+        }, "nova-voice-enroll").start()
+        return "ok"
+    }
+
+    private fun voiceDeny(msg: String) {
+        h.post {
+            listener?.invoke("ai", msg)
+            hud?.setReply("")
+            mode("on")
+            armSleep(2000L)
+            busy = false
+        }
+    }
+
+    /** true = go on and handle this utterance. false = it was consumed (enrolment) or refused (not the owner). */
+    private fun voiceAllows(pcm: ByteArray, isAnswer: Boolean): Boolean {
+        val enrolling = enrollLeft > 0
+        if (!enrolling && !(ExtCfg.voiceLock(this) && VoiceLock.hasProfile(this))) return true
+        val md = voiceMd
+        val got = if (md != null) VoiceLock.vector(this, md, pcm, RATE) else null
+        if (enrolling) {
+            if (got == null) { voiceDeny(tr("Awaaz samajh nahi aayi, dobara bolo.", "I could not read your voice, say it again.")); return false }
+            if (got.second < SpeakerRules.MIN_FRAMES_ENROLL) { voiceDeny(tr("Vaakya bahut chhota tha, thoda lamba bolo.", "That was too short, say a longer sentence.")); return false }
+            val n = synchronized(enrollVecs) { enrollVecs.add(got.first); enrollVecs.size }
+            val done = n >= SpeakerRules.ENROLL_SAMPLES
+            if (!done) { voiceDeny(tr("Save hua ($n/${SpeakerRules.ENROLL_SAMPLES}). Ab agla vaakya bolo.", "Saved ($n/${SpeakerRules.ENROLL_SAMPLES}). Say the next sentence.")); return false }
+            enrollLeft = 0
+            val avg = synchronized(enrollVecs) { SpeakerRules.average(ArrayList(enrollVecs)) }
+            synchronized(enrollVecs) { enrollVecs.clear() }
+            if (avg != null && VoiceLock.saveProfile(this, avg)) {
+                ExtCfg.setVoiceLock(this, true)
+                voiceDeny(tr("Awaaz save ho gayi. Ab NOVA sirf aapki awaaz par jawab dega.", "Voice saved. NOVA will now answer only your voice."))
+            } else voiceDeny(tr("Awaaz save nahi ho payi. Dobara try karo.", "The voice could not be saved. Try again."))
+            return false
+        }
+        val profile = VoiceLock.loadProfile(this)
+        return when (SpeakerRules.decide(got?.first, got?.second ?: 0, profile, isAnswer)) {
+            SpeakerRules.Verdict.ALLOW -> true
+            SpeakerRules.Verdict.TOO_SHORT -> { voiceDeny(tr("Awaaz bahut chhoti thi, pehchaan nahi paya. Dobara bolo.", "Too short to recognise your voice. Say it again.")); false }
+            SpeakerRules.Verdict.REJECT -> {
+                val t = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                voiceDeny(
+                    if (got == null) tr("Awaaz jaanchne wala model nahi chal paya, isliye kuch nahi kiya. Settings > MERI AWAAZ dekho.", "The voice check is not available, so I did nothing. See Settings > MY VOICE.")
+                    else tr("Anjaan awaaz ($t) - jawab nahi diya.", "Unknown voice ($t) - I did not answer.")
+                )
+                false
+            }
+        }
+    }
+
     private fun audioLoop() {
         var model: Model? = null
         var wake: Recognizer? = null
@@ -456,6 +549,7 @@ class NovaService : Service() {
         try {
             val md = loadModel()
             model = md
+            voiceMd = md
             val wakeWord = resolveWake()
             curWake = wakeWord
             Logic.setWake(wakeWord)          // a custom wake word must never stay inside the command text
@@ -588,8 +682,13 @@ class NovaService : Service() {
                         answerWindow = false
                         if (pending != null) { startCapture(true); continue }
                     }
+                    if (followWindow) {
+                        followWindow = false
+                        if (pending == null && followCount < MAX_FOLLOW) { followCount++; startCapture(false); continue }
+                    }
                     if (wakeRequest) {
                         wakeRequest = false
+                        followCount = 0
                         pending = null
                         dictatePending = null
                         dictTarget = null
@@ -609,6 +708,7 @@ class NovaService : Service() {
                         wakeHits = 0
                     } else if (wakeNow && Logic.wakeConfirmed(wakeHits, done)) {
                         wakeHits = 0
+                        followCount = 0
                         pending = null // a new command cancels any waiting confirmation
                         dictatePending = null
                         dictTarget = null
@@ -679,8 +779,10 @@ class NovaService : Service() {
                         busy = true
                         mode("think")
                         sys(tr("Soch raha hoon...", "Thinking..."))
-                        if (isAnswer) Thread { processAnswer(text) }.start()
-                        else Thread { process(bytes, text, dur) }.start()
+                        Thread {
+                            if (!voiceAllows(bytes, isAnswer)) return@Thread   // v17: only the owner's voice (when switched on)
+                            if (isAnswer) processAnswer(text) else process(bytes, text, dur)
+                        }.start()
                     }
                 }
             }
@@ -691,6 +793,8 @@ class NovaService : Service() {
             ))
         } finally {
             listening = false
+            voiceMd = null
+            enrollLeft = 0
             try { rec?.stop() } catch (t: Throwable) { }
             try { rec?.release() } catch (t: Throwable) { }
             try { tone?.release() } catch (t: Throwable) { }
@@ -718,6 +822,7 @@ class NovaService : Service() {
                 // kind == null (answers to a yes/no, errors) is always spoken; a normal command reply may be silent
                 val loud = kind == null || Logic.speakReply(cfg.quietReplies, confirm, kind)
                 if (loud) {
+                    nextFollow = !confirm && kind != null && kind !in NO_FOLLOW_KINDS
                     say(reply, confirm)  // say() FIRST (sets ttsActive) ...
                 } else {
                     listener?.invoke("ai", reply)                     // silent: chat + floating card only
@@ -970,6 +1075,39 @@ class NovaService : Service() {
             brain.record(System.currentTimeMillis(), text, "local", "local_skill")
             return ls
         }
+        // v28 TASK AGENT: while one runs, only "stop" is accepted; a whole spoken job starts one (after a spoken yes).
+        if (agentRunning && text.isNotBlank()) {
+            if (Logic.classify(text)?.kind == "stop") return runCommand(Logic.Cmd("stop"))
+            return if (Logic.isJunk(text)) "" else tr("Abhi ek kaam chal raha hai. Rokne ke liye 'ruko' bolo", "A task is running. Say stop to cancel it")
+        }
+        if (text.isNotBlank() && AgentRules.isTask(text)) {
+            lastTurnLocal = false
+            lastKind = "agent"
+            return agentBegin(text)
+        }
+        if (text.isNotBlank() && SiteIntent.isPublish(text)) {   // v16: "nova website publish karo" (spoken yes first)
+            lastTurnLocal = false
+            lastKind = "publish"
+            return publishBegin()
+        }
+        val learnReq = if (text.isBlank()) null else LearnRules.parse(text)   // v16: "nova solar panel ke baare mein seekho"
+        if (learnReq != null) {
+            lastTurnLocal = false
+            lastKind = "learn"
+            return learnBegin(learnReq)
+        }
+        val siteReq = if (text.isBlank()) null else SiteIntent.parse(text)   // v16: "nova ek ... ki website banao"
+        if (siteReq != null) {
+            lastTurnLocal = false
+            lastKind = "site"
+            return siteBegin(siteReq)
+        }
+        val imgReq = if (text.isBlank()) null else ImageIntent.parse(text)   // v30: "nova ek ... ki photo banao" (free picture, no Gemini needed)
+        if (imgReq != null) {
+            lastTurnLocal = false
+            lastKind = "image"
+            return imageBegin(imgReq)
+        }
         val c0 = if (text.isBlank()) null else Logic.classify(text)
         val sk = if (c0 == null && text.isNotBlank()) brain.resolve(text) else null   // Layer 1: shortcuts + fuzzy match
         var c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
@@ -978,11 +1116,38 @@ class NovaService : Service() {
             groqText = groqHear(pcm)
             if (groqText.isNotBlank()) c = Logic.classify(groqText)
         }
+        // v28: no Groq key, or Groq failed: the owner's Gemini key listens instead (Hindi / Hinglish / English, far better than the
+        // small offline Vosk model, which only guesses Roman words). Only after the wake word, only if Vosk found no local command.
+        if (c == null && groqText.isBlank() && pcm.size >= MIN_HEAR_BYTES) {
+            groqText = geminiHear(pcm)
+            if (groqText.isNotBlank()) c = Logic.classify(groqText)
+        }
+        if (c == null && groqText.isNotBlank() && AgentRules.isTask(groqText)) {   // v28: a whole job heard by Groq Whisper or Gemini
+            lastTurnLocal = false
+            lastKind = "agent"
+            return agentBegin(groqText)
+        }
+        if (c == null && groqText.isNotBlank()) {   // v16: a "build a website" sentence heard by Groq Whisper or Gemini
+            val gs = SiteIntent.parse(groqText)
+            if (gs != null) {
+                lastTurnLocal = false
+                lastKind = "site"
+                return siteBegin(gs)
+            }
+        }
+        if (c == null && groqText.isNotBlank()) {   // v30: a "make a picture" sentence heard by Groq Whisper or Gemini
+            val gi = ImageIntent.parse(groqText)
+            if (gi != null) {
+                lastTurnLocal = false
+                lastKind = "image"
+                return imageBegin(gi)
+            }
+        }
         val now = System.currentTimeMillis()
         if (c == null && c0 == null && sk == null && text.isNotBlank()) {   // PART 3: offline knowledge pack (text only, never an action)
             val said0 = if (groqText.isNotBlank()) groqText else text
             if (groqText.isNotBlank() || !Logic.isJunk(text)) {
-                val kn = KnowledgeStore.answer(this, said0, cfg.lang == "en")
+                val kn = LearnStore.answer(this, said0) ?: KnowledgeStore.answer(this, said0, cfg.lang == "en")   // v16: kept notes first
                 if (kn != null) {
                     lastTurnLocal = true
                     lastKind = "knowledge"
@@ -1021,8 +1186,8 @@ class NovaService : Service() {
             if (ans != null) return ans
         }
         return tr(
-            "Ye command local mode mein samajh nahi aaya. Battery, torch, volume, ya open YouTube jaise commands bolo. Khule sawaalon ke liye settings mein API key (optional) daalo.",
-            "I did not understand that as a local command. Try battery, torch, volume or open YouTube. For open questions add an optional API key in Settings."
+            "Ye samajh nahi aaya. Ek baar aur, thoda saaf bolo.",
+            "I did not catch that. Please say it once more, a bit clearer."
         )
     }
 
@@ -1032,6 +1197,16 @@ class NovaService : Service() {
         cloudActed = false
         lastKind = "cloud"
         val en = cfg.lang == "en"
+        // API-key-free public knowledge path for explicit, non-current factual lookups. It receives only the extracted topic,
+        // runs only while FREE AI is enabled, and returns a cited text summary (never an action). This can avoid an LLM request.
+        if (ExtCfg.freeChain(this)) {
+            val publicAnswer = PublicKnowledgeFallback.answer(said, en)
+            if (publicAnswer != null) {
+                lastKind = "public_knowledge"
+                lastCloudFail = ""
+                return Routing.CloudResult(publicAnswer, true)
+            }
+        }
         var geminiFail = ""
         var geminiText = ""
         // 1) Gemini (the user's own key, can run phone tools). Skipped while it is cooling down after a failure.
@@ -1132,21 +1307,40 @@ class NovaService : Service() {
         finishTurn(reply)
     }
 
+    /**
+     * Worker thread. Gemini (the owner's own key) writes down what was said, like a voice keyboard: Hindi / Hinglish become Roman
+     * letters, English stays English. "" = no key, cooling down, failed or only noise: the caller keeps the offline text.
+     * Like Groq it can start a normal command, never approve a yes/no.
+     */
+    private fun geminiHear(pcm: ByteArray): String {
+        if (!SecureStore.hasKeys(this) || System.currentTimeMillis() < geminiCoolUntil) return ""
+        val parts = JSONArray()
+        parts.put(JSONObject().put("inlineData", JSONObject()
+            .put("mimeType", "audio/wav")
+            .put("data", Base64.encodeToString(wavBytes(pcm), Base64.NO_WRAP))))
+        parts.put(JSONObject().put("text",
+            "Write down exactly what the speaker said, word for word. The speaker mixes Hindi, Hinglish and English and may speak fast. " +
+            "Write Hindi words in Roman letters (for example: gallery kholo aur paanchvi photo chuno). Keep English words in English. " +
+            "Do not translate, do not answer, do not add anything. Output only the transcript. If there is only noise or silence, output nothing."))
+        val body = JSONObject()
+            .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
+            .put("generationConfig", JSONObject().put("temperature", 0.0).put("maxOutputTokens", 1024))
+            .toString()
+        val (code, resp) = postFallback(body)
+        if (code !in 200..299) return ""
+        val raw = candidateText(resp).trim().trim('"').trim()
+        if (raw.isBlank()) return ""
+        return Logic.stripWake(HindiRoman.toRoman(raw).lowercase())
+    }
+
     /** Optional Groq Whisper listening (only when the user added a Groq key). Worker thread. The text can start a normal command, never approve one. */
     private fun groqHear(pcm: ByteArray): String {
         val key = SecureStore.getGroq(this)
         if (key.isBlank()) return ""
         val r = GroqStt.transcribe(key, pcm)
         val raw = r.text
-        if (raw == null) {
-            listener?.invoke("sys", tr(
-                "Groq se sunna nahi ho paya (" + GroqStt.failText(r.code) + ")",
-                "Groq could not listen (" + GroqStt.failText(r.code) + ")"
-            ))
-            return ""
-        }
+        if (raw == null) return ""   // v31: silent fallback, the next listener (or the local one) simply takes over
         if (raw.isBlank()) return ""
-        listener?.invoke("sys", "Groq: \"" + raw + "\"")
         return Logic.stripWake(HindiRoman.toRoman(raw).lowercase())
     }
 
@@ -1161,6 +1355,7 @@ class NovaService : Service() {
 
     private fun runCommand(c: Logic.Cmd): String = when (c.kind) {
         "stop" -> {
+            agentCancel = true
             try { tts?.stop() } catch (e: Exception) { }
             ttsActive = false
             pending = null
@@ -1385,6 +1580,396 @@ class NovaService : Service() {
         else -> tr("Ye kaam nahi ho paya", "That did not work")
     })
 
+    // ---------------------------------------------------------------- free image by voice (v30)
+    // "nova ek billi ki photo banao": FreeImage (Together with own key, Pollinations without key, Hugging Face with own token) ->
+    // saved to Gallery > Pictures > NOVA and shown in the chat. Only the subject text leaves the phone; the owner is told so.
+    // Evidence level: written + statically checked. Not compiled here, not phone tested.
+    @Volatile private var imageRunning = false
+
+    private fun imageBegin(req: ImageIntent.Parsed): String {
+        if (req.blocked) return tr("Ye wali photo main nahi bana sakta", "I cannot make that kind of picture")
+        if (req.subject.isEmpty()) return tr(
+            "Kis cheez ki photo banau? Aise bolo: nova ek billi ki photo banao",
+            "A picture of what? Say: nova make a picture of a cat"
+        )
+        if (imageRunning) return tr("Ek photo abhi ban rahi hai, thoda ruko", "A picture is already being made, please wait")
+        imageRunning = true
+        val subject = req.subject
+        Thread({
+            var spoken = ""
+            try {
+                val r = FreeImage.run(this, subject)
+                val img = r.img
+                if (r.ok && img != null) {
+                    val saved = ImageGen.saveToGallery(this, img)
+                    val thumb = ImageGen.b64(ImageGen.shrink(img, 1024) ?: img)
+                    imageListener?.invoke(true, r.msg, thumb, saved ?: "")
+                    spoken = if (saved != null) tr("Photo ban gayi aur gallery mein save ho gayi", "The picture is ready and saved to your gallery")
+                    else tr("Photo ban gayi, par gallery mein save nahi ho payi", "The picture is ready, but saving it to the gallery failed")
+                } else {
+                    val why = tr("Abhi photo nahi ban payi. Thodi der baad dobara bolo", "I could not make the picture right now. Please try again in a little while")
+                    imageListener?.invoke(false, why, "", "")
+                    spoken = why
+                }
+            } catch (e: Throwable) {
+                spoken = tr("Photo banate waqt dikkat aayi", "Something went wrong while making the picture")
+            }
+            imageRunning = false
+            val msg = spoken
+            h.post { say(msg) }
+        }, "nova-image").start()
+        return tr(
+            "Theek hai, $subject ki photo bana raha hu. Thoda time lagega",
+            "Okay, making a picture of $subject. It will take a little while"
+        )
+    }
+
+    // ---------------------------------------------------------------- learn from the internet (v16)
+    // "nova solar panel ke baare mein seekho": web search with the owner's Gemini key -> short plain note -> saved as PENDING.
+    // The owner presses RAKHO in Settings > KYA SEEKHA before it is ever used in an answer. If the web search fails the free
+    // chain writes the note from the model's own knowledge (source "ai"), silently. A note is text only, never an action.
+    // Evidence level: written + statically checked. Not compiled here, not phone tested.
+    @Volatile private var learnRunning = false
+
+    private fun learnBegin(req: LearnRules.Parsed): String {
+        if (req.blocked) return tr("Aisi cheez main yaad nahi karunga", "I will not learn that kind of thing")
+        if (req.topic.isEmpty()) return tr(
+            "Kya seekhun? Aise bolo: nova solar panel ke baare mein seekho",
+            "Learn what? Say: nova learn about solar panels"
+        )
+        if (learnRunning) return tr("Abhi ek cheez seekh raha hu, thoda ruko", "I am already learning something, please wait")
+        learnRunning = true
+        val topic = req.topic
+        Thread({
+            var spoken = ""
+            try {
+                var src = "web"
+                var raw = searchWeb("Short factual note about: " + topic + ". Maximum 4 sentences, plain text, no links, no markdown.")
+                var note = if (raw.startsWith("search failed") || raw == "no result" || raw == "no query") null else LearnRules.cleanNote(raw)
+                if (note == null) {
+                    val r = runFreeChain("Explain in at most 4 short plain sentences, no markdown: " + topic, cfg.lang == "en")
+                    val t = r.text
+                    if (t != null) { note = LearnRules.cleanNote(t); src = "ai" }
+                }
+                if (note != null) {
+                    LearnStore.addPending(this, topic, note, src)
+                    learnListener?.invoke()
+                    spoken = tr("Maine $topic ke baare mein seekha. Settings mein KYA SEEKHA kholo aur RAKHO dabao, tabhi ye yaad rahega",
+                        "I learned about $topic. Open Settings, KYA SEEKHA and press RAKHO to keep it")
+                } else {
+                    spoken = tr("Abhi ye seekh nahi paya. Thodi der baad dobara bolo", "I could not learn that right now. Please try again in a little while")
+                }
+            } catch (e: Throwable) {
+                spoken = tr("Seekhte waqt dikkat aayi", "Something went wrong while learning")
+            }
+            learnRunning = false
+            val msg = spoken
+            h.post { say(msg) }
+        }, "nova-learn").start()
+        return tr("Theek hai, $topic ke baare mein seekh raha hu", "Okay, learning about $topic")
+    }
+
+    // ---------------------------------------------------------------- publish by voice (v16)
+    // "nova website publish karo": only the newest built website, only after a spoken local "yes", public GitHub Pages repo.
+    // Evidence level: written + statically checked. Not compiled here, not phone tested.
+    @Volatile private var publishRunning = false
+
+    private fun publishBegin(): String {
+        val subject = lastSiteSubject
+        val html = lastSiteHtml
+        if (html.isEmpty()) return tr("Pehle website banao, phir publish karenge", "Build a website first, then we can publish it")
+        if (!SecureStore.hasSlot(this, GitHubPublish.SLOT)) return tr(
+            "GitHub token nahi hai. Settings mein GITHUB PUBLISH mein daalo",
+            "There is no GitHub token. Add it in Settings, GITHUB PUBLISH"
+        )
+        if (publishRunning) return tr("Publish ho raha hai, thoda ruko", "Publishing is already running, please wait")
+        return askFirst(
+            tr("$subject ki website GitHub par sabke liye public karun? Haan ya nahi", "Publish the $subject website publicly on GitHub? Yes or no")
+        ) { publishRun(subject, html) }
+    }
+
+    private fun publishRun(subject: String, html: String): String {
+        publishRunning = true
+        Thread({
+            var spoken = ""
+            try {
+                val r = GitHubPublish.run(this, subject, html)
+                publishListener?.invoke(r.ok, r.msg, r.url)
+                spoken = if (r.ok) tr("Website publish ho gayi. Link chat mein hai, live hone mein ek-do minute lagenge", "The website is published. The link is in the chat; it can take a minute or two to go live")
+                else r.msg
+            } catch (e: Throwable) {
+                spoken = tr("Publish karte waqt dikkat aayi", "Something went wrong while publishing")
+            }
+            publishRunning = false
+            val msg = spoken
+            h.post { say(msg) }
+        }, "nova-publish").start()
+        return tr("Theek hai, publish kar raha hu", "Okay, publishing")
+    }
+
+    // ---------------------------------------------------------------- proactive alerts (v16)
+    // Low battery is spoken once (at most every 30 minutes) when NOVA is idle. Switch: Settings > BAAT-CHEET MODE box. Default ON.
+    @Volatile private var lastAlertAt = 0L
+    private val batteryLowRx = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context?, i: Intent?) {
+            if (!alive || !ExtCfg.alerts(this@NovaService)) return
+            val now = System.currentTimeMillis()
+            if (now - lastAlertAt < 30L * 60L * 1000L) return
+            lastAlertAt = now
+            h.post {
+                if (alive && !busy && !listening && !ttsActive && pending == null) {
+                    say(tr("Sir, battery kam hai. Charger laga lijiye", "Sir, the battery is low. Please plug in the charger"))
+                }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- website by voice (v16)
+    // "nova ek restaurant ki website banao": SiteGen (owner's own keys) -> one index.html saved to Downloads > NOVA and
+    // shown in the chat with a preview button. Nothing is published. Only the topic text leaves the phone.
+    // Evidence level: written + statically checked. Not compiled here, not phone tested.
+    @Volatile private var siteRunning = false
+
+    private fun siteBegin(req: SiteIntent.Parsed): String {
+        if (req.blocked) return tr("Ye wali website main nahi bana sakta", "I cannot build that kind of website")
+        if (req.subject.isEmpty()) return tr(
+            "Kis cheez ki website banau? Aise bolo: nova ek restaurant ki website banao",
+            "A website for what? Say: nova build a website for a restaurant"
+        )
+        if (siteRunning) return tr("Ek website abhi ban rahi hai, thoda ruko", "A website is already being built, please wait")
+        siteRunning = true
+        val subject = req.subject
+        Thread({
+            var spoken = ""
+            try {
+                val r = SiteGen.generate(this, subject)
+                if (r.ok) {
+                    lastSiteSubject = subject
+                    lastSiteHtml = r.html
+                    val saved = SiteGen.save(this, subject, r.html)
+                    siteListener?.invoke(true, subject, r.html, saved ?: "")
+                    spoken = if (saved != null) tr("Website ban gayi. Chat mein dekho, aur Downloads mein save ho gayi", "The website is ready. See it in the chat, and it is saved in Downloads")
+                    else tr("Website ban gayi, par file save nahi ho payi. Chat mein dekh sakte ho", "The website is ready, but saving the file failed. You can still see it in the chat")
+                } else {
+                    siteListener?.invoke(false, r.msg, "", "")
+                    spoken = r.msg
+                }
+            } catch (e: Throwable) {
+                spoken = tr("Website banate waqt dikkat aayi", "Something went wrong while building the website")
+            }
+            siteRunning = false
+            val msg = spoken
+            h.post { say(msg) }
+        }, "nova-site").start()
+        return tr(
+            "Theek hai, $subject ki website bana raha hu. Isme ek-do minute lag sakte hain",
+            "Okay, building a website for $subject. It can take a minute or two"
+        )
+    }
+
+    // ---------------------------------------------------------------- task agent (v28)
+    // One spoken job -> loop: read screen -> Gemini picks ONE action (JSON) -> AgentRules checks it -> run it.
+    // Evidence level: written + statically checked. Not compiled here, not phone tested.
+    @Volatile private var agentRunning = false
+    @Volatile private var agentCancel = false
+
+    private fun agentBegin(raw: String): String {
+        val task = AgentRules.taskText(raw)
+        if (agentRunning) return tr("Ek kaam abhi chal raha hai. 'Ruko' bolo to rok dunga", "A task is already running. Say stop to cancel it")
+        if (!NovaAccessibilityService.isEnabled(this) || NovaAccessibilityService.instance == null) return tr(
+            "Is kaam ke liye Accessibility permission chahiye. Pehle use on karo",
+            "This job needs the Accessibility permission. Turn it on first"
+        )
+        if (!SecureStore.hasKeys(this)) return tr(
+            "Abhi ye kaam shuru nahi ho pa raha. Settings me key check karo",
+            "I cannot start this job right now. Check the key in Settings"
+        )
+        val q = tr(
+            "Kaam: $task. Shuru karun? Haan ya nahi bolo.",
+            "Job: $task. Start? Say yes or no."
+        )
+        if (AgentRules.isAiGen(raw) || AgentRules.isOpenDo(raw)) return agentStart(task)   // v17: typing a prompt into an AI app is not risky, no extra question
+        return askFirst(q) { agentStart(task) }
+    }
+
+    private fun agentStart(task: String): String {
+        if (agentRunning) return tr("Ek kaam abhi chal raha hai", "A task is already running")
+        agentRunning = true
+        agentCancel = false
+        Thread({
+            val result = try {
+                agentRun(task)
+            } catch (e: Exception) {
+                tr("Kaam beech mein ruk gaya", "The task stopped midway")
+            }
+            agentRunning = false
+            h.post { say(result) }
+        }, "nova-agent").start()
+        return tr("Theek hai, kaam shuru. Rokna ho to 'ruko' bolo", "Okay, starting. Say stop to cancel")
+    }
+
+    private fun agentSleep(ms: Long) {
+        try { Thread.sleep(ms) } catch (e: InterruptedException) { }
+    }
+
+    private fun agentNote(s: String) {
+        listener?.invoke("sys", s)
+        h.post { hud?.setReply(s) }
+    }
+
+    private fun agentDescribe(a: AgentRules.Action, n: AgentRules.Node?): String = when (a.act) {
+        "tap", "long_tap" -> a.act + " [" + a.index + "] '" + AgentRules.label(n).take(30) + "'"
+        "type" -> "type '" + a.text.take(30) + "'"
+        "open_app" -> "open_app " + a.app
+        "scroll" -> "scroll " + a.dir
+        "wait" -> "wait " + a.sec + "s"
+        else -> a.act
+    }
+
+    /** A spoken yes/no from inside the agent loop. Only a local "haan" approves; stop, no, silence or 34 s = no. */
+    private fun agentAskYes(q: String): Boolean {
+        val ok = AtomicBoolean(false)
+        val done = AtomicBoolean(false)
+        h.post {
+            if (pending != null) {
+                done.set(true)
+            } else {
+                pending = Pending(q, System.currentTimeMillis(), { done.set(true) }) {
+                    ok.set(true)
+                    done.set(true)
+                    tr("Theek hai", "Okay")
+                }
+                say(q, true)
+            }
+        }
+        val end = SystemClock.elapsedRealtime() + 34000L
+        while (!done.get() && !agentCancel && SystemClock.elapsedRealtime() < end) agentSleep(300)
+        if (!done.get()) h.post { pending = null }
+        return ok.get() && !agentCancel
+    }
+
+    private fun agentDo(a: AgentRules.Action): String {
+        return when (a.act) {
+            "open_app" -> {
+                val x = openApp(a.app)
+                agentSleep(1800)
+                if (x.ok) "opened" else "FAILED: " + x.msg
+            }
+            "tap", "long_tap" -> {
+                val c = NovaAccessibilityService.agentTap(a.index, a.act == "long_tap")
+                agentSleep(1000)
+                if (c.ok) "ok" else "FAILED (" + c.code + ")"
+            }
+            "type" -> {
+                val c = NovaAccessibilityService.agentType(a.index, a.text)
+                agentSleep(500)
+                if (c.ok) "ok" else "FAILED (" + c.code + ")"
+            }
+            "scroll" -> {
+                val c = NovaAccessibilityService.scrollDir(a.dir)
+                agentSleep(600)
+                if (c.ok) "ok" else "FAILED (" + c.code + ")"
+            }
+            "back", "home" -> {
+                val x = globalAct(a.act)
+                agentSleep(700)
+                if (x.ok) "ok" else "FAILED"
+            }
+            "wait" -> {
+                agentSleep(a.sec * 1000L)
+                "waited"
+            }
+            else -> "ignored"
+        }
+    }
+
+    /** Worker thread. Returns the sentence to speak at the end. Hard caps: AgentRules.MAX_STEPS and MAX_MS. */
+    private fun agentRun(task: String): String {
+        val t0 = SystemClock.elapsedRealtime()
+        val hist = ArrayList<String>()
+        val acts = ArrayList<String>()
+        val sigs = ArrayList<Int>()
+        var bad = 0
+        var blind = 0
+        var denied = 0
+        var step = 0
+        while (step < AgentRules.MAX_STEPS) {
+            if (agentCancel) return tr("Kaam rok diya", "Task stopped")
+            if (SystemClock.elapsedRealtime() - t0 > AgentRules.MAX_MS) return tr("Time khatam ho gaya, kaam adhura hai", "Time is up, the task is unfinished")
+            step++
+            val snap = NovaAccessibilityService.agentSnapshot()
+            if (snap == null) {
+                blind++
+                if (blind >= 4) return tr("Screen padh nahi pa raha, kaam ruk gaya", "I cannot read the screen, so I stopped")
+                agentSleep(1200)
+                continue
+            }
+            val pkg = snap.first
+            val shielded = pkg.isNotEmpty() && Control.blocked(pkg, packageName, "tap")
+            val nodes: List<AgentRules.Node> = if (shielded) emptyList() else snap.second   // protected screens are never sent to the cloud
+            val prompt = AgentRules.userPrompt(task, step, pkg, nodes, hist)
+            val shot = if (shielded) null else NovaAccessibilityService.agentScreenshot()   // protected screens: no picture either
+            val parts = JSONArray()
+            if (shot != null) parts.put(JSONObject().put("inlineData", JSONObject().put("mimeType", "image/jpeg").put("data", Base64.encodeToString(shot, Base64.NO_WRAP))))
+            parts.put(JSONObject().put("text", prompt))
+            val body = JSONObject()
+                .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", AgentRules.systemPrompt()))))
+                .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
+                .put("generationConfig", JSONObject().put("temperature", 0.1).put("responseMimeType", "application/json").put("maxOutputTokens", 2048))
+                .toString()
+            val (code, resp) = postFallback(body)
+            if (agentCancel) return tr("Kaam rok diya", "Task stopped")
+            if (code !in 200..299) return tr(
+                "Abhi jawab nahi mila (" + Logic.failureKind(code) + "). Kaam ruk gaya",
+                "No answer right now (" + Logic.failureKind(code) + "). The task stopped"
+            )
+            val a = AgentRules.parse(candidateText(resp))
+            if (a == null) {
+                bad++
+                hist.add("step $step: (your last answer was not one valid JSON object, answer again with exactly one)")
+                if (bad >= 3) return tr("Jawab samajh nahi aaya, kaam ruk gaya", "I could not understand the answer, so I stopped")
+                continue
+            }
+            if (a.note.isNotEmpty()) agentNote(a.note)
+            when (a.act) {
+                "done" -> return if (a.say.isNotBlank()) a.say else tr("Kaam ho gaya", "Done")
+                "fail" -> return tr("Kaam nahi ho paya. ", "I could not finish. ") + a.say
+                "ask" -> return if (a.say.isNotBlank()) a.say else tr("Mujhe aapki madad chahiye", "I need your help")
+            }
+            val node = nodes.getOrNull(a.index)
+            val chk = AgentRules.check(a, node, pkg, packageName)
+            if (chk.v == AgentRules.Verdict.DENY) {
+                denied++
+                hist.add("step $step: " + agentDescribe(a, node) + " -> REFUSED by safety (" + chk.why + ")")
+                if (denied >= 3) return tr(
+                    "Ye step main nahi kar sakta (" + chk.why + "). Aap khud karo",
+                    "I cannot do this step (" + chk.why + "). Please do it yourself"
+                )
+                continue
+            }
+            if (chk.v == AgentRules.Verdict.CONFIRM) {
+                val yes = agentAskYes(tr("'" + chk.why + "' dabaun? Haan ya nahi bolo", "Tap '" + chk.why + "'? Say yes or no"))
+                if (!yes) return tr("Theek hai, kaam yahin rok diya", "Okay, I stopped the task here")
+            }
+            val before = NovaAccessibilityService.screenSignature()
+            val res = agentDo(a)
+            val after = NovaAccessibilityService.screenSignature()
+            val endHint = if (a.act == "scroll" && after == before) " (end reached: nothing more in this direction)" else ""
+            val line = "step $step: " + agentDescribe(a, node) + " -> " + res + if (after != before) ", screen changed" else ", screen unchanged" + endHint
+            hist.add(line)
+            agentNote(line + (if (shot != null) " [pic]" else " [text only]") + " [" + pkg + "]")   // visible in the chat: the owner can send it for fixing
+            if (a.act != "wait") {
+                acts.add(a.act + a.index + a.text.take(10) + a.app)
+                sigs.add(after)
+                if (AgentRules.stuck(acts, sigs)) return tr(
+                    "Screen par kuch badal nahi raha, main atak gaya. Aap dekh lo",
+                    "The screen is not changing, I am stuck. Please take a look"
+                )
+            }
+        }
+        return tr("Bahut steps ho gaye, kaam adhura chhoda", "Too many steps, I stopped")
+    }
+
     private fun tapCmd(label: String): R {
         if (Control.isRiskyLabel(label)) {
             val msg = askFirst(
@@ -1598,9 +2183,13 @@ class NovaService : Service() {
             return CR(d, d, null)
         }
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            if (uiVisible && permRequest != null) {   // v31: ask right now, once, no trip to Settings
+                permRequest?.invoke("contacts")
+                return CR("", "", R(false, tr("Contacts ki permission de do, phir dobara bolo", "Allow contacts access, then say it again")))
+            }
             return CR("", "", R(false, tr(
-                "Contacts ki permission nahi hai. NOVA app mein ALLOW CONTACTS dabao",
-                "Contacts permission is missing. Tap ALLOW CONTACTS in the NOVA app"
+                "Contacts ki permission chahiye. NOVA app kholke ek baar Allow karo",
+                "Contacts permission is needed. Open the NOVA app and allow it once"
             )))
         }
         return try {

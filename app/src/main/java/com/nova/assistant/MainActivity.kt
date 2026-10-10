@@ -48,6 +48,19 @@ class MainActivity : Activity() {
                 }
             }
         }
+        NovaService.learnListener = { runJs("onLearn()") }
+        NovaService.publishListener = { ok, msg, url ->
+            runJs("onPublish(" + ok + "," + JSONObject.quote(msg) + "," + JSONObject.quote(url) + ")")
+        }
+        NovaService.siteListener = { ok, msg, html, saved ->
+            runJs("onSite(" + ok + "," + JSONObject.quote(msg) + "," + JSONObject.quote(html) + "," + JSONObject.quote(saved) + ")")
+        }
+        NovaService.imageListener = { ok, msg, thumb, saved ->
+            runJs("onImage(" + ok + "," + JSONObject.quote(msg) + "," + JSONObject.quote(thumb) + "," + JSONObject.quote(saved) + ")")
+        }
+        NovaService.permRequest = { what ->
+            if (what == "contacts") runOnUiThread { if (!isDestroyed) requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), REQ_CONTACTS) }
+        }
         listenerOwned = true
         handleIntent(intent)
     }
@@ -146,7 +159,14 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         NovaService.uiVisible = false
-        if (listenerOwned) NovaService.listener = null
+        if (listenerOwned) {
+            NovaService.listener = null
+            NovaService.learnListener = null
+            NovaService.publishListener = null
+            NovaService.siteListener = null
+            NovaService.imageListener = null
+            NovaService.permRequest = null
+        }
         testTts?.shutdown()
         testTts = null
         (web.parent as? ViewGroup)?.removeView(web)
@@ -179,6 +199,7 @@ class MainActivity : Activity() {
         if (!granted(Manifest.permission.RECORD_AUDIO)) {
             if (afterResult) return "nomic"
             val ask = mutableListOf(Manifest.permission.RECORD_AUDIO)
+            if (!granted(Manifest.permission.READ_CONTACTS)) ask.add(Manifest.permission.READ_CONTACTS)   // v31: one dialog the first time, never again
             if (Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS)) {
                 ask.add(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -255,6 +276,23 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    @Volatile private var pubBusy = false
+
+    private fun startPublish(subject: String, html: String) {
+        pubBusy = true
+        Thread {
+            var js: String
+            try {
+                val r = GitHubPublish.run(this, subject, html)
+                js = "onPublish(" + r.ok + "," + JSONObject.quote(r.msg) + "," + JSONObject.quote(r.url) + ")"
+            } catch (e: Throwable) {
+                js = "onPublish(false," + JSONObject.quote("Publish karte waqt dikkat aayi") + ",\"\")"
+            }
+            pubBusy = false
+            runJs(js)
+        }.start()
+    }
+
     private fun startImage(prompt: String, photo: ByteArray?) {
         imgBusy = true
         Thread {
@@ -287,7 +325,7 @@ class MainActivity : Activity() {
         Thread {
             var line = ""
             try {
-                val r = ImageGen.generate(this, "A plain blue circle on a white background, minimal", null)
+                val r = ImageGen.generateDirect(this, "A plain blue circle on a white background, minimal", null)
                 val img = r.img
                 if (r.ok && img != null) {
                     val saved = ImageGen.saveToGallery(this, img)
@@ -527,6 +565,102 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun setMemoryInChain(on: Boolean): String { ExtCfg.setMemoryInChain(this@MainActivity, on); return "ok" }
+
+        /** GitHub token for publishing a website. Written only here, never sent back to the page. ok / invalid / fail. */
+        @JavascriptInterface
+        fun saveGithubToken(raw: String): String = try {
+            val k = raw.trim()
+            if (k.length < 20 || k.length > 255 || k.any { it.isWhitespace() }) "invalid"
+            else if (SecureStore.saveSlot(this@MainActivity, GitHubPublish.SLOT, k)) "ok"
+            else "fail"
+        } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
+        fun hasGithubToken(): Boolean = SecureStore.hasSlot(this@MainActivity, GitHubPublish.SLOT)
+
+        @JavascriptInterface
+        fun clearGithubToken() { SecureStore.clearSlot(this@MainActivity, GitHubPublish.SLOT) }
+
+        /** PUBLISH button in the chat. A native box asks first; nothing leaves the phone before HAAN. nosite / notoken / busy / asking. */
+        @JavascriptInterface
+        fun publishLastSite(): String {
+            val html = NovaService.lastSiteHtml
+            val subject = NovaService.lastSiteSubject
+            if (html.isEmpty()) return "nosite"
+            if (!SecureStore.hasSlot(this@MainActivity, GitHubPublish.SLOT)) return "notoken"
+            if (pubBusy) return "busy"
+            runOnUiThread {
+                try {
+                    android.app.AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Website publish karein?")
+                        .setMessage("Tumhare GitHub account mein ek nayi PUBLIC repo banegi aur website internet par sabko dikhegi. Baad mein repo GitHub se hata sakte ho.")
+                        .setPositiveButton("HAAN") { _, _ -> startPublish(subject, html) }
+                        .setNegativeButton("NAHI", null)
+                        .show()
+                } catch (e: Exception) {
+                }
+            }
+            return "asking"
+        }
+
+        /** Opens the published page in the browser. Only https://<name>.github.io/ links. */
+        @JavascriptInterface
+        fun openPublished(url: String) {
+            if (!url.startsWith("https://") || !url.contains(".github.io/")) return
+            runOnUiThread {
+                try {
+                    startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                } catch (e: Exception) {
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun getLearned(): String = LearnStore.listJson(this@MainActivity)
+
+        @JavascriptInterface
+        fun keepLearned(id: String): String = if (LearnStore.keep(this@MainActivity, id)) "ok" else "fail"
+
+        @JavascriptInterface
+        fun deleteLearned(id: String): String = if (LearnStore.delete(this@MainActivity, id)) "ok" else "fail"
+
+        @JavascriptInterface
+        fun clearLearned(): String { LearnStore.clear(this@MainActivity); return "ok" }
+
+        @JavascriptInterface
+        fun getAlerts(): Boolean = ExtCfg.alerts(this@MainActivity)
+
+        @JavascriptInterface
+        fun setAlerts(on: Boolean): String { ExtCfg.setAlerts(this@MainActivity, on); return "ok" }
+
+        @JavascriptInterface
+        fun getConvo(): Boolean = ExtCfg.convo(this@MainActivity)
+
+        @JavascriptInterface
+        fun setConvo(on: Boolean): String { ExtCfg.setConvo(this@MainActivity, on); return "ok" }
+
+        @JavascriptInterface
+        fun getVoiceLock(): Boolean = ExtCfg.voiceLock(this@MainActivity) && VoiceLock.hasProfile(this@MainActivity)
+
+        @JavascriptInterface
+        fun hasVoiceProfile(): Boolean = VoiceLock.hasProfile(this@MainActivity)
+
+        @JavascriptInterface
+        fun setVoiceLock(on: Boolean): String {
+            if (on && !VoiceLock.hasProfile(this@MainActivity)) return "noprofile"
+            ExtCfg.setVoiceLock(this@MainActivity, on)
+            return "ok"
+        }
+
+        @JavascriptInterface
+        fun voiceEnroll(): String = NovaService.instance?.startVoiceEnroll() ?: "notrunning"
+
+        @JavascriptInterface
+        fun voiceDelete(): String {
+            VoiceLock.deleteProfile(this@MainActivity)
+            ExtCfg.setVoiceLock(this@MainActivity, false)
+            return "ok"
+        }
 
         @JavascriptInterface
         fun getFreeKeyless(): Boolean = ExtCfg.freeKeyless(this@MainActivity)

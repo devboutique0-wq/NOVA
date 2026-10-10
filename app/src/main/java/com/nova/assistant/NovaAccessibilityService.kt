@@ -2,8 +2,12 @@ package com.nova.assistant
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
+import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import android.content.ComponentName
@@ -23,7 +27,10 @@ import android.view.accessibility.AccessibilityNodeInfo
  *     only when the text box holds exactly the confirmed message, 15 s time limit).
  *  3. Read the visible accessibility TEXT when the user says "analyze screen", or - only if the user
  *     switched Screen Monitoring ON - scan it locally (debounced) for obvious error/warning wording.
- * It never stores screen text and never sends anything anywhere by itself.
+ *  4. TASK AGENT (v28): only after the owner said "yes" to a spoken task, it lists the visible items (no
+ *     password fields, no text typed into boxes) and taps / types by index. NovaService decides what is allowed
+ *     (AgentRules + Control). On protected screens (settings, payment, bank) the list is empty.
+ * It never stores screen text. Screen text leaves the phone ONLY during a confirmed agent task (to the owner's Gemini key).
  */
 class NovaAccessibilityService : AccessibilityService() {
 
@@ -129,6 +136,146 @@ class NovaAccessibilityService : AccessibilityService() {
             }, null)
             if (!accepted) return Ctl(false, "failed")
             try { latch.await(1500, TimeUnit.MILLISECONDS) } catch (e: InterruptedException) { }
+            return if (done) Ctl(true, "ok") else Ctl(false, "failed")
+        }
+
+
+        // ------------------------------------------------------------------ task agent (v28)
+        // Items of the last agentSnapshot(), so a later tap-by-index hits the same node. Worker thread only.
+        private val agentRefs = ArrayList<AccessibilityNodeInfo>()
+
+        /** Package + numbered visible items of the top app window. null = Accessibility off or no readable window. */
+        fun agentSnapshot(): Pair<String, List<AgentRules.Node>>? {
+            val s = instance ?: return null
+            var root = s.rootInActiveWindow
+            if (root == null || root.packageName?.toString() == s.packageName) {
+                val alt = otherAppRoot(s)
+                if (alt != null) root = alt
+            }
+            if (root == null) return null
+            val refs = ArrayList<AccessibilityNodeInfo>()
+            val out = ArrayList<AgentRules.Node>()
+            collectAgent(root, 0, refs, out)
+            synchronized(agentRefs) {
+                agentRefs.clear()
+                agentRefs.addAll(refs)
+            }
+            return Pair(root.packageName?.toString() ?: "", out)
+        }
+
+        private fun collectAgent(n: AccessibilityNodeInfo?, depth: Int, refs: ArrayList<AccessibilityNodeInfo>, out: ArrayList<AgentRules.Node>) {
+            if (n == null || depth > 30 || out.size >= 120) return
+            try {
+                if (!n.isVisibleToUser) return
+                if (n.isPassword) return
+                val t0 = n.text?.toString()?.trim() ?: ""
+                val d0 = n.contentDescription?.toString()?.trim() ?: ""
+                val edit = n.isEditable
+                // what the owner typed in a box is never listed: only its hint and whether it is empty or filled
+                val text = if (edit) {
+                    val hint = n.hintText?.toString()?.trim() ?: ""
+                    val filled = t0.isNotEmpty() && t0 != hint
+                    (if (filled) "[text box, filled]" else "[text box, empty]") + (if (hint.isNotEmpty()) " " + hint.take(40) else "")
+                } else t0
+                val keep = text.isNotEmpty() || d0.isNotEmpty() || n.isClickable || edit || n.isChecked || n.isSelected
+                if (keep) {
+                    val r = Rect()
+                    n.getBoundsInScreen(r)
+                    if (r.width() > 0 && r.height() > 0) {
+                        val cls = n.className?.toString()?.substringAfterLast('.') ?: ""
+                        out.add(AgentRules.Node(out.size, text.take(80), d0.take(80), cls.take(20), n.isClickable, edit, n.isChecked || n.isSelected))
+                        refs.add(n)
+                    }
+                }
+                for (i in 0 until n.childCount) collectAgent(n.getChild(i), depth + 1, refs, out)
+            } catch (e: Exception) {
+                // node went away while walking: ignore
+            }
+        }
+
+        private fun agentNode(index: Int): AccessibilityNodeInfo? {
+            val n = synchronized(agentRefs) { agentRefs.getOrNull(index) } ?: return null
+            return try { if (n.refresh()) n else null } catch (e: Exception) { null }
+        }
+
+        /** Tap (or long press) item [index] of the last snapshot. Clicks the node; if Android refuses, taps its centre. */
+        fun agentTap(index: Int, long: Boolean): Ctl {
+            val s = instance ?: return Ctl(false, "no_acc")
+            val n = agentNode(index) ?: return Ctl(false, "not_found")
+            if (n.isPassword) return Ctl(false, "password")
+            if (!long && s.clickNode(n)) return Ctl(true, "ok")
+            val r = Rect()
+            n.getBoundsInScreen(r)
+            if (r.width() <= 0 || r.height() <= 0) return Ctl(false, "failed")
+            return gestureTap(s, r.exactCenterX(), r.exactCenterY(), if (long) 650L else 70L)
+        }
+
+        /** Types into item [index] (its content is replaced), or appends to the focused box when index < 0. */
+        fun agentType(index: Int, text: String): Ctl {
+            if (index < 0) return typeText(text)
+            val n = agentNode(index) ?: return Ctl(false, "not_found")
+            if (n.isPassword) return Ctl(false, "password")
+            if (!n.isEditable) return Ctl(false, "no_focus")
+            n.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            val args = Bundle()
+            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+            return if (n.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) Ctl(true, "ok") else Ctl(false, "failed")
+        }
+
+
+        /**
+         * v28: a small JPEG of the screen (Android 11+, needs canTakeScreenshot). null when not possible
+         * (old Android, secure window, service not re-enabled yet): the agent then continues with text only.
+         */
+        @android.annotation.TargetApi(30)
+        fun agentScreenshot(): ByteArray? {
+            val s = instance ?: return null
+            if (Build.VERSION.SDK_INT < 30) return null
+            val latch = CountDownLatch(1)
+            val holder = arrayOfNulls<ByteArray>(1)
+            try {
+                s.takeScreenshot(android.view.Display.DEFAULT_DISPLAY, s.mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
+                    override fun onSuccess(r: AccessibilityService.ScreenshotResult) {
+                        try {
+                            val hb = r.hardwareBuffer
+                            val hw = Bitmap.wrapHardwareBuffer(hb, r.colorSpace)
+                            val soft = hw?.copy(Bitmap.Config.ARGB_8888, false)
+                            hb.close()
+                            if (soft != null) {
+                                val w = minOf(soft.width, 640)
+                                val h = maxOf(1, soft.height * w / soft.width)
+                                val small = Bitmap.createScaledBitmap(soft, w, h, true)
+                                val bos = ByteArrayOutputStream()
+                                small.compress(Bitmap.CompressFormat.JPEG, 60, bos)
+                                holder[0] = bos.toByteArray()
+                            }
+                        } catch (e: Exception) {
+                            holder[0] = null
+                        }
+                        latch.countDown()
+                    }
+
+                    override fun onFailure(errorCode: Int) { latch.countDown() }
+                })
+                latch.await(3000, TimeUnit.MILLISECONDS)
+            } catch (e: Exception) {
+                return null
+            }
+            return holder[0]
+        }
+
+        private fun gestureTap(s: NovaAccessibilityService, x: Float, y: Float, ms: Long): Ctl {
+            val p = Path()
+            p.moveTo(x, y)
+            val g = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(p, 0, ms)).build()
+            val latch = CountDownLatch(1)
+            var done = false
+            val accepted = s.dispatchGesture(g, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) { done = true; latch.countDown() }
+                override fun onCancelled(gestureDescription: GestureDescription?) { latch.countDown() }
+            }, null)
+            if (!accepted) return Ctl(false, "failed")
+            try { latch.await(2000, TimeUnit.MILLISECONDS) } catch (e: InterruptedException) { }
             return if (done) Ctl(true, "ok") else Ctl(false, "failed")
         }
 

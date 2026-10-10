@@ -245,6 +245,61 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 .ready .orbbox canvas{animation:breatheLight 3.2s ease-in-out infinite}
 }
 </style>
+<style id="nova-ui-refresh-v17">
+/* NOVA V17 VISUAL REFRESH — presentation only. Keep all IDs, handlers and bridge contracts intact. */
+:root{--c1:#45e8ff;--c2:#4c80ff;--c3:#bd77ff;--ink:#f0f6ff;--mut:#9eb0d3;--glass:rgba(9,17,43,.72);--edge:rgba(99,163,255,.31);--shine:linear-gradient(110deg,#45e8ff 0%,#5886ff 48%,#bd77ff 100%)}
+html,body{background:#030613;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body:before{background:radial-gradient(55% 38% at 50% 35%,rgba(50,123,255,.14),transparent 74%),radial-gradient(40% 34% at 5% 82%,rgba(69,232,255,.09),transparent 72%),radial-gradient(38% 38% at 100% 22%,rgba(189,119,255,.10),transparent 72%),linear-gradient(rgba(99,163,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(99,163,255,.028) 1px,transparent 1px);background-size:auto,auto,auto,34px 34px,34px 34px}
+#app.wrap{position:relative;isolation:isolate;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);gap:2px}
+#app:before{content:"";position:absolute;z-index:-1;pointer-events:none;left:50%;top:28%;width:min(82vw,360px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(49,116,255,.14),rgba(50,80,190,.055) 36%,transparent 68%);border:1px solid rgba(81,158,255,.08);box-shadow:0 0 75px rgba(56,111,255,.1),inset 0 0 50px rgba(94,147,255,.08)}
+.top{flex:0 0 auto;gap:8px;width:100%;padding:3px 2px 0}
+.logo{font-size:27px;letter-spacing:8px;font-weight:650;background:var(--shine);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 16px rgba(76,128,255,.35));gap:9px;white-space:nowrap}
+#dot{width:7px;height:7px;background:#69ffc5;box-shadow:0 0 12px #69ffc5;flex:0 0 7px}
+.ic{gap:6px;flex-wrap:nowrap}
+button.icb{width:39px;height:39px;min-width:39px;border-radius:14px;border:1px solid var(--edge);background:linear-gradient(145deg,rgba(29,56,113,.7),rgba(12,20,53,.72));box-shadow:0 7px 20px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.06);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+button.icb svg{width:19px;height:19px;stroke:#c9f5ff}
+.status{flex:0 0 auto;margin-top:7px;padding:6px 12px;border:1px solid rgba(69,232,255,.2);border-radius:999px;background:rgba(7,21,48,.5);font-size:9px;letter-spacing:2.4px;color:#9cdff8;box-shadow:inset 0 1px rgba(255,255,255,.03)}
+.orbbox{flex:0 0 clamp(160px,28vh,226px);width:100%;position:relative;isolation:isolate;margin:0 auto;overflow:visible}
+.orbbox:before,.orbbox:after{content:"";position:absolute;left:50%;top:50%;width:clamp(148px,48vw,224px);aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;border:1px solid rgba(69,232,255,.16);box-shadow:0 0 32px rgba(69,232,255,.08),inset 0 0 36px rgba(76,128,255,.08);animation:novaOrbit 18s linear infinite}
+.orbbox:after{width:clamp(172px,55vw,254px);border-color:rgba(189,119,255,.15);border-style:dashed;animation:novaOrbit 30s linear infinite reverse}
+#gl{position:relative;z-index:1;width:min(250px,68vw,32vh)!important;height:min(250px,68vw,32vh)!important;max-width:100%;filter:drop-shadow(0 0 16px rgba(63,159,255,.16))}
+.feats{flex:0 0 auto;gap:10px;padding:5px 15px 12px;margin:0 -14px;width:calc(100% + 28px)}
+.f{flex:0 0 116px;min-height:96px;padding:13px 11px;border:1px solid rgba(105,164,255,.29);border-radius:18px;background:linear-gradient(150deg,rgba(31,68,145,.33),rgba(14,21,55,.65) 62%,rgba(86,44,145,.14));box-shadow:0 10px 24px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.055);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);scroll-snap-align:start}
+.f:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.07),transparent 42%);opacity:.65}
+.f svg{width:28px;height:28px;padding:5px;border-radius:10px;border:1px solid rgba(69,232,255,.21);background:rgba(69,232,255,.08);filter:drop-shadow(0 0 5px rgba(69,232,255,.13))}
+.f b{font-size:10px;letter-spacing:1.1px;margin-top:9px;color:#f2f7ff}
+.f i{font-size:10px;line-height:1.35;color:var(--mut);opacity:1}
+.log{flex:1 1 70px;min-height:50px;max-height:24vh;padding:9px 3px;gap:8px}
+.log:empty:before{content:"SPEAK OR TYPE A COMMAND";display:block;margin:auto;text-align:center;color:rgba(149,185,227,.48);font-size:9px;letter-spacing:2px}
+.msg{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 5px 16px rgba(0,0,0,.12);font-size:13px}
+.me{background:linear-gradient(135deg,rgba(48,100,215,.38),rgba(110,69,194,.26));border-color:rgba(116,160,255,.42)}
+.ai{background:linear-gradient(125deg,rgba(30,102,135,.19),rgba(38,57,113,.26));border-color:rgba(69,232,255,.25)}
+#app>.row{flex:0 0 auto;width:100%;gap:8px;padding:9px;border-radius:25px;border:1px solid rgba(92,155,255,.24);background:rgba(6,14,39,.75);box-shadow:0 12px 30px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.05);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#app>.row button.sm{flex:0 0 auto;min-width:72px;padding:12px 13px;border-radius:999px}
+#btn{flex:1 1 150px;min-height:48px;padding:14px 20px;border-radius:999px;letter-spacing:2.8px;font-size:12px;background:linear-gradient(rgba(8,17,46,.94),rgba(8,17,46,.94)) padding-box,var(--shine) border-box;box-shadow:0 0 26px rgba(76,128,255,.25),inset 0 1px rgba(255,255,255,.07);text-shadow:0 0 13px rgba(69,232,255,.25)}
+#btn:after{border-color:rgba(69,232,255,.8);box-shadow:0 0 18px rgba(69,232,255,.17)}
+button.sm{border-color:rgba(99,163,255,.25);background:linear-gradient(135deg,rgba(24,39,84,.7),rgba(13,19,49,.72));box-shadow:inset 0 1px rgba(255,255,255,.04);color:#dceaff}
+#panel,#chat{background:radial-gradient(120% 46% at 50% 0%,rgba(35,69,164,.78),rgba(7,13,38,.98) 58%,#020511 100%);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#panel h2{font-size:19px;letter-spacing:7px;text-align:center;margin:5px 0 20px}
+#panel .box,#st_box{background:linear-gradient(145deg,rgba(25,48,105,.35),rgba(9,17,45,.7));border-color:rgba(103,164,255,.25);border-radius:20px;box-shadow:0 10px 28px rgba(0,0,0,.17),inset 0 1px rgba(255,255,255,.04)}
+#sheet{align-items:flex-end;background:rgba(1,4,16,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.sh{border-radius:28px 28px 0 0;padding:25px 20px calc(env(safe-area-inset-bottom,0px) + 24px);background:linear-gradient(155deg,rgba(21,40,93,.98),rgba(5,11,33,.99) 65%,rgba(21,9,51,.98));border:1px solid rgba(86,164,255,.35);border-bottom:0;box-shadow:0 -18px 65px rgba(42,103,255,.22),inset 0 1px rgba(255,255,255,.09)}
+#sheet.on .sh{animation:novaSheetIn .58s cubic-bezier(.16,1,.3,1) both}
+#sheet.out .sh{animation:novaSheetOut .3s cubic-bezier(.7,0,.84,0) both}
+#chat{padding-left:14px;padding-right:14px}
+.chh{padding-bottom:13px;border-color:rgba(95,156,255,.28)}
+.chh b{font-weight:700;letter-spacing:4px;background:var(--shine);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+#c_in{min-height:46px;background:rgba(3,9,29,.8);border-color:rgba(95,156,255,.35);box-shadow:inset 0 1px rgba(255,255,255,.035)}
+#c_send{background:linear-gradient(145deg,rgba(32,68,145,.7),rgba(20,33,80,.88)) padding-box,var(--shine) border-box;border:1px solid transparent}
+#uc .ucb{border-radius:24px;background:linear-gradient(150deg,rgba(20,41,100,.98),rgba(5,10,33,.99) 62%,rgba(30,13,65,.98));border-color:rgba(91,159,255,.4);box-shadow:0 24px 80px rgba(0,0,0,.5),0 0 44px rgba(47,123,255,.19),inset 0 1px rgba(255,255,255,.07)}
+button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset:3px}
+@keyframes novaOrbit{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes novaSheetIn{0%{opacity:0;transform:perspective(800px) translateY(80px) rotateX(-22deg) scale(.92);filter:blur(10px)}68%{opacity:1;transform:perspective(800px) translateY(-5px) rotateX(2deg) scale(1.01);filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
+@keyframes novaSheetOut{to{opacity:0;transform:perspective(800px) translateY(44px) rotateX(-14deg) scale(.96);filter:blur(5px)}}
+@media(max-height:640px){.orbbox{flex-basis:clamp(132px,24vh,180px)}.feats{padding-bottom:6px}.f{min-height:83px;padding:10px}.f svg{width:25px;height:25px}.log{max-height:19vh}}
+@media(max-width:365px){.logo{font-size:23px;letter-spacing:6px}.ic{gap:4px}button.icb{width:35px;height:35px;min-width:35px;border-radius:12px}.f{flex-basis:108px}#app>.row{gap:6px;padding:7px}#app>.row button.sm{min-width:60px;padding:11px 9px}}
+@media(prefers-reduced-motion:reduce){.orbbox:before,.orbbox:after,#dot{animation:none!important}*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important}}
+</style>
 </head>
 <body>
 <div id="intro" class="on"><canvas id="fx"></canvas><div id="lt"><i class="hl"></i><i class="bm b1"></i><i class="bm b2"></i><i class="fl"></i></div><div id="cap"><b></b><span></span></div><div id="hint">TAP FOR SOUND</div>
@@ -253,7 +308,7 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 <div id="flash"></div><div id="shock"></div><div class="dr" id="dr1"></div><div class="dr" id="dr2"></div>
 <div class="wrap" id="app">
 <div class="top"><div class="logo">NOVA<span id="dot"></span></div><div class="ic"><button class="icb hb" id="chatb" aria-label="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg><em>CHAT</em></button><button class="icb hb" id="gear" aria-label="settings"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><em>SETTINGS</em></button><button class="icb" id="snd" aria-label="sound"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button><button class="icb" id="pw" aria-label="sleep"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.8a8 8 0 1011.4 0"/></svg></button></div></div>
-<div class="status" id="st">Offline</div><div class="badge" id="mode">LOCAL MODE - no API key needed</div>
+<div class="status" id="st">Offline</div>
 <div class="orbbox"><canvas id="gl" width="250" height="250" aria-label="NOVA"></canvas></div>
 <div class="feats" id="feats"></div>
 <div class="log" id="log"></div>
@@ -316,7 +371,7 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 <div class="box">
 <label style="margin-top:0">GEMINI API KEYS (OPTIONAL) <span id="keyst"></span>
 <textarea id="s_key" rows="3" placeholder="Har API key alag line mein paste karo" autocomplete="off"></textarea></label>
-<small>Bina key ke phone commands (torch, volume, battery, apps...) offline chalte hain. Key sirf lambe sawaal, web search aur deep screen analysis ke liye chahiye. Keys Android Keystore mein encrypted rehti hain aur kabhi screen par wapas nahi dikhti. Quota/server error par NOVA agli saved key/model try karta hai. Sirf apni/authorized keys rakho.</small>
+<small>Bina key ke phone commands (torch, volume, battery, apps...) offline chalte hain. Key sirf lambe sawaal, web search aur deep screen analysis ke liye chahiye. Keys Android Keystore mein encrypted rehti hain aur kabhi screen par wapas nahi dikhti. Quota/server error par NOVA agli saved key/model try karta hai. Sirf apni/authorized keys rakho. Kaam wale commands (agent) mein screen ka text aur chhoti tasveer, aur photo banane mein likha hua prompt, aapki saved AI service ko jaata hai. Payment, password, Settings jaisi protected screens kabhi cloud par nahi jaati.</small>
 <div class="row"><button class="sm" id="s_savekey">KEYS SAVE</button><button class="sm" id="s_delkey">KEYS HATAO</button></div>
 </div>
 
@@ -356,10 +411,10 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 
 <div class="box">
 <label style="margin-top:0">FREE ONLINE AI <span id="fcst"></span></label>
-<label class="chk"><input type="checkbox" id="fc_on"> FREE AI ON: Gemini na ho ya fail ho to Groq, OpenRouter aur Pollinations khud try honge</label>
+<label class="chk"><input type="checkbox" id="fc_on"> FREE AI ON: clear general-fact questions par pehle Wikipedia (no key, source link ke saath); baaki sawaalon par Gemini/Groq/OpenRouter/Pollinations fallback</label>
 <label class="chk"><input type="checkbox" id="fc_kl"> POLLINATIONS (bina key) bhi try karo - ho sakta hai kaam na kare</label>
 <input type="password" id="or_key" placeholder="OpenRouter key (optional, free models)" autocomplete="off">
-<small>Groq ki key upar wale GROQ box mein hai, wahi text ke liye bhi chalegi. Sirf tumhara bola hua sawaal in services ko jaata hai. Screen, notifications, contacts ya memory kabhi nahi jaate. Pollinations ki nayi docs key maangti hain, isliye bina key wala try fail ho sakta hai (tab NOVA use 10 min ke liye chhod deta hai). Pakka free rasta: Groq key (ya OpenRouter key). Key Android Keystore me encrypted rehti hai aur wapas screen par nahi dikhti.</small>
+<small>Wikipedia fallback sirf pehchane gaye general-knowledge sawaal ka topic public Wikipedia ko bhejta hai, poori chat ya awaaz nahi; jawab ke saath source link milta hai. Current news, weather, rates aur personal sawaal is lookup se skip hote hain. Baaki online AI ko tumhara sawaal bheja jaata hai; YAAD mein “Online AI ko bhi do” ON ho to max 3 relevant saved facts free AI chain ko mil sakte hain (Gemini ko nahi). Screen, notifications aur contacts Wikipedia lookup ko nahi bheje jaate. Pollinations ki nayi docs key maangti hain, isliye bina-key wala legacy try fail ya rate-limit ho sakta hai. Keys Android Keystore me encrypted rehti hain aur wapas screen par nahi dikhti.</small>
 <div class="row"><button class="sm" id="or_save">OPENROUTER SAVE</button><button class="sm" id="or_del">OPENROUTER HATAO</button></div>
 </div>
 
@@ -370,6 +425,35 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
 <small>Bolo: "nova yaad rakh mera naam Shiv hai", "nova mujhe kya yaad hai", "nova bhool ja mera naam", "nova sab bhool ja". Ye baatein sirf is phone mein rehti hain, kahin upload ya backup nahi hoti. Password, OTP, PIN, card, Aadhaar/PAN/passport, bank account aur lambe number NOVA yaad nahi rakhta.</small>
 <pre id="memtxt" style="display:none;white-space:pre-wrap;margin:8px 0 0"></pre>
 <div class="row"><button class="sm" id="mem_show">DIKHAO</button><button class="sm" id="mem_del">SAB HATAO</button></div>
+</div>
+
+<div class="box">
+<label style="margin-top:0">GITHUB PUBLISH <span id="gh_st"></span></label>
+<input type="password" id="gh_key" placeholder="GitHub token (website publish ke liye)" autocomplete="off">
+<small>Token yahan banao: https://github.com/settings/tokens/new?scopes=repo&amp;description=NOVA (Generate token dabao, phir copy karke yahan paste karo). Token sirf is phone mein encrypted rehta hai. Publish se pehle har baar HAAN poochta hai. Website public hoti hai.</small>
+<div class="row"><button class="sm" id="gh_save">TOKEN SAVE</button><button class="sm" id="gh_del">TOKEN HATAO</button></div>
+</div>
+
+<div class="box">
+<label style="margin-top:0">KYA SEEKHA <span id="ln_st"></span></label>
+<small>Bolo: "nova solar panel ke baare mein seekho". NOVA internet se chhota note banata hai. Wo tabhi yaad rehta hai jab tum RAKHO dabao.</small>
+<div id="ln_list"></div>
+<div class="row"><button class="sm" id="ln_ref">DIKHAO</button><button class="sm" id="ln_all">SAB HATAO</button></div>
+</div>
+
+<div class="box">
+<label style="margin-top:0">MERI AWAAZ (SIRF MAIN)</label>
+<label class="chk"><input type="checkbox" id="vl_on"> Sirf meri awaaz par jawab do</label>
+<small id="vl_state">Pehle awaaz save karo.</small>
+<div class="row"><button class="sm" id="vl_save">AWAAZ SAVE KARO</button><button class="sm" id="vl_del">AWAAZ HATAO</button></div>
+<small>Pehle ACTIVATE dabao. Save karte waqt chat me jo likha aaye wahi karo. Kisi ki recording se ye dhoka kha sakta hai, isliye paise/call/delete par "haan" ka sawaal pehle jaisa rahega.</small>
+</div>
+
+<div class="box">
+<label style="margin-top:0">BAAT-CHEET MODE</label>
+<label class="chk"><input type="checkbox" id="cv_on"> Jawab ke baad NOVA 3 baar tak bina "nova" bole sunta rahe</label>
+<small>Band karne par har baat ke liye "nova" bolna padega.</small>
+<label class="chk"><input type="checkbox" id="al_on"> Khud bolo: battery kam ho to NOVA bata de (30 minute mein ek baar)</label>
 </div>
 
 <!-- FIXFREE-UI2 -->
@@ -397,7 +481,7 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
   function say(t,ok){var m=g("smsg");if(!m)return;m.textContent=t;m.className=ok?"ok":"bad"}
   function gst(){var e=g("groqst");if(!e)return;var h=false;try{h=Android.hasGroqKey()}catch(x){}e.textContent=h?"- key saved":"- optional";e.className=h?"ok":""}
   function cst(){var e=g("fcst");var on=false,kl=true,h=false,gk=false;try{on=Android.getFreeChain();kl=Android.getFreeKeyless();h=Android.hasOpenRouterKey();gk=Android.hasGroqKey()}catch(x){}
-    var t=[];if(gk)t.push("Groq");if(h)t.push("OpenRouter");if(kl)t.push("Pollinations");
+    var t=[];if(on)t.push("Wikipedia (no-key facts)");if(gk)t.push("Groq");if(h)t.push("OpenRouter");if(kl)t.push("Pollinations (legacy no-key)");
     if(e){e.textContent=on?("- ON ("+(t.length?t.join(", "):"koi provider nahi")+")"):"- OFF";e.className=on?"ok":""}
     var c1=g("fc_on");if(c1)c1.checked=!!on;var c2=g("fc_kl");if(c2)c2.checked=!!kl}
   var fo=g("fc_on");
@@ -480,6 +564,60 @@ body.ready:after{content:"";position:fixed;inset:0;z-index:98;pointer-events:non
     try{Android.setMemoryInChain(mc.checked);say(mc.checked?"Online AI ko kaam ki baatein milengi":"Online AI ko kuch nahi jayega",true)}catch(x){say("Switch save nahi hua",false)}
     mst();
   })}
+  function ghst(){var e=g("gh_st");if(!e)return;var h=false;try{h=Android.hasGithubToken()}catch(x){}e.textContent=h?"- token saved":"- optional";e.className=h?"ok":""}
+  var gs=g("gh_save");
+  if(gs){gs.addEventListener("click",function(){
+    var f=g("gh_key");var r="fail";
+    try{r=Android.saveGithubToken(f.value)}catch(x){}
+    if(r==="ok"){f.value="";say("GitHub token save ho gaya",true)}
+    else if(r==="invalid"){say("Token galat lag raha hai (kam se kam 20 akshar, bina space)",false)}
+    else{say("Token save nahi hua",false)}
+    ghst();
+  })}
+  var gd=g("gh_del");
+  if(gd){gd.addEventListener("click",function(){try{Android.clearGithubToken()}catch(x){}say("GitHub token hata diya",true);ghst()})}
+  ghst();
+  function lnRender(){
+    var box=g("ln_list"),st=g("ln_st");if(!box)return;box.innerHTML="";var a=[];
+    try{a=JSON.parse(Android.getLearned())}catch(x){}
+    if(st)st.textContent=a.length?"- "+a.length+" note":"- koi note nahi";
+    a.forEach(function(n){
+      var d=document.createElement("div");d.style.cssText="margin:8px 0;padding:8px;border:1px solid #2a6;border-radius:8px";
+      var h=document.createElement("b");h.textContent=n.topic+(n.kept?" (yaad hai)":" (RAKHO dabao)")+(n.src==="ai"?" [AI se, internet nahi]":"");d.appendChild(h);
+      var p=document.createElement("div");p.textContent=n.text;p.style.cssText="margin:4px 0;font-size:13px";d.appendChild(p);
+      if(!n.kept){var k=document.createElement("button");k.className="sm";k.textContent="RAKHO";k.onclick=function(){try{Android.keepLearned(n.id)}catch(x){}lnRender()};d.appendChild(k)}
+      var x=document.createElement("button");x.className="sm";x.textContent="HATAO";x.onclick=function(){try{Android.deleteLearned(n.id)}catch(e){}lnRender()};d.appendChild(x);
+      box.appendChild(d)
+    })
+  }
+  window.onLearn=lnRender;
+  var lr=g("ln_ref");if(lr)lr.addEventListener("click",lnRender);
+  var la=g("ln_all");if(la)la.addEventListener("click",function(){try{Android.clearLearned()}catch(x){}lnRender()});
+  lnRender();
+  var alEl=g("al_on");
+  if(alEl){try{alEl.checked=!!Android.getAlerts()}catch(x){}
+    alEl.addEventListener("change",function(){
+      try{Android.setAlerts(alEl.checked);say(alEl.checked?"Battery alert on":"Battery alert off",true)}catch(x){say("Switch save nahi hua",false)}
+    })}
+  var vlEl=g("vl_on");
+  function vlState(){var st=g("vl_state");if(!st)return;try{st.textContent=Android.hasVoiceProfile()?"Awaaz save hai.":"Pehle awaaz save karo."}catch(x){}}
+  if(vlEl){try{vlEl.checked=!!Android.getVoiceLock()}catch(x){}
+    vlEl.addEventListener("change",function(){
+      try{var r=Android.setVoiceLock(vlEl.checked);if(r==="noprofile"){vlEl.checked=false;say("Pehle awaaz save karo",false)}else say(vlEl.checked?"Sirf aapki awaaz":"Sabki awaaz chalegi",true)}catch(x){say("Switch save nahi hua",false)}
+    })}
+  var vlS=g("vl_save");
+  if(vlS)vlS.addEventListener("click",function(){
+    try{var r=Android.voiceEnroll();if(r==="ok")say("Chat dekho, wahan likha hai kya bolna hai",true);else say("Pehle ACTIVATE dabao",false)}catch(x){say("Nahi hua",false)}
+    setTimeout(function(){vlState();try{if(vlEl)vlEl.checked=!!Android.getVoiceLock()}catch(x){}},20000)});
+  var vlD=g("vl_del");
+  if(vlD)vlD.addEventListener("click",function(){
+    try{Android.voiceDelete();if(vlEl)vlEl.checked=false;vlState();say("Awaaz hata di",true)}catch(x){say("Nahi hua",false)}});
+  vlState();
+  var cvEl=g("cv_on");
+  if(cvEl){try{cvEl.checked=!!Android.getConvo()}catch(x){}
+    cvEl.addEventListener("change",function(){
+      try{Android.setConvo(cvEl.checked);say(cvEl.checked?"Baat-cheet mode on":"Baat-cheet mode off",true)}catch(x){say("Switch save nahi hua",false)}
+    })}
   var ms=g("mem_show");
   if(ms){ms.addEventListener("click",function(){
     var t=g("memtxt");if(!t)return;
@@ -505,13 +643,13 @@ var on=false,S={wake:'nova'},panelOpen=false;
 
 function add(t,c){var d=document.createElement('div');d.className='msg '+c;d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight}
 function listenTxt(){return 'Listening - bolo "'+S.wake+'"'}
-function ready(){st.textContent=listenTxt();app.className=on?'on':''}
+function ready(){st.textContent=listenTxt();app.className='wrap '+(on?'on':'')}
 function onNova(r,t){
   if(r=='sys'){st.textContent=t;return}
-  if(r=='mode'){app.className=(t=='on')?'on':t;return}
+  if(r=='mode'){app.className='wrap '+((t=='on')?'on':t);return}
   add(t,r); if(r=='ai')ready();
 }
-function setOn(o){on=o;app.className=o?'on':'';st.textContent=o?listenTxt():'Offline';btn.textContent=o?'STOP':'ACTIVATE'}
+function setOn(o){on=o;app.className='wrap '+(o?'on':'');st.textContent=o?listenTxt():'Offline';btn.textContent=o?'STOP':'ACTIVATE'}
 
 function loadS(){try{S=JSON.parse(Android.getSettings())}catch(e){}}
 function msg(t,cls){
@@ -520,7 +658,7 @@ function msg(t,cls){
 }
 function accTxt(){var a=$('accst');a.textContent=S.acc?'- ON':'- OFF';a.className=S.acc?'ok':'bad'}
 function keyTxt(){var k=$('keyst');k.textContent=S.hasKey?'- '+(S.keyCount||1)+' encrypted key(s)':'- optional';k.className='ok'}
-function modeTxt(){var m=$('mode');if(S.hasKey){m.textContent='AI KEYS SAVED - local commands still work offline';m.className='badge cloud'}else{m.textContent='LOCAL MODE - no API key needed';m.className='badge'}}
+function modeTxt(){var m=$('mode');if(!m)return;if(S.hasKey){m.textContent='AI KEYS SAVED - local commands still work offline';m.className='badge cloud'}else{m.textContent='LOCAL MODE - no API key needed';m.className='badge'}}
 var updBusy=false;
 function updTxt(){
   var d;try{d=JSON.parse(Android.getUpdates())}catch(x){return}
@@ -610,7 +748,7 @@ $('s_savekey').onclick=function(){
   else if(r=='invalid')msg('Koi valid key nahi mili. Har key alag line mein, bina space ke (20+ akshar)','bad');
   else msg('Keys save nahi ho paayi. Dobara try karo','bad');
 };
-$('s_delkey').onclick=function(){Android.clearKey();loadS();keyTxt();modeTxt();msg('Saari saved keys hata di gayi. Ab LOCAL MODE','ok')};
+$('s_delkey').onclick=function(){Android.clearKey();loadS();keyTxt();modeTxt();msg('Saari saved keys hata di gayi','ok')};
 $('s_acc').onclick=function(){Android.openAccessibility()};
 $('s_app').onclick=function(){Android.openAppInfo()};
 $('s_contacts').onclick=function(){var r=Android.requestContacts();if(r=='granted'){loadS();permTxt();msg('Contacts permission pehle se ON hai','ok')}};
@@ -643,7 +781,8 @@ window.onFlow=function(r){
 var UC=$('uc'),ucAutoDone=false,ucNoteTxt='',ucBusy=false,UCV='nova_seen_ver';
 var CHANGES=[
  'Naya open animation: lighting beams, glow, achanak flash + shock-wave, phir app "slam" hoke khulta hai. Popups (Update Center, sheets, chat) spring + glow ke saath khulte hain. Wake card bhi spring, slide aur light-sweep ke saath aata hai.',
- 'Offline AI engine ab asli hai (llama.cpp): Update Center > OFFLINE BRAIN se Qwen2.5-0.5B (491 MB) Wi-Fi par download karo. Chhota model hai, galti kar sakta hai, kabhi koi kaam khud nahi karta.',
+ 'Naya: "nova <topic> ke baare mein seekho" (Settings > KYA SEEKHA mein RAKHO dabao), website publish (GITHUB PUBLISH token), aur BAAT-CHEET MODE (jawab ke baad bina nova bole 3 baar sunta hai).',
+ 'Naya: "nova ek restaurant ki website banao" bolo. NOVA poori website banata hai, chat mein preview dikhata hai aur Downloads > NOVA mein save karta hai. Isse AI key (Gemini ya Groq) chahiye.',
  'Fix: Microphone/Notification ALLOW button dead ho jata tha (Android popup band kar deta hai). Ab Settings page khulta hai. Update Center ka button ab "FEED URL DALO" par atakta nahi.',
  'Offline timer, reminder aur alarm: "nova das minute baad chai yaad dilao", "set alarm for six thirty am". Phone ka Clock app asli ghanti bajata hai.',
  'Offline skills (bina internet/key): calculator, unit convert (kg/lb, km/miles, C/F, cup/chamach), tarikh ka hisaab (45 din baad), emergency numbers, basic first aid.',
@@ -656,7 +795,6 @@ var CHANGES=[
  'Command sunne ke liye Indian-English model (behtar pehchaan).',
  'Default assistant option: Home / power button dabake rakhne par NOVA jaagta hai.',
  'Update Center (yeh screen): kya naya hai, kaunsi permission baaki hai, update install.',
- 'Offline brain (Update Center > OFFLINE BRAIN): model ka download ab ruk kar dobara chalu hota hai, aur net/AI fail hone par jawab offline model se aayega.',
  'Dhyan: yeh sab abhi phone par test hona baaki hai. Kuch gadbad mile to batao.'];
 function el(tg,cl,tx){var e=document.createElement(tg);if(cl)e.className=cl;if(tx!==undefined)e.textContent=tx;return e}
 function ucStat(){try{return JSON.parse(Android.getStatus())}catch(e){return null}}
@@ -743,9 +881,9 @@ function ucAuto(){
   if(ucAutoDone)return;ucAutoDone=true;var st=ucStat();if(!st)return;
   var seen='';try{seen=localStorage.getItem(UCV)||''}catch(e){}
   if(st.feedUrl)ucDo(function(){Android.checkUpdates()});
-  if(ucFree()&&(seen!==st.versionName+'/'+st.versionCode||!st.mic||!st.notif||ucOffers().length))ucOpen();
+  try{localStorage.setItem(UCV,st.versionName+'/'+st.versionCode)}catch(e){}   /* v31: never opens by itself, UPDATE CENTER button only */
 }
-function ucMaybe(){if(ucFree()&&ucOffers().length&&!ucShown2){ucShown2=true;ucOpen()}}
+function ucMaybe(){if(ucFree()&&ucOffers().length&&!ucShown2){ucShown2=true}}   /* v31: offers wait quietly in UPDATE CENTER */
 var ucShown2=false;
 // keep the screen in sync (service start/stop, accessibility switched on)
 setInterval(function(){
@@ -1160,6 +1298,38 @@ window.onImage=function(ok,msg,b,saved){
     cl.appendChild(d);cl.scrollTop=cl.scrollHeight
   }else say(msg||'Image nahi bani','ai')
 };
+window.onSite=function(ok,msg,html,saved){
+  if(!ok||!html){say(msg||'Website nahi bani','ai');return}
+  var d=document.createElement('div');d.className='msg ai';
+  var t=document.createElement('div');t.textContent='Website ban gayi: '+msg;d.appendChild(t);
+  if(saved){var sv=document.createElement('div');sv.className='sv';sv.textContent='Saved: '+saved;d.appendChild(sv)}
+  var b=document.createElement('button');b.className='sm';b.textContent='DEKHO (PREVIEW)';
+  b.onclick=function(){
+    var o=document.createElement('div');o.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:#000;display:flex;flex-direction:column';
+    var x=document.createElement('button');x.className='sm';x.textContent='BAND KARO';x.style.cssText='margin:8px;align-self:flex-end';
+    x.onclick=function(){o.remove()};
+    var f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.style.cssText='flex:1;border:0;background:#fff';f.srcdoc=html;
+    o.appendChild(x);o.appendChild(f);document.body.appendChild(o)
+  };
+  d.appendChild(b);
+  var pb=document.createElement('button');pb.className='sm';pb.textContent='PUBLISH (GITHUB)';
+  pb.onclick=function(){
+    var r='fail';try{r=Android.publishLastSite()}catch(e){}
+    if(r==='notoken')say('Pehle Settings mein GitHub token daalo (GITHUB PUBLISH box).','ai');
+    else if(r==='nosite')say('Pehle website banao.','ai');
+    else if(r==='busy')say('Publish ho raha hai, thoda ruko.','ai');
+    else if(r==='asking')say('Publish ke liye HAAN dabao...','ai')
+  };
+  d.appendChild(pb);cl.appendChild(d);cl.scrollTop=cl.scrollHeight
+};
+window.onPublish=function(ok,msg,url){
+  if(!ok||!url){say(msg||'Publish nahi hua','ai');return}
+  var d=document.createElement('div');d.className='msg ai';
+  var t=document.createElement('div');t.textContent='Publish ho gaya. Live hone mein 1-2 minute lag sakte hain: '+url;d.appendChild(t);
+  var ob=document.createElement('button');ob.className='sm';ob.textContent='KHOLO';
+  ob.onclick=function(){try{Android.openPublished(url)}catch(e){}};
+  d.appendChild(ob);cl.appendChild(d);cl.scrollTop=cl.scrollHeight
+};
 })();
 </script><script>
 /* FIXTEST-UI */
@@ -1293,4 +1463,56 @@ html.lowfx .logo,html.lowfx .badge,html.lowfx #btn{animation:none}
 <script>/* NOVA GLOW PACK stars */
 (function(){try{var d=document,r=Math.random;if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;var c=d.createElement('div');c.id='gp-stars';for(var i=0;i<14;i++){var s=d.createElement('i'),z=1+r()*2;s.style.cssText='left:'+(r()*100)+'%;top:'+(20+r()*75)+'%;width:'+z+'px;height:'+z+'px;animation-delay:'+(-r()*9)+'s;animation-duration:'+(7+r()*7)+'s';c.appendChild(s)}d.body.appendChild(c)}catch(e){}})();
 </script>
+<style id="fix-scroll">
+/* v31: the home page scrolls when the screen is short; no mode/provider badge */
+.wrap{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scroll-behavior:smooth}
+.wrap>*{flex-shrink:0}
+.wrap>.log{flex:1 0 auto;min-height:140px}
+#mode{display:none!important}
+</style>
+<script>try{var _o=document.getElementById('i_on');if(_o&&_o.parentNode)_o.parentNode.style.display='none'}catch(e){}</script>
+
+<style id="nova-3d-icons-v17">
+/* NOVA 3D ICON + TAP FEEDBACK PACK — presentation-only; no command handlers changed. */
+:root{--n-cyan:#36e8ff;--n-blue:#347cff;--n-violet:#ad69ff;--n-glass:rgba(9,22,52,.88)}
+button,.f{position:relative;isolation:isolate;transform-style:preserve-3d;backface-visibility:hidden;transition:transform .22s cubic-bezier(.2,.85,.25,1),box-shadow .22s,border-color .22s,filter .22s;}
+button{box-shadow:0 5px 0 rgba(7,24,57,.96),0 10px 22px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.25)}
+button.sm{box-shadow:0 3px 0 rgba(8,27,62,.9),0 7px 14px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.13)}
+button.icb{overflow:hidden;background:linear-gradient(145deg,rgba(88,221,255,.20),rgba(34,74,145,.25) 54%,rgba(92,48,154,.22));border-color:rgba(102,224,255,.72);box-shadow:0 4px 0 rgba(14,42,88,.92),0 8px 17px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.24),inset 0 -2px 0 rgba(0,0,0,.25)}
+button.icb:before{content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.18),transparent 34%,transparent 66%,rgba(159,98,255,.12));opacity:.9;z-index:-1}
+button.icb svg,.f svg{filter:drop-shadow(0 2px 1px rgba(0,0,0,.8)) drop-shadow(0 0 6px rgba(54,232,255,.58));transform:translateZ(7px);transform-origin:50% 60%;transition:transform .24s cubic-bezier(.2,.85,.25,1),filter .24s}
+.f{border-color:rgba(85,215,255,.52);background:linear-gradient(155deg,rgba(77,187,255,.24),rgba(35,72,140,.21) 48%,rgba(123,70,202,.14));box-shadow:0 7px 0 rgba(8,24,56,.92),0 13px 25px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.20),inset 0 -2px 0 rgba(0,0,0,.28);transform:perspective(800px) rotateX(1.5deg) translateY(0)}
+.f:before{content:"";position:absolute;left:10%;right:12%;top:0;height:1px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(202,248,255,.78),rgba(182,141,255,.46),transparent);opacity:.8}
+.f svg{width:30px;height:30px;padding:5px;border-radius:10px;background:linear-gradient(145deg,rgba(90,225,255,.24),rgba(77,91,191,.16) 65%,rgba(159,92,255,.17));border:1px solid rgba(112,222,255,.48);box-shadow:0 4px 0 rgba(7,29,62,.8),0 6px 12px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.28);}
+.f b{ text-shadow:0 1px 0 rgba(0,0,0,.8),0 0 10px rgba(54,232,255,.14)}
+button.nova-press,.f.nova-press{animation:novaTap3d .34s cubic-bezier(.2,.9,.25,1) both;border-color:rgba(164,239,255,.96);filter:brightness(1.16)}
+button.nova-press svg,.f.nova-press svg{animation:novaIconTap3d .34s cubic-bezier(.2,.9,.25,1) both;filter:drop-shadow(0 0 9px rgba(54,232,255,.85)) drop-shadow(0 0 14px rgba(173,105,255,.45))}
+button:focus-visible,.f:focus-visible{outline:2px solid #a7f5ff;outline-offset:3px;box-shadow:0 0 0 4px rgba(54,232,255,.18),0 7px 20px rgba(0,0,0,.35)}
+@keyframes novaTap3d{0%{transform:perspective(600px) translateY(0) rotateX(0) scale(1)}36%{transform:perspective(600px) translateY(3px) rotateX(9deg) scale(.94)}72%{transform:perspective(600px) translateY(-1px) rotateX(-3deg) scale(1.025)}100%{transform:perspective(600px) translateY(0) rotateX(0) scale(1)}}
+@keyframes novaIconTap3d{0%{transform:translateZ(7px) scale(1) rotate(0)}42%{transform:translateZ(1px) scale(.82) rotate(-7deg)}78%{transform:translateZ(10px) scale(1.13) rotate(3deg)}100%{transform:translateZ(7px) scale(1) rotate(0)}}
+html.lowfx button,html.lowfx .f{transition:none}
+html.lowfx button.nova-press,html.lowfx .f.nova-press,html.lowfx button.nova-press svg,html.lowfx .f.nova-press svg{animation:none;filter:none}
+@media(prefers-reduced-motion:reduce){button,.f,button.icb svg,.f svg{transition:none!important}button.nova-press,.f.nova-press,button.nova-press svg,.f.nova-press svg{animation:none!important}}
+</style>
+<script id="nova-3d-tap-v17">
+/* Visual-only tap feedback. Event handlers for NOVA commands remain untouched. */
+(function(){
+  if(window.__novaTapFxInstalled)return;window.__novaTapFxInstalled=true;
+  var reduced=false;try{reduced=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)}catch(e){}
+  if(reduced)return;
+  var active=null,clearId=0;
+  function pick(t){try{return t&&t.closest?t.closest('button, .f'):null}catch(e){return null}}
+  function clear(el){if(el)el.classList.remove('nova-press')}
+  document.addEventListener('pointerdown',function(ev){
+    var el=pick(ev.target);if(!el||el.disabled)return;
+    if(active&&active!==el)clear(active);active=el;clearId++;
+    el.classList.remove('nova-press');void el.offsetWidth;el.classList.add('nova-press');
+  },{passive:true});
+  function end(){var el=active;active=null;var stamp=++clearId;window.setTimeout(function(){if(stamp===clearId)clear(el)},360)}
+  document.addEventListener('pointerup',end,{passive:true});
+  document.addEventListener('pointercancel',end,{passive:true});
+  document.addEventListener('click',function(ev){var el=pick(ev.target);if(!el||el.disabled)return;if(!active){el.classList.remove('nova-press');void el.offsetWidth;el.classList.add('nova-press');var stamp=++clearId;window.setTimeout(function(){if(stamp===clearId)clear(el)},360)}},{passive:true});
+})();
+</script>
+
 </body></html>

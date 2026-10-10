@@ -1,0 +1,50 @@
+# NOVA - HANDOVER PROMPT v27 (build GREEN, phone SELF TEST 25 pass / 0 fail). Written 2026-10-11.
+Paste this whole file as the FIRST message of the next chat and attach NOVA_v15_assistant.zip. The owner must NOT have to explain anything: read this, read HANDOFF_STATUS.md (v27 entry at the end), then continue. If something is unclear, decide sensibly, say what you decided, continue.
+(Replaces v26. v26 says "build + phone test left": that is now DONE, see below.)
+
+## 0. Owner, rules, delivery style
+- Owner = non-programmer on an Android phone (Xiaomi 24116RNC1I, Android 36). Writes Hinglish. Wants SHORT Hinglish replies, numbered steps, nothing fake. Never say DONE / WORKING / VERIFIED without evidence.
+- Evidence ladder: written < statically checked < compiled + tests run < GitHub CI green < phone tested. Always state which level a change is at.
+- EVERY delivery must include (owner asked for both, every time): (a) a PREVIEW (screenshot of the screen and/or a published HTML preview) and (b) DIRECT LINKS to check/open it (Actions page, edit/upload page).
+- Owner cannot read long logs: ask only for "the red lines of the failed step" (a screenshot is fine).
+- Return ONE zip named exactly NOVA_v15_assistant.zip, all files at the ROOT. Workflow files (.yml) inside the zip are ignored: deliver any .yml as a separate download.
+- Code guards (static): no `!!` in main code, no `catch (_`, no TODO. After any change run: python3 tools/test_chain_contract.py, test_hindi_contract.py, test_knowledge_contract.py, test_memory_contract.py, test_self_improve.py and tools/validate_skillpack.py (all pass at v27).
+- Sandbox facts: no kotlinc / Android SDK / Gradle; Maven/pip may be unreachable; python3 works; Playwright + Chromium WERE available (used to preview ui.html, see section 5). Kotlin is therefore only statically checked by you; the real compiler is GitHub Actions.
+
+## 1. Repo and workflows (all details, nothing to ask)
+- Repo: https://github.com/devboutique0-wq/NOVA  (branch main). Owner account: devboutique0-wq. Owner works from the phone browser (GitHub web: upload / edit / delete files).
+- Actions page: https://github.com/devboutique0-wq/NOVA/actions
+- Workflows that exist in the repo (NOT all inside the zip): "Build and Test APK" (build.yml, runs on push + manual; APK is in the run's Artifacts), "Python tests (NOVA)" (python-tests.yml), "Unpack zip" / "Unzip NOVA" (unpack the uploaded NOVA_v15_assistant.zip into the repo, committed as Nova-Bot), "Release APK", "Cleanup old files", plus small one-off fix workflows. The zip has no .github folder: do not assume workflows are missing.
+- Owner steps for a new zip (give them with these links): 1) upload zip: https://github.com/devboutique0-wq/NOVA/upload/main  -> Commit. 2) Actions -> "Unpack zip" -> Run workflow. 3) Actions -> "Build and Test APK" -> Run workflow. 4) green run -> open it -> Artifacts -> APK. Single-file edits: https://github.com/devboutique0-wq/NOVA/edit/main/<path>. UI file upload page: https://github.com/devboutique0-wq/NOVA/upload/main/app/src/main/assets
+- CAUTION: unpacking an OLD zip overwrites newer repo files. This v27 zip equals the repo state at the end of this session; if the owner edited files on GitHub afterwards, ask him for "Code -> Download ZIP" (https://github.com/devboutique0-wq/NOVA/archive/refs/heads/main.zip) before changing anything.
+
+## 2. App (what it is)
+Android voice assistant "NOVA" (Kotlin, package com.nova.assistant, minSdk 26, compileSdk/targetSdk 34, Kotlin 1.9.24, AGP 8.5.2, JUnit 4.13.2). Vosk offline wake word "nova", WebView UI (app/src/main/assets/ui.html, bridge object `Android`), NovaService.handle pipeline: Hindi->Roman, personal memory commands, local skills (calculator/unit/date/emergency/first aid), knowledge pack (193 entries), offline commands (torch, volume, battery, apps...), free online AI chain (Groq, OpenRouter, Pollinations) and Gemini with the owner's own key, Groq Whisper for listening, Driving mode, timers/alarms, Accessibility control, AI image generate/edit (Gemini) + free image fallback, updater/feed, pattern lock, self test.
+
+## 3. State at v27 (evidence)
+- GitHub CI: "Build and Test APK" #61 GREEN and "Python tests (NOVA)" #4 GREEN (commit 53d7830, 2026-10-10).
+- Phone SELF TEST (owner pasted, app 6.0): pass=25 fail=0 warn=0 skip=1. Passed: all permissions, accessibility, notification access, write settings, NOVA service alive + Hindi TTS, knowledge pack 193 loaded, 6 understanding checks, battery/torch/volume, reading another app's screen, scroll, BACK, Gemini text code=200 with model gemini-3.5-flash. Skipped: Groq key (saved, not tested).
+- NOT yet done on the phone: the 4 MANUAL checks (voice "nova" wake, "battery kitni hai" spoken answer, "nova screen dekho" in Chrome, awaaz heard), IMAGE TEST (may cost money on a billing key), FREE IMAGE TEST, Groq listening, Hindi typed question, personal memory commands, driving mode, pattern lock. Ask the owner to run them one at a time and report.
+- Owner has NOT yet confirmed that the new UI (section 4 item 5) shows on his phone.
+
+## 4. What changed in the v27 session (read before touching these files)
+1. OFFLINE AI ENGINE REMOVED (was the cause of red builds). io.github.ljcamargo:llamacpp-kotlin:0.4.0 pulls androidx.core 1.18 (needs compileSdk 36 + AGP 8.9.1+) and is compiled with Kotlin 2.3 metadata (project compiler is 1.9.24 -> "incompatible version of Kotlin" + unresolved references). Fix: deleted LlamaBrain.kt, removed the dependency line from app/build.gradle.kts, made LocalBrains.installEngine(ctx) an empty no-op (factory stays null, so the offline-model button stays hidden; ModelCatalog/ModelDownload/UpdateManager code stays but is dormant). To bring it back you would need a toolchain upgrade (Kotlin 2.3+, AGP 8.9.1+, Gradle 8.11+, compileSdk 36) or a different engine: only do that if the owner asks, and expect risk.
+2. Real compile bug fixed: MainActivity.kt ~line 620 inside the Bridge class used `PatternUnlock.isSet(this)` (this = Bridge); now `this@MainActivity`.
+3. Owner deleted app/src/test/java/com/nova/assistant/ModelDownloadTest.kt in the repo earlier (it was red). Do not recreate it.
+4. STALE TEXT TO FIX (small, safe, ui.html only): the Update Center changelog line "Offline AI engine ab asli hai (llama.cpp)... OFFLINE BRAIN..." (~line 645) and the OFFLINE BRAIN card text (~line 711) are now wrong. Rewrite them to say the offline brain is switched off for now.
+5. UI (ui.html only, no Kotlin): (a) NOVA GLOW PACK appended before </body>: aurora background, twinkling stars, card shimmer, animated ACTIVATE gradient, glass bottom bar, glowing logo/badge; auto-off in html.lowfx and prefers-reduced-motion. (b) CHAT and SETTINGS buttons moved into the header (.top .ic, ids chatb and gear unchanged, class "icb hb"); bottom row now only ACTIVATE + CHUP. (c) New "SAARE FEATURES" box at the top of the Settings panel (ids fcc, fcc_l, fcc_n): shows real ON/OFF from Android.getStatus / getSettings / hasGroqKey / hasOpenRouterKey / hasImgKey / getFreeChain / getFreeImg / getMemoryCount, and each button calls an existing bridge method (openAccessibility, openNotificationAccess, requestContacts, openWriteSettings, openOverlaySettings, openBatterySettings, openAssistantSettings, openPatternSetup) or scrolls/highlights the existing control. Nothing fake was added. Tested only in a desktop browser with a fake `Android` bridge: phone NOT tested.
+6. app/build.gradle.kts final dependencies: jna 5.13.0@aar, vosk-android 0.3.47, kotlinx-coroutines-core 1.8.1, junit 4.13.2. An earlier temporary `configurations.all { force(...) }` block was removed: do not re-add it (forcing kotlin-stdlib 1.9.0 is wrong for a 1.9.24 project).
+
+## 5. Gemini facts (checked against Google docs on 2026-10-11)
+- Code: Logic.MODELS = gemini-3.5-flash (default, WORKS on the owner's key, code 200), gemini-3.5-flash-lite, gemini-3.1-flash-lite. ImageGen.MODELS = gemini-3.1-flash-image, gemini-3.1-flash-lite-image, gemini-2.5-flash-image. Key goes in header x-goog-api-key. 404 -> next model (Logic.nextStep).
+- Google's docs list as stable: gemini-3.8-flash, gemini-3.6-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite; images: gemini-nano-banana-2.1, gemini-3.1-flash-image, gemini-3.1-flash-lite-image, gemini-3-pro-image. gemini-2.5-* is limited to users who used it before. gemini-3.5-flash is not on that stable list but works for the owner: do NOT change models unless it fails; optional later step = put gemini-3.8-flash first (check docs again first).
+- Free-key image generation often needs billing (429/400): the app already explains this and has a free fallback (text-to-image only; photo edit is Gemini only).
+
+## 6. How to preview ui.html without a phone
+Copy ui.html, prepend a <script> defining window.Android = new Proxy({}, {get:(_,n)=>()=>fixed[n] ?? ""}) with fixed values: getStatus/getSettings as JSON strings (fields in MainActivity.Bridge.getStatus / getSettings), getUpdates='{"offers":[]}', booleans for has*/running. Open with Playwright at 390x844 (and 360). Hide the auto-opening Update Center with `#uc{display:none!important}`. Publish the HTML as an artifact + give a PNG screenshot (owner wants a preview every time).
+
+## 7. Open points / next jobs (in this order)
+1. Greet owner in 3 lines of Hinglish, then give him the 4 MANUAL tests + typed Hindi/Roman question to run (steps from v26 section 5). Fix only what he reports, one at a time.
+2. Fix the stale offline-brain text (section 4 item 4) and add a v27 entry to HANDOFF_STATUS.md (a short one was added at the end of this zip).
+3. Known limits: knowledge answers are text only in quiet-replies mode (ask the owner once whether he wants them spoken); offline Vosk is Roman-only (Hindi offline model vosk-model-small-hi-0.22 is a possible later step); free online AI needs the owner's own Groq/OpenRouter key; cfg.nudges has no UI switch.
+4. Ideas the owner liked (only on request): more attractive UI, more animations, everything reachable from Settings. Keep UI changes additive and test with the fake bridge before delivering.

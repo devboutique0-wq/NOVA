@@ -32,6 +32,25 @@ object FreeImageRules {
         return sb.toString().trim()
     }
 
+    /**
+     * Adds a provider-neutral quality brief without spending another AI request.
+     * This does not upscale pixels or promise native 4K; the provider still decides output size.
+     */
+    private const val QUALITY_BRIEF = "high-detail composition, clear focal subject, coherent perspective, fine texture, crisp focus, cinematic lighting, balanced color, clean edges. Text only if requested; no watermark."
+
+    fun enhancePrompt(raw: String): String {
+        var subject = cleanPrompt(raw)
+        if (subject.isEmpty()) return ""
+        // ImageGen passes the same prompt to Gemini first and a free provider second; make this helper idempotent.
+        if (subject.endsWith(QUALITY_BRIEF)) return subject
+        val maxSubject = MAX_PROMPT - QUALITY_BRIEF.length - 2
+        if (subject.length > maxSubject) {
+            val cut = subject.take(maxSubject)
+            subject = cut.substringBeforeLast(' ').ifBlank { cut }.trimEnd()
+        }
+        return cleanPrompt(subject + ". " + QUALITY_BRIEF)
+    }
+
     /** JPEG, PNG or WEBP signature. Anything else (an error page, JSON) is not an image. */
     fun looksImage(b: ByteArray): Boolean {
         if (b.size < 12) return false
@@ -114,7 +133,7 @@ object FreeImage {
 
     /** Tries every provider that is usable right now, in order, until one returns a real image. */
     fun run(ctx: Context, rawPrompt: String): Outcome {
-        val prompt = FreeImageRules.cleanPrompt(rawPrompt)
+        val prompt = FreeImageRules.enhancePrompt(rawPrompt)
         if (prompt.isEmpty()) return Outcome(false, null, "Prompt khaali hai")
         val deadline = System.currentTimeMillis() + 120000L
         val notes = ArrayList<String>()
@@ -135,7 +154,7 @@ object FreeImage {
             }
             val t = attempt(p, key, prompt, deadline)
             val img = t.img
-            if (img != null) return Outcome(true, img, "Ye image " + p.label + " se bani.")
+            if (img != null) return Outcome(true, img, "")
             notes.add(t.msg)
         }
         if (notes.isEmpty()) return Outcome(false, null, "koi free option chalu nahi hua")

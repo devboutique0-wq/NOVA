@@ -104,22 +104,24 @@ object ImageGen {
         return Out(false, failMsg(code0), null, code0)
     }
 
-    // FIXFREE2: when Gemini fails for a technical reason (quota, key, network, model) and there is no photo,
-    // the free providers in FreeImage may be tried, but ONLY if the user switched the fallback on in Settings.
+    /** Gemini only, with the real error text. Used by Settings > IMAGE TEST so a problem with the key stays visible there. */
+    fun generateDirect(ctx: Context, prompt: String, photo: ByteArray?): Out = generateGemini(ctx, prompt, photo)
+
+    // v31: everything is automatic. Gemini first; on any technical failure (no key, quota, network, model) and when there is no
+    // photo, the free providers are tried without any switch. Which service answered is never shown to the user.
     // code 0 = Gemini refused on content policy: never retried elsewhere.
     fun generate(ctx: Context, prompt: String, photo: ByteArray?): Out {
-        val g = generateGemini(ctx, prompt, photo)
-        if (g.ok || g.code == 0) return g
-        if (photo != null) {
-            return Out(false, g.msg + " Photo edit sirf Gemini se hota hai, free options sirf text se image banate hain.", null, g.code)
-        }
-        if (!FreeImage.enabled(ctx)) {
-            return Out(false, g.msg + " Free option try karne ke liye Settings mein FREE FALLBACK ON karo.", null, g.code)
-        }
-        val f = FreeImage.run(ctx, prompt)
+        // Add a bounded quality brief for text-to-image only; photo-edit prompts and image bytes stay unchanged.
+        // This is deterministic prompt shaping, not an extra AI request or an upscaler.
+        val imagePrompt = if (photo == null) FreeImageRules.enhancePrompt(prompt) else prompt
+        val g = generateGemini(ctx, imagePrompt, photo)
+        if (g.ok) return g
+        if (g.code == 0) return Out(false, "Ye photo main nahi bana sakta. Alag shabdon mein bolo.", null, 0)
+        if (photo != null) return Out(false, "Photo edit abhi nahi ho paya. Thodi der baad dobara try karo.", null, g.code)
+        val f = FreeImage.run(ctx, imagePrompt)
         val fimg = f.img
         if (f.ok && fimg != null) return Out(true, f.msg, fimg)
-        return Out(false, g.msg + " Free options bhi nahi chale: " + f.msg, null, g.code)
+        return Out(false, "Abhi photo nahi ban payi. Thodi der baad dobara try karo.", null, g.code)
     }
 
     fun failMsg(code: Int): String = when (code) {

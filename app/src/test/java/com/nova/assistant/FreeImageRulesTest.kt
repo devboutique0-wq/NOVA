@@ -14,6 +14,16 @@ class FreeImageRulesTest {
         assertEquals(FreeImageRules.MAX_PROMPT, FreeImageRules.cleanPrompt("x".repeat(2000)).length)
     }
 
+    @Test fun qualityBriefIsBoundedAndIdempotent() {
+        val first = FreeImageRules.enhancePrompt("a futuristic blue android assistant, glass and chrome, cinematic rim light")
+        assertTrue(first.contains("high-detail composition"))
+        assertTrue(first.length <= FreeImageRules.MAX_PROMPT)
+        assertEquals(first, FreeImageRules.enhancePrompt(first))
+        val long = FreeImageRules.enhancePrompt("detailed scene ".repeat(100))
+        assertTrue(long.length <= FreeImageRules.MAX_PROMPT)
+        assertTrue(long.contains("no watermark"))
+    }
+
     @Test fun onlyRealImagesPass() {
         val jpg = ByteArray(20)
         jpg[0] = 0xFF.toByte()

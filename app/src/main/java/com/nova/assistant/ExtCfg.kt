@@ -20,10 +20,49 @@ object ExtCfg {
 
     fun waitMs(ctx: Context): Int = waitSec(ctx) * 1000
 
+    private const val ALERTS = "alerts_on"
+
+    /** v16 proactive alerts (low battery spoken once per 30 minutes). Default ON. */
+    fun alerts(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(ALERTS, true)
+    } catch (e: Exception) { true }
+
+    fun setAlerts(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(ALERTS, on).apply()
+        } catch (e: Exception) { }
+    }
+
+    private const val CONVO = "convo_mode"
+
+    /** v16 conversation mode: after a spoken reply NOVA listens again (up to 3 times in a row) without the wake word. Default ON. */
+    fun convo(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(CONVO, true)
+    } catch (e: Exception) { true }
+
+    fun setConvo(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(CONVO, on).apply()
+        } catch (e: Exception) { }
+    }
+
+    private const val VOICE_LOCK = "voice_lock"
+
+    /** v17 "only my voice": when ON (and a voiceprint exists) every spoken turn must match the owner. Default OFF until enrolled. */
+    fun voiceLock(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(VOICE_LOCK, false)
+    } catch (e: Exception) { false }
+
+    fun setVoiceLock(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(VOICE_LOCK, on).apply()
+        } catch (e: Exception) { }
+    }
+
     private const val FREE_CHAIN = "free_chain"
     private const val FREE_KEYLESS = "free_keyless"
 
-    /** Free online AI chain (Groq / OpenRouter / Pollinations). Default ON. Only the spoken question is ever sent. */
+    /** Public topic-only Wikipedia lookup plus the free online AI chain (Groq / OpenRouter / legacy Pollinations). Default ON. */
     fun freeChain(ctx: Context): Boolean = try {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(FREE_CHAIN, true)
     } catch (e: Exception) { true }
@@ -47,7 +86,7 @@ object ExtCfg {
         } catch (e: Exception) { }
     }
 
-    /** The no-key provider (Pollinations, a public anonymous service). Default ON, can be switched off on its own. */
+    /** Legacy no-key Pollinations attempt. Current provider docs may require a key; keep failures best-effort only. */
     fun freeKeyless(ctx: Context): Boolean = try {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(FREE_KEYLESS, true)
     } catch (e: Exception) { true }

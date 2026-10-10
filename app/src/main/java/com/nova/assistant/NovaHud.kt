@@ -21,6 +21,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import kotlin.math.abs
 import kotlin.math.cos
@@ -168,12 +169,18 @@ class NovaHud(private val ctx: Context) {
         )
         lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         lp.y = (44 * ctx.resources.displayMetrics.density).toInt()
+        nv.onDismissTap = { hide() }
+        nv.onMinimizeTap = {
+            if (view === nv) {
+                nv.toggleMinimized()
+                try { wm.updateViewLayout(nv, lp) } catch (e: Exception) { /* keep the current card if resize is temporarily rejected */ }
+            }
+        }
         try {
             wm.addView(nv, lp)
             view = nv
             shownAt = System.currentTimeMillis()
             lastReply = ""
-            nv.onDismissTap = { hide() }
             nv.assemble()
         } catch (e: Exception) {
             view = null     // no overlay allowed right now: keep running without the card
@@ -233,15 +240,24 @@ private class HudView(ctx: Context) : View(ctx) {
     private val margin = 10f * d                      // room around the card for the glow
     private val cardW = (minOf(ctx.resources.displayMetrics.widthPixels - 24 * d, 380 * d)).toInt()
     private val cardH = (190f * d).toInt()
-    private val viewW = cardW + (2 * margin).toInt()
-    private val viewH = cardH + (2 * margin).toInt()
+    private val fullViewW = cardW + (2 * margin).toInt()
+    private val fullViewH = cardH + (2 * margin).toInt()
+    private val miniViewW = minOf(fullViewW, (minOf(ctx.resources.displayMetrics.widthPixels - 8 * d, 194 * d)).toInt())
+    private val miniViewH = (72f * d).toInt()
 
     var heard = ""
     var reply = ""
     var state = "listen"
     var onDismissTap: (() -> Unit)? = null
+    var onMinimizeTap: (() -> Unit)? = null
     @Volatile var level = 0f            // mic loudness 0..1 (written from the audio thread)
     private var smooth = 0f
+    private var minimized = false
+    private var modeProgress = 0f
+    private var modeAnimator: ValueAnimator? = null
+    private var downX = 0f
+    private var downY = 0f
+    private var pressedControl = 0 // 1=minimize/restore, 2=close; visual feedback only
 
     private var t = 0f                     // 0 = hidden, 1 = fully shown
     private var entering = false           // true only while the card opens (light burst is not played when closing)
@@ -264,6 +280,9 @@ private class HudView(ctx: Context) : View(ctx) {
     private val sub = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9FB4D6.toInt(); textSize = 12.5f * d }
     private val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEAF2FF.toInt(); textSize = 14.5f * d }
     private val hint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF6F86AD.toInt(); textSize = 13f * d }
+    private val controlFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x88304A8D.toInt() }
+    private val controlStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.2f * d; color = 0xAA8CEBFF.toInt() }
+    private val controlLine = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.8f * d; strokeCap = Paint.Cap.ROUND; color = 0xFFEAF7FF.toInt() }
     private val sweep = Paint(Paint.ANTI_ALIAS_FLAG)
     private val shock = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val rect = RectF()
@@ -272,21 +291,85 @@ private class HudView(ctx: Context) : View(ctx) {
     private var borderShader: LinearGradient? = null
     private var barShader: LinearGradient? = null
 
-    init {
-        setOnClickListener { onDismissTap?.invoke() }
-    }
-
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(viewW, viewH)
+        setMeasuredDimension(if (minimized) miniViewW else fullViewW, if (minimized) miniViewH else fullViewH)
     }
 
     fun changeState(s: String) { state = s; invalidate() }
+
+    /** Collapse to a small animated NOVA chip; tapping the chip restores the full card. */
+    fun toggleMinimized() {
+        minimized = !minimized
+        requestLayout()
+        modeAnimator?.cancel()
+        val target = if (minimized) 1f else 0f
+        val a = ValueAnimator.ofFloat(modeProgress, target)
+        a.duration = 360L
+        a.interpolator = DecelerateInterpolator(1.5f)
+        a.addUpdateListener { modeProgress = it.animatedValue as Float; invalidate() }
+        modeAnimator = a
+        a.start()
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                val x = event.x
+                val y = event.y
+                pressedControl = if (minimized) {
+                    val closeCx = width - margin - 17f * d
+                    if (x >= closeCx - 13f * d && y in (height / 2f - 16f * d)..(height / 2f + 16f * d)) 2 else 1
+                } else {
+                    val right = width - margin
+                    val controlY = margin + 24f * d
+                    val closeCx = right - 27f * d
+                    val miniCx = right - 51f * d
+                    when {
+                        kotlin.math.abs(x - closeCx) <= 13f * d && kotlin.math.abs(y - controlY) <= 14f * d -> 2
+                        kotlin.math.abs(x - miniCx) <= 13f * d && kotlin.math.abs(y - controlY) <= 14f * d -> 1
+                        else -> 0
+                    }
+                }
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                val moved = kotlin.math.abs(event.x - downX) > 18f * d || kotlin.math.abs(event.y - downY) > 18f * d
+                val pressed = pressedControl
+                pressedControl = 0
+                invalidate()
+                if (moved) return true
+                val x = event.x
+                val y = event.y
+                if (minimized) {
+                    val right = width - margin
+                    val closeCx = right - 17f * d
+                    if (x >= closeCx - 13f * d && y in (height / 2f - 16f * d)..(height / 2f + 16f * d)) onDismissTap?.invoke()
+                    else onMinimizeTap?.invoke()
+                    return true
+                }
+                val right = width - margin
+                val controlY = margin + 24f * d
+                val closeCx = right - 27f * d
+                val miniCx = right - 51f * d
+                if (kotlin.math.abs(x - closeCx) <= 13f * d && kotlin.math.abs(y - controlY) <= 14f * d) onDismissTap?.invoke()
+                else if (kotlin.math.abs(x - miniCx) <= 13f * d && kotlin.math.abs(y - controlY) <= 14f * d) onMinimizeTap?.invoke()
+                else onDismissTap?.invoke()
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> { pressedControl = 0; invalidate(); return true }
+        }
+        return true
+    }
 
     fun assemble() { entering = true; run(0f, 1f, 560L, null) }
     fun disassemble(end: () -> Unit) { entering = false; run(t, 0f, 240L, end) }
     fun cancelAnim() {
         anim?.cancel(); anim = null
         ticker?.cancel(); ticker = null
+        modeAnimator?.cancel(); modeAnimator = null
     }
 
     private fun run(from: Float, to: Float, ms: Long, end: (() -> Unit)?) {
@@ -323,6 +406,7 @@ private class HudView(ctx: Context) : View(ctx) {
     override fun onDetachedFromWindow() {
         anim?.cancel(); anim = null
         ticker?.cancel(); ticker = null
+        modeAnimator?.cancel(); modeAnimator = null
         super.onDetachedFromWindow()
     }
 
@@ -337,8 +421,12 @@ private class HudView(ctx: Context) : View(ctx) {
         if (e <= 0f) return
         val now = SystemClock.uptimeMillis()
         smooth += (level - smooth) * 0.3f
-        val w = viewW.toFloat()
-        val h = viewH.toFloat()
+        val w = width.toFloat().takeIf { it > 0f } ?: fullViewW.toFloat()
+        val h = height.toFloat().takeIf { it > 0f } ?: fullViewH.toFloat()
+        if (minimized) {
+            drawMinimized(c, w, h, now, e)
+            return
+        }
         val left = margin
         val top = margin
         val right = w - margin
@@ -346,9 +434,10 @@ private class HudView(ctx: Context) : View(ctx) {
         val radius = 24f * d
 
         val sc = 0.78f + 0.22f * HudMath.springEase(t)
+        val expand = 0.92f + 0.08f * (1f - modeProgress.coerceIn(0f, 1f))
         val sv = c.save()
         c.translate(0f, -(1f - e) * 30f * d)       // slides down from above while it springs open
-        c.scale(sc, sc, w / 2f, h / 2f)
+        c.scale(sc * expand, sc * expand, w / 2f, h / 2f)
         val layer = c.saveLayerAlpha(0f, 0f, w, h, (255 * e).toInt().coerceIn(0, 255))
 
         // glass body
@@ -373,6 +462,8 @@ private class HudView(ctx: Context) : View(ctx) {
         border.strokeWidth = 1.5f * d
         border.alpha = (150 + 100 * gl).toInt().coerceIn(0, 255)
         c.drawRoundRect(rect, radius, radius, border)
+        drawControl(c, right - padForControls(), top + 24f * d, true)
+        drawControl(c, right - 51f * d, top + 24f * d, false)
 
         // orb
         val pad = 16f * d
@@ -417,9 +508,13 @@ private class HudView(ctx: Context) : View(ctx) {
             }
         }
 
-        // heading + live text
+        // heading + live text. Restore sizes after the compact chip temporarily reuses these paints.
+        title.textSize = 18f * d
+        title.color = 0xFFFFFFFF.toInt()
+        sub.textSize = 12.5f * d
+        sub.color = 0xFF9FB4D6.toInt()
         val tx = ocx + r + 18f * d
-        val textW = right - pad - tx
+        val textW = right - pad - tx - 47f * d
         val head = when (state) {
             "listen" -> "Listening\u2026"
             "think" -> "Thinking\u2026"
@@ -477,6 +572,87 @@ private class HudView(ctx: Context) : View(ctx) {
         }
         c.restoreToCount(layer)
         c.restoreToCount(sv)
+    }
+
+    private fun padForControls(): Float = 27f * d
+
+    private fun drawControl(c: Canvas, cx: Float, cy: Float, close: Boolean) {
+        val pressed = pressedControl == (if (close) 2 else 1)
+        val rr = 8.5f * d
+        val box = RectF(cx - rr, cy - rr, cx + rr, cy + rr)
+        val saved = c.save()
+        if (pressed) c.scale(0.86f, 0.86f, cx, cy)
+        controlFill.alpha = if (pressed) 255 else 220
+        controlFill.color = if (pressed) 0xCC2873B8.toInt() else 0x88304A8D.toInt()
+        c.drawRoundRect(box, 5f * d, 5f * d, controlFill)
+        controlStroke.alpha = if (pressed) 255 else 220
+        controlStroke.strokeWidth = (if (pressed) 1.8f else 1.2f) * d
+        c.drawRoundRect(box, 5f * d, 5f * d, controlStroke)
+        if (close) {
+            c.drawLine(cx - 3f * d, cy - 3f * d, cx + 3f * d, cy + 3f * d, controlLine)
+            c.drawLine(cx + 3f * d, cy - 3f * d, cx - 3f * d, cy + 3f * d, controlLine)
+        } else {
+            c.drawLine(cx - 3.5f * d, cy + 1f * d, cx + 3.5f * d, cy + 1f * d, controlLine)
+        }
+        c.restoreToCount(saved)
+    }
+
+    private fun drawMinimized(c: Canvas, w: Float, h: Float, now: Long, alpha: Float) {
+        val left = margin
+        val top = margin
+        val right = w - margin
+        val bottom = h - margin
+        val cx = left + 22f * d
+        val cy = (top + bottom) / 2f
+        val r = 15f * d
+        val pulse = 0.72f + 0.28f * (0.5f + 0.5f * sin(now / 260f))
+        val sc = 0.88f + 0.12f * modeProgress.coerceIn(0f, 1f)
+        val save = c.save()
+        val layer = c.saveLayerAlpha(0f, 0f, w, h, (255f * alpha).toInt().coerceIn(0, 255))
+        c.scale(sc, sc, w / 2f, h / 2f)
+        val box = RectF(left, top, right, bottom)
+        fill.shader = null
+        fill.color = 0xF20A1236.toInt()
+        c.drawRoundRect(box, (bottom - top) / 2f, (bottom - top) / 2f, fill)
+        controlStroke.alpha = (150f + 90f * pulse).toInt().coerceIn(0, 255)
+        controlStroke.strokeWidth = 1.2f * d
+        border.shader = borderShader ?: LinearGradient(left, top, right, bottom,
+            intArrayOf(cyan, blue, violet), null, Shader.TileMode.CLAMP).also { borderShader = it }
+        for (k in 2 downTo 1) {
+            border.strokeWidth = (1.4f + k * 2.0f) * d
+            border.alpha = (20f * pulse * (3 - k)).toInt().coerceIn(0, 255)
+            c.drawRoundRect(box, (bottom - top) / 2f, (bottom - top) / 2f, border)
+        }
+        border.strokeWidth = 1.3f * d
+        border.alpha = (150f + 85f * pulse).toInt().coerceIn(0, 255)
+        c.drawRoundRect(box, (bottom - top) / 2f, (bottom - top) / 2f, border)
+        val stateCol = stateColor()
+        halo.shader = RadialGradient(cx, cy, r * 1.8f, intArrayOf((stateCol and 0x00FFFFFF) or 0x88000000.toInt(), stateCol), null, Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy, r * 1.65f * pulse, halo)
+        ring.color = (stateCol and 0x00FFFFFF) or 0xCC000000.toInt()
+        ring.strokeWidth = 1.5f * d
+        c.drawCircle(cx, cy, r + 2f * d + (pulse - 0.72f) * 8f * d, ring)
+        orbFill.shader = RadialGradient(cx - r * 0.25f, cy - r * 0.25f, r,
+            intArrayOf(0xFF355CC8.toInt(), 0xFF070D27.toInt()), null, Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy, r, orbFill)
+        val spin = (now % 1800L) / 1800f * 360f
+        oval.set(cx - r, cy - r, cx + r, cy + r)
+        arc.color = cyan
+        arc.strokeWidth = 1.8f * d
+        c.drawArc(oval, spin, 135f, false, arc)
+        arc.color = violet
+        c.drawArc(oval, -spin * 0.75f + 180f, 100f, false, arc)
+        title.textSize = 12.5f * d
+        title.color = 0xFFF4FAFF.toInt()
+        val tx = cx + r + 8f * d
+        c.drawText("NOVA", tx, cy - 1f * d, title)
+        sub.textSize = 8.5f * d
+        sub.color = 0xFFA9C4E8.toInt()
+        val stateLabel = when (state) { "listen" -> "LISTENING · TAP TO EXPAND"; "think" -> "THINKING · TAP TO EXPAND"; else -> "TAP TO EXPAND" }
+        c.drawText(stateLabel, tx, cy + 12f * d, sub)
+        drawControl(c, right - 17f * d, cy, true)
+        c.restoreToCount(layer)
+        c.restoreToCount(save)
     }
 
     private fun build(text: String, paint: TextPaint, width: Int, maxLines: Int): StaticLayout {

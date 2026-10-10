@@ -7,6 +7,7 @@
     android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"
+    android:canTakeScreenshot="true"
     android:notificationTimeout="300"
     android:description="@string/acc_desc"
     android:settingsActivity="com.nova.assistant.MainActivity" />

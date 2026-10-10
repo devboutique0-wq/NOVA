@@ -20,8 +20,8 @@ android {
         applicationId = "com.nova.assistant"
         minSdk = 26
         targetSdk = 34
-        versionCode = (System.getenv("NOVA_VERSION_CODE") ?: "6").toIntOrNull() ?: 6
-        versionName = "6.0"
+        versionCode = (System.getenv("NOVA_VERSION_CODE") ?: "7").toIntOrNull() ?: 7
+        versionName = "6.17"
         // The offline engine (llama.cpp) ships arm64-v8a + x86_64; real phones are arm64. Keeps the APK smaller.
         ndk { abiFilters += listOf("arm64-v8a") }
     }

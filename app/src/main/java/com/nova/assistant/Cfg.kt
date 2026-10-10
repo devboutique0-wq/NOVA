@@ -17,11 +17,11 @@ class Cfg(ctx: Context) {
         set(v) { p.edit().putString("lang", v).apply() }
 
     var rate: Float
-        get() = Logic.clampRate(p.getFloat("rate", 1.0f))
+        get() = Logic.clampRate(p.getFloat("rate", 0.95f))
         set(v) { p.edit().putFloat("rate", v).apply() }
 
     var pitch: Float
-        get() = Logic.clampPitch(p.getFloat("pitch", 1.0f))
+        get() = Logic.clampPitch(p.getFloat("pitch", 0.9f))
         set(v) { p.edit().putFloat("pitch", v).apply() }
 
     var model: String
@@ -66,7 +66,25 @@ class Cfg(ctx: Context) {
         if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
             t.setLanguage(Locale.US)
         }
+        pickBestVoice(t)
         t.setSpeechRate(rate)
         t.setPitch(pitch)
+    }
+
+    /** v16: of the voices already on the phone for this language, prefer the highest quality one that works offline. */
+    private fun pickBestVoice(t: TextToSpeech) {
+        try {
+            val want = if (lang == "en") "en" else "hi"
+            var best: android.speech.tts.Voice? = null
+            for (v in t.voices ?: return) {
+                if (v.locale.language != want) continue
+                if (v.isNetworkConnectionRequired) continue
+                val b = best
+                if (b == null || v.quality > b.quality) best = v
+            }
+            val pick = best ?: return
+            val cur = t.voice
+            if (cur == null || cur.name != pick.name) t.setVoice(pick)
+        } catch (e: Exception) { }
     }
 }
