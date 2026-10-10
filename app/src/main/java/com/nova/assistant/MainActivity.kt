@@ -37,6 +37,7 @@ class MainActivity : Activity() {
         web.addJavascriptInterface(Bridge(), "Android")
         web.loadUrl(ASSET_URL)
         setContentView(web)
+        boostRefresh()
         NovaService.listener = { role, text ->
             runOnUiThread {
                 if (!isDestroyed) {
@@ -77,6 +78,22 @@ class MainActivity : Activity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 if (url != null && !url.startsWith(ASSET_PREFIX)) view?.stopLoading()
             }
+        }
+    }
+
+    /** Smoothness: use the phone's highest refresh rate (90/120 Hz) while NOVA is on screen. */
+    @Suppress("DEPRECATION")
+    private fun boostRefresh() {
+        try {
+            val modes = windowManager.defaultDisplay.supportedModes
+            var best: android.view.Display.Mode? = null
+            for (m in modes) { if (best == null || m.refreshRate > best.refreshRate) best = m }
+            if (best != null) {
+                val lp = window.attributes
+                lp.preferredDisplayModeId = best.modeId
+                window.attributes = lp
+            }
+        } catch (e: Throwable) {
         }
     }
 

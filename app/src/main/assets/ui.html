@@ -128,6 +128,40 @@ button.icb.off{opacity:.45}
 .chi{display:flex;gap:8px;align-items:center;padding-top:8px}
 #c_in{flex:1;min-width:0;padding:12px 14px;border-radius:24px;border:1px solid var(--c2);background:rgba(0,0,0,.5);color:#fff;font-size:15px}
 .chi button.icb{flex:0 0 44px;width:44px;height:44px;border-radius:22px}
+/* smooth-fx */
+html{overscroll-behavior:none}
+*{-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+button,.f{touch-action:manipulation;transition:transform .24s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .2s}
+button:active,.f:active{transform:scale(.93)}
+button:not(#btn){position:relative;overflow:hidden}
+.rp{position:absolute;border-radius:50%;pointer-events:none;background:rgba(0,240,255,.38);transform:translate(-50%,-50%) scale(0);animation:rpl .62s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes rpl{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+#btn{position:relative;overflow:visible}
+#btn:after{content:"";position:absolute;inset:-2px;border-radius:40px;border:2px solid var(--c1);opacity:0;pointer-events:none;animation:ping 2.8s cubic-bezier(.2,.6,.3,1) infinite 1.4s}
+.on #btn:after,.listen #btn:after,.think #btn:after{animation-duration:1.7s}
+@keyframes ping{0%{opacity:.55;transform:scale(1)}100%{opacity:0;transform:scale(1.16,1.55)}}
+#dot{animation:dotp 2.2s ease-in-out infinite}
+@keyframes dotp{50%{transform:scale(1.55);opacity:.5}}
+.orbbox canvas{animation:orbf 6.5s ease-in-out infinite}
+@keyframes orbf{50%{transform:translateY(-7px)}}
+.msg{animation:msgIn .44s cubic-bezier(.2,.9,.25,1.12) backwards}
+.me{transform-origin:100% 100%}.ai{transform-origin:0 100%}
+@keyframes msgIn{from{opacity:0;transform:translateY(14px) scale(.95)}to{opacity:1;transform:none}}
+.ready .f{animation:cardIn .62s cubic-bezier(.2,.9,.25,1.15) backwards}
+@keyframes cardIn{from{opacity:0;transform:translateX(28px) scale(.9)}to{opacity:1;transform:none}}
+#panel>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+#chat.on{animation:chatIn .4s cubic-bezier(.2,.9,.25,1) both}
+@keyframes chatIn{from{opacity:0;transform:translateY(28px) scale(.985)}to{opacity:1;transform:none}}
+.feats{scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.log,#clog,#panel,#uc{scroll-behavior:smooth;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.typing{display:flex;gap:5px;padding:13px 16px;width:66px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--c1);animation:tdot 1.1s ease-in-out infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+html.lowfx #btn:after,html.lowfx .orbbox canvas,html.lowfx #dot{animation:none}
+html.lowfx .f{clip-path:none}
+@media (prefers-reduced-motion:reduce){#btn:after,.orbbox canvas,#dot,.typing i{animation:none}}
 </style></head>
 <body>
 <div id="intro" class="on"><canvas id="fx"></canvas><div id="cap"><b></b><span></span></div><div id="hint">TAP FOR SOUND</div>
@@ -805,5 +839,42 @@ var _nb=window.novaBack;
 window.novaBack=function(){if(chat.classList.contains('on')){closeChat();return 'handled'}return _nb?_nb():'exit'};
 /* if the opening animation ever stalls, never leave the screen covered */
 setTimeout(function(){try{var i=g('intro');if(i&&i.classList.contains('on')){i.classList.remove('on');i.style.opacity=''}document.body.classList.add('ready')}catch(e){}},9000);
+})();
+</script><script id="smooth-fx">
+(function(){
+var LOW=false;
+/* 1. quality governor: if the phone cannot hold ~40 fps, glow (shadowBlur) is switched off automatically; it comes back when the phone keeps up again */
+['gl','fx'].forEach(function(id){try{
+  var cv=document.getElementById(id),c=cv&&cv.getContext&&cv.getContext('2d');if(!c)return;
+  var d=Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype,'shadowBlur');
+  if(d&&d.set&&d.get)Object.defineProperty(c,'shadowBlur',{configurable:true,get:function(){return d.get.call(c)},set:function(v){d.set.call(c,LOW?0:v)}});
+}catch(e){}});
+var last=0,ema=16.7,bad=0,good=0,H=document.documentElement;
+function tick(t){requestAnimationFrame(tick);
+  if(document.hidden){last=0;return}
+  if(last){var dt=t-last;if(dt<250)ema=ema*.92+dt*.08}
+  last=t;
+  if(!LOW){if(ema>26){if(++bad>90){LOW=true;good=0;H.classList.add('lowfx')}}else bad=0}
+  else{if(ema<19){if(++good>420){LOW=false;bad=0;H.classList.remove('lowfx')}}else good=0}
+}
+requestAnimationFrame(tick);
+/* 2. tap ripple */
+document.addEventListener('pointerdown',function(e){
+  try{var el=e.target.closest&&e.target.closest('button:not(#btn),.f');if(!el||LOW)return;
+    var r=el.getBoundingClientRect(),z=Math.max(r.width,r.height)*2.3,sp=document.createElement('span');
+    sp.className='rp';sp.style.width=sp.style.height=z+'px';sp.style.left=(e.clientX-r.left)+'px';sp.style.top=(e.clientY-r.top)+'px';
+    el.appendChild(sp);setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp)},700)}catch(x){}
+},{passive:true});
+/* 3. typing dots in the chat while NOVA is working on an answer */
+var cl=document.getElementById('clog');
+if(cl&&window.MutationObserver){
+  var dots=null,tmo=0;
+  var rm=function(){if(dots&&dots.parentNode)dots.parentNode.removeChild(dots);dots=null;clearTimeout(tmo)};
+  new MutationObserver(function(ms){ms.forEach(function(m){Array.prototype.forEach.call(m.addedNodes,function(n){
+    if(n===dots||!n.classList||!n.classList.contains('msg'))return;
+    if(n.classList.contains('ai')){rm()}
+    else if(n.classList.contains('me')){rm();dots=document.createElement('div');dots.className='msg ai typing';dots.innerHTML='<i></i><i></i><i></i>';cl.appendChild(dots);cl.scrollTop=cl.scrollHeight;tmo=setTimeout(rm,40000)}
+  })})}).observe(cl,{childList:true});
+}
 })();
 </script></body></html>
