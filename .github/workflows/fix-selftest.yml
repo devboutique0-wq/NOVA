@@ -1,0 +1,397 @@
+name: fix-selftest
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Settings self test
+        run: |
+          cat > /tmp/p3.py <<'PYEOF'
+          import sys, os
+          R = sys.argv[1] if len(sys.argv) > 1 else '.'
+          def rd(p): return open(R + '/' + p, encoding='utf-8').read()
+          def wr(p, s): open(R + '/' + p, 'w', encoding='utf-8').write(s)
+          K = 'app/src/main/java/com/nova/assistant/'
+
+          # ---------------------------------------------------------------- 1. SelfTest.kt (new file)
+          SELFTEST = r'''package com.nova.assistant
+
+          import android.Manifest
+          import android.accessibilityservice.AccessibilityService
+          import android.app.Activity
+          import android.content.Context
+          import android.content.Intent
+          import android.content.pm.PackageManager
+          import android.media.AudioManager
+          import android.os.Build
+          import android.provider.Settings
+
+          /**
+           * Settings > SELF TEST. Runs real checks one after another on the phone and writes PASS / FAIL / WARN / SKIP lines.
+           * It never calls, messages, pays, installs or deletes anything. It briefly opens the Android Settings screen to prove
+           * that NOVA can read another app, then comes back. Nothing is sent anywhere except one tiny Gemini text request (if a key is set).
+           */
+          object SelfTest {
+              @Volatile var running = false
+
+              fun start(act: Activity, emit: (String) -> Unit, done: (String) -> Unit) {
+                  if (running) return
+                  running = true
+                  Thread {
+                      val out = ArrayList<String>()
+                      val rec: (String, String, String) -> Unit = { tag, name, detail ->
+                          val line = tag.padEnd(5) + " " + name + (if (detail.isNotEmpty()) " - " + detail else "")
+                          out.add(line)
+                          emit(line)
+                      }
+                      try {
+                          body(act, rec)
+                      } catch (e: Throwable) {
+                          rec("FAIL", "Self test beech mein ruk gaya", e.javaClass.simpleName)
+                      }
+                      val vName = try {
+                          act.packageManager.getPackageInfo(act.packageName, 0).versionName ?: "?"
+                      } catch (e: Exception) { "?" }
+                      val sb = StringBuilder()
+                      sb.append("NOVA SELF TEST | app ").append(vName).append(" | ").append(Build.MANUFACTURER).append(' ')
+                          .append(Build.MODEL).append(" | Android ").append(Build.VERSION.SDK_INT).append('\n')
+                      for (l in out) sb.append(l).append('\n')
+                      sb.append("SUMMARY pass=").append(out.count { it.startsWith("PASS") })
+                          .append(" fail=").append(out.count { it.startsWith("FAIL") })
+                          .append(" warn=").append(out.count { it.startsWith("WARN") })
+                          .append(" skip=").append(out.count { it.startsWith("SKIP") })
+                      running = false
+                      done(sb.toString())
+                  }.start()
+              }
+
+              private fun pause(ms: Long) {
+                  try { Thread.sleep(ms) } catch (e: InterruptedException) { }
+              }
+
+              private fun body(act: Activity, rec: (String, String, String) -> Unit) {
+                  val ctx = act.applicationContext
+
+                  // ---- 1. permissions and switches (read only)
+                  for (item in HealthCheck.run(ctx)) {
+                      if (item.ok) rec("PASS", item.name, "") else rec(if (item.important) "FAIL" else "WARN", item.name, item.fix)
+                  }
+                  if (ctx.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) rec("PASS", "Contacts permission", "")
+                  else rec("WARN", "Contacts permission", "call/message ke liye chahiye")
+                  val nl = Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners") ?: ""
+                  if (nl.contains(ctx.packageName)) rec("PASS", "Notification access", "")
+                  else rec("WARN", "Notification access", "sirf driving mode ke liye (optional)")
+                  if (Settings.System.canWrite(ctx)) rec("PASS", "Write settings (brightness)", "")
+                  else rec("WARN", "Write settings (brightness)", "sirf brightness command ke liye (optional)")
+
+                  // ---- 2. the service
+                  val svc = NovaService.instance
+                  if (!NovaService.running || svc == null) {
+                      rec("FAIL", "NOVA service", "chal nahi rahi. Home par ACTIVATE dabao, phir test dobara chalao")
+                  } else {
+                      rec("PASS", "NOVA service", svc.testState())
+                      svc.speakTest("NOVA self test. Agar awaaz aa rahi hai to speaker theek hai.")
+                      rec("INFO", "Awaaz test", "NOVA ne abhi bola. Awaaz aayi? Mujhe haan ya nahi batao")
+                      pause(3500)
+                  }
+
+                  // ---- 3. does the command matcher understand these phrases (runs on this phone)
+                  val cases = listOf(
+                      "battery kitni hai" to "battery",
+                      "analyze screen" to "analyze",
+                      "screen dekho" to "analyze",
+                      "screen par kya hai" to "analyze",
+                      "flashlight on" to "torch_on",
+                      "volume up" to "volume"
+                  )
+                  for ((p, want) in cases) {
+                      val got = Logic.classify(p)?.kind ?: "none"
+                      rec(if (got == want) "PASS" else "WARN", "Samajh: \"" + p + "\"", "mila=" + got + " chahiye=" + want)
+                  }
+
+                  // ---- 4. real phone tools
+                  if (svc != null) {
+                      val b = svc.testBattery()
+                      rec(if (b.any { it.isDigit() }) "PASS" else "FAIL", "Battery padhna", b)
+                      val t1 = svc.testTorch(true)
+                      pause(700)
+                      val t2 = svc.testTorch(false)
+                      rec(if (t1.first && t2.first) "PASS" else "FAIL", "Torch on aur off", t1.second + " / " + t2.second)
+                      val am = ctx.getSystemService(AudioManager::class.java)
+                      val vol0 = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                      val v1 = svc.testVolume("up")
+                      val v2 = svc.testVolume("down")
+                      try { am.setStreamVolume(AudioManager.STREAM_MUSIC, vol0, 0) } catch (e: Exception) { }
+                      rec(if (v1.first && v2.first) "PASS" else "FAIL", "Volume up aur down", v1.second + " / " + v2.second)
+                  } else {
+                      rec("SKIP", "Battery, torch, volume", "NOVA service band hai")
+                  }
+
+                  // ---- 5. accessibility: can NOVA really read another app's screen
+                  if (NovaAccessibilityService.instance == null) {
+                      rec("FAIL", "Accessibility (screen padhna, scroll, back)", "connect nahi hua. Settings > Accessibility > NOVA Phone Control OFF phir ON, aur Autostart ON")
+                  } else {
+                      rec("PASS", "Accessibility connected", "")
+                      val own = NovaAccessibilityService.readScreen(false)
+                      rec("INFO", "NOVA ki apni screen", "app=" + (own?.pkg ?: "none") + " lines=" + (own?.lines?.size ?: 0))
+                      act.runOnUiThread {
+                          try { act.startActivity(Intent(Settings.ACTION_SETTINGS)) } catch (e: Exception) { }
+                      }
+                      pause(3000)
+                      val snap = NovaAccessibilityService.readScreen(false)
+                      val lines = snap?.lines?.filter { it.isNotBlank() } ?: emptyList()
+                      val okRead = snap != null && snap.pkg != ctx.packageName && lines.size >= 3
+                      rec(
+                          if (okRead) "PASS" else "FAIL", "Dusre app ki screen padhna (Android Settings)",
+                          "app=" + (snap?.pkg ?: "none") + " lines=" + lines.size + " sample=" + lines.take(3).joinToString(" | ").take(120)
+                      )
+                      val sd = NovaAccessibilityService.scrollDir("down")
+                      pause(600)
+                      NovaAccessibilityService.scrollDir("up")
+                      rec(if (sd.ok) "PASS" else "FAIL", "Scroll gesture", "code=" + sd.code)
+                      val bk = NovaAccessibilityService.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                      pause(1300)
+                      if (!NovaService.uiVisible) {
+                          act.runOnUiThread {
+                              try {
+                                  act.startActivity(
+                                      Intent(act, MainActivity::class.java)
+                                          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                                  )
+                              } catch (e: Exception) { }
+                          }
+                          pause(1300)
+                      }
+                      rec(if (bk) "PASS" else "FAIL", "Global action BACK", if (NovaService.uiVisible) "NOVA wapas aa gaya" else "NOVA screen par wapas nahi aaya")
+                  }
+
+                  // ---- 6. cloud text (one tiny request)
+                  if (!SecureStore.hasKeys(ctx)) {
+                      rec("SKIP", "Gemini AI (text)", "key nahi hai")
+                  } else {
+                      val r = ImageGen.textPing(ctx)
+                      if (r.first in 200..299) rec("PASS", "Gemini AI (text) jawab", "code=" + r.first + " model=" + r.second)
+                      else rec("FAIL", "Gemini AI (text) jawab", "code=" + r.first + " " + ImageGen.failMsg(r.first))
+                  }
+                  if (SecureStore.hasGroq(ctx)) rec("SKIP", "Groq awaaz key", "key hai, par alag se test nahi kiya")
+                  else rec("SKIP", "Groq awaaz key", "key nahi hai (optional)")
+                  rec("INFO", "Image banana/edit", "iske liye neeche IMAGE TEST dabao (paisa lag sakta hai)")
+
+                  // ---- 7. things a machine cannot hear: the user answers these
+                  rec("MANUAL", "1", "Awaaz aayi thi? haan/nahi")
+                  rec("MANUAL", "2", "Home par jaake bolo: nova  -> NOVA jaagi? haan/nahi")
+                  rec("MANUAL", "3", "Phir bolo: battery kitni hai  -> jawab aaya? haan/nahi")
+                  rec("MANUAL", "4", "Chrome kholo, bolo: nova screen dekho  -> NOVA ne kya bola? likh do")
+              }
+          }
+          '''
+          p = K + 'SelfTest.kt'
+          if not os.path.exists(R + '/' + p):
+              wr(p, SELFTEST)
+
+          # ---------------------------------------------------------------- 2. ImageGen.kt: failMsg public + textPing
+          p = K + 'ImageGen.kt'
+          s = rd(p)
+          if 'fun textPing(' not in s:
+              a = '    private fun failMsg(code: Int): String = when (code) {'
+              assert s.count(a) == 1
+              s = s.replace(a, '    fun failMsg(code: Int): String = when (code) {')
+              a = '    private fun post(model: String, key: String, body: String): Pair<Int, String> {'
+              assert s.count(a) == 1
+              b = '''    /** One tiny text request, only to see whether key + network work. Returns (http code, model id). */
+              fun textPing(ctx: Context): Pair<Int, String> {
+                  val keys = SecureStore.getKeys(ctx)
+                      .ifEmpty { listOf(SecureStore.getKey(ctx)).filter { it.isNotBlank() } }
+                      .distinct()
+                  if (keys.isEmpty()) return Pair(0, "")
+                  val body = JSONObject().put(
+                      "contents",
+                      JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", "Reply with the single word OK"))))
+                  ).toString()
+                  var last = Pair(599, "")
+                  for (model in (listOf(Logic.DEFAULT_MODEL) + Logic.MODELS).distinct()) {
+                      val r = post(model, keys[0], body)
+                      last = Pair(r.first, model)
+                      if (r.first in 200..299) return last
+                  }
+                  return last
+              }
+
+          '''
+              s = s.replace(a, b + a)
+              wr(p, s)
+
+          # ---------------------------------------------------------------- 3. NovaService.kt: test hooks
+          p = K + 'NovaService.kt'
+          s = rd(p)
+          if 'FIXTEST' not in s:
+              a = '    fun stopSpeaking() { try { tts?.stop() } catch (e: Exception) { }; ttsActive = false }\n'
+              assert s.count(a) == 1
+              b = a + '''
+              // ---- FIXTEST: hooks for Settings > SELF TEST. They only read state or run harmless local tools.
+              fun testState(): String {
+                  val t = tts
+                  val hi = try {
+                      if (t == null) "tts=none" else when (t.isLanguageAvailable(java.util.Locale("hi", "IN"))) {
+                          TextToSpeech.LANG_AVAILABLE, TextToSpeech.LANG_COUNTRY_AVAILABLE, TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE -> "hindi_voice=ok"
+                          else -> "hindi_voice=missing"
+                      }
+                  } catch (e: Exception) { "hindi_voice=unknown" }
+                  return "alive=" + alive + " ttsReady=" + ttsReady + " " + hi + " busy=" + busy
+              }
+              fun testBattery(): String = batteryReply()
+              fun testTorch(on: Boolean): Pair<Boolean, String> { val r = torch(on); return Pair(r.ok, r.msg) }
+              fun testVolume(action: String): Pair<Boolean, String> { val r = volume(action, -1); return Pair(r.ok, r.msg) }
+          '''
+              s = s.replace(a, b)
+              wr(p, s)
+
+          # ---------------------------------------------------------------- 4. MainActivity.kt: bridge
+          p = K + 'MainActivity.kt'
+          s = rd(p)
+          if 'FIXTEST' not in s:
+              a = '    inner class Bridge {\n'
+              assert s.count(a) == 1
+              b = '''    // ---- FIXTEST: image API test (asks first, may cost a little)
+              private fun runImageTest() {
+                  imgBusy = true
+                  Thread {
+                      var line = ""
+                      try {
+                          val r = ImageGen.generate(this, "A plain blue circle on a white background, minimal", null)
+                          val img = r.img
+                          if (r.ok && img != null) {
+                              val saved = ImageGen.saveToGallery(this, img)
+                              line = "PASS  Image banana: image mili (" + (img.size / 1024) + " KB). Gallery save: " + (saved ?: "FAIL")
+                          } else {
+                              line = "FAIL  Image banana: " + r.msg
+                          }
+                      } catch (e: Throwable) {
+                          line = "FAIL  Image test beech mein ruk gaya"
+                      }
+                      imgBusy = false
+                      runJs("onSelfTest(" + JSONObject.quote(line) + ")")
+                  }.start()
+              }
+
+          ''' + a
+              s = s.replace(a, b)
+              a = '        @JavascriptInterface\n        fun wakeNow() { NovaService.instance?.wakeNow() }\n'
+              assert s.count(a) == 1
+              b = a + '''
+                  @JavascriptInterface
+                  fun selfTest(): String {
+                      if (SelfTest.running) return "busy"
+                      SelfTest.start(
+                          this@MainActivity,
+                          { l -> runJs("onSelfTest(" + JSONObject.quote(l) + ")") },
+                          { rep -> runJs("onSelfTestDone(" + JSONObject.quote(rep) + ")") }
+                      )
+                      return "started"
+                  }
+
+                  @JavascriptInterface
+                  fun selfTestImage(): String {
+                      if (!SecureStore.hasKeys(this@MainActivity)) return "nokey"
+                      if (imgBusy) return "busy"
+                      runOnUiThread {
+                          try {
+                              android.app.AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                                  .setTitle("Image test karein?")
+                                  .setMessage("Gemini se 1 chhoti image banegi. Billing wali key par thoda paisa lag sakta hai.")
+                                  .setPositiveButton("HAAN") { _, _ -> runImageTest() }
+                                  .setNegativeButton("NAHI", null)
+                                  .show()
+                          } catch (e: Exception) {
+                          }
+                      }
+                      return "asking"
+                  }
+
+                  @JavascriptInterface
+                  fun copyText(t: String): String = try {
+                      val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                      cm.setPrimaryClip(android.content.ClipData.newPlainText("NOVA report", t.take(20000)))
+                      "ok"
+                  } catch (e: Exception) { "fail" }
+
+                  @JavascriptInterface
+                  fun shareText(t: String): String {
+                      runOnUiThread {
+                          try {
+                              val i = Intent(Intent.ACTION_SEND)
+                              i.type = "text/plain"
+                              i.putExtra(Intent.EXTRA_TEXT, t.take(20000))
+                              startActivity(Intent.createChooser(i, "Report bhejo"))
+                          } catch (e: Exception) {
+                          }
+                      }
+                      return "ok"
+                  }
+          '''
+              s = s.replace(a, b)
+              wr(p, s)
+
+          # ---------------------------------------------------------------- 5. ui.html: Settings section
+          p = 'app/src/main/assets/ui.html'
+          s = rd(p)
+          if 'FIXTEST-UI' not in s:
+              a = '<div id="panel">\n<h2>SETTINGS</h2>\n'
+              assert s.count(a) == 1
+              box = '''<div id="panel">
+          <h2>SETTINGS</h2>
+          <div id="st_box"><!-- FIXTEST-UI -->
+          <b>SELF TEST (sab kuch asli mein)</b>
+          <small>Pehle saari permissions allow karo aur home par ACTIVATE dabao. Phir SAB TEST KARO. Test lagbhag 40 second chalta hai: torch ek second jalegi, volume thoda badhega-ghategi, aur Android Settings screen khulke wapas aayegi. Koi call, message ya payment nahi hota.</small>
+          <div class="row"><button class="sm" id="st_run">SAB TEST KARO</button><button class="sm" id="st_img">IMAGE TEST</button></div>
+          <pre id="st_out"></pre>
+          <div class="row"><button class="sm" id="st_copy">COPY REPORT</button><button class="sm" id="st_share">SHARE</button></div>
+          </div>
+          <style>
+          #st_box{border:1px solid rgba(47,184,255,.3);border-radius:12px;padding:12px;margin:6px 0 14px}
+          #st_box b{letter-spacing:2px;font-size:12px;color:var(--c1)}
+          #st_box small{display:block;margin:6px 0 10px;opacity:.75;line-height:1.4}
+          #st_out{font:11px/1.45 monospace;white-space:pre-wrap;word-break:break-word;max-height:46vh;overflow-y:auto;margin:10px 0;opacity:.95}
+          </style>
+          '''
+              s = s.replace(a, box)
+              a = '</script></body></html>'
+              assert s.count(a) == 1
+              js = '''</script><script>
+          /* FIXTEST-UI */
+          (function(){
+          function g(i){return document.getElementById(i)}
+          var out=g('st_out'),rep='';
+          function add(l){out.textContent+=(out.textContent?'\\n':'')+l;out.scrollTop=out.scrollHeight}
+          g('st_run').onclick=function(){
+            var r='';try{r=Android.selfTest()}catch(e){r='fail'}
+            if(r==='started'){out.textContent='';rep='';add('Test shuru... screen se bahar mat jao, Settings screen khulke wapas aayegi')}
+            else if(r==='busy')add('Test pehle se chal raha hai');
+            else add('Test shuru nahi hua')
+          };
+          g('st_img').onclick=function(){
+            var r='';try{r=Android.selfTestImage()}catch(e){r='fail'}
+            if(r==='nokey')add('Image test ke liye Gemini key chahiye');
+            else if(r==='busy')add('Image kaam pehle se chal raha hai')
+          };
+          g('st_copy').onclick=function(){var t=rep||out.textContent;var r='';try{r=Android.copyText(t)}catch(e){}g('st_copy').textContent=(r==='ok')?'COPY HO GAYA':'COPY NAHI HUA'};
+          g('st_share').onclick=function(){try{Android.shareText(rep||out.textContent)}catch(e){}};
+          window.onSelfTest=function(l){add(l)};
+          window.onSelfTestDone=function(r){rep=r;out.textContent=r;g('st_copy').textContent='COPY REPORT'};
+          })();
+          </script></body></html>'''
+              s = s.replace(a, js)
+              wr(p, s)
+          print('ok')
+          PYEOF
+          python3 /tmp/p3.py .
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add Settings self test"
+          git push
