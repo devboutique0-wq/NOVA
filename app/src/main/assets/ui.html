@@ -118,6 +118,16 @@ button.icb.off{opacity:.45}
 #tsd{margin-top:16px;font-size:10px;letter-spacing:5px;color:#58b8ff}
 #hint{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 20px);font-size:9px;letter-spacing:2px;color:#58b8ff;display:none;animation:blink 1.2s infinite}
 @keyframes blink{50%{opacity:.2}}
+
+.row{flex-wrap:wrap;justify-content:center}
+#chat{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;background:radial-gradient(circle at 50% 20%,#0b2147,#050b1c 65%,#02040b);padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px)}
+#chat.on{display:flex}
+.chh{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid rgba(47,184,255,.25)}
+.chh b{letter-spacing:6px;font-weight:300;font-size:16px;color:var(--c1);text-shadow:0 0 12px var(--c1)}
+#clog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px 2px}
+.chi{display:flex;gap:8px;align-items:center;padding-top:8px}
+#c_in{flex:1;min-width:0;padding:12px 14px;border-radius:24px;border:1px solid var(--c2);background:rgba(0,0,0,.5);color:#fff;font-size:15px}
+.chi button.icb{flex:0 0 44px;width:44px;height:44px;border-radius:22px}
 </style></head>
 <body>
 <div id="intro" class="on"><canvas id="fx"></canvas><div id="cap"><b></b><span></span></div><div id="hint">TAP FOR SOUND</div>
@@ -130,8 +140,13 @@ button.icb.off{opacity:.45}
 <div class="orbbox"><canvas id="gl" width="250" height="250" aria-label="NOVA"></canvas></div>
 <div class="feats" id="feats"></div>
 <div class="log" id="log"></div>
-<div class="row"><button id="btn">ACTIVATE</button><button class="sm" id="quiet">CHUP</button><button class="sm" id="gear">SETTINGS</button></div>
+<div class="row"><button id="btn">ACTIVATE</button><button class="sm" id="quiet">CHUP</button><button class="sm" id="chatb">CHAT</button><button class="sm" id="gear">SETTINGS</button></div>
 </div>
+<div id="chat"><div class="chh"><b>NOVA CHAT</b><button class="sm" id="c_close">BAND KARO</button></div>
+<div id="clog"></div>
+<div class="chi"><input id="c_in" type="text" placeholder="NOVA se kuch bhi likho..." autocomplete="off" enterkeyhint="send">
+<button class="icb" id="c_mic" aria-label="mic"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM6 11a6 6 0 0012 0M12 17v4"/></svg></button>
+<button class="icb" id="c_send" aria-label="send"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></svg></button></div></div>
 <div id="sheet"><div class="sh"><h3 id="sht"></h3><p id="shd"></p><div class="cmd" id="shc"></div><div class="row" id="sha"></div></div></div>
 <div id="uc"><div class="ucb" id="ucb"></div></div>
 <div id="panel">
@@ -754,5 +769,41 @@ $('snd').onclick=function(){snd=!snd;try{localStorage.setItem('nova_snd',snd?'1'
 $('s_close').addEventListener('click',function(){});
 window.novaGo=go;window.novaSheetSnd=sSheet;
 var pc=$('panel').children;for(var i=0;i<pc.length;i++)pc[i].style.animationDelay=(i*.05)+'s';
+})();
+</script><script>
+/* chat screen + intro failsafe */
+(function(){
+function g(i){return document.getElementById(i)}
+var chat=g('chat'),cl=g('clog'),ci=g('c_in'),skipMe=0;
+function cadd(t,c){var d=document.createElement('div');d.className='msg '+c;d.textContent=t;cl.appendChild(d);cl.scrollTop=cl.scrollHeight}
+function openChat(){chat.classList.add('on');if(!cl.children.length)cadd('Main NOVA hoon. Neeche likho ya mic dabao. (Chat ke liye pehle ACTIVATE dabana hai.)','ai');setTimeout(function(){ci.focus()},150)}
+function closeChat(){chat.classList.remove('on');ci.blur()}
+function send(){
+  var t=ci.value.trim();if(!t)return;var r='off';
+  try{r=Android.sendText(t)}catch(e){}
+  if(r==='sent'){ci.value='';cadd(t,'me');try{add(t,'me')}catch(e){}skipMe++}
+  else if(r==='busy'){cadd('NOVA abhi kaam kar raha hai, thoda ruko','ai')}
+  else{cadd('NOVA abhi band hai. Pehle home screen par ACTIVATE dabao, phir yahan likho.','ai')}
+}
+g('chatb').onclick=openChat;g('c_close').onclick=closeChat;g('c_send').onclick=send;
+ci.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();send()}});
+g('c_mic').onclick=function(){
+  var run=false;try{run=Android.running()}catch(e){}
+  if(!run){var r='';try{r=Android.toggle()}catch(e){}
+    if(r==='started'){try{setOn(true)}catch(e){}cadd('NOVA chalu ho gaya. Ab "'+((window.S&&S.wake)||'nova')+'" bolo ya dobara mic dabao.','ai')}
+    else if(r==='perm'||r==='nomic'){cadd('Mic permission chahiye. Allow dabao ya Settings > Apps > NOVA se allow karo.','ai')}
+    return}
+  try{Android.wakeNow()}catch(e){}cadd('Sun raha hu... bolo','ai')
+};
+var _on=window.onNova;
+window.onNova=function(r,t){
+  if(r==='me'&&skipMe>0){skipMe--;return}
+  if(r==='me'||r==='ai')cadd(t,r);
+  if(_on)_on(r,t)
+};
+var _nb=window.novaBack;
+window.novaBack=function(){if(chat.classList.contains('on')){closeChat();return 'handled'}return _nb?_nb():'exit'};
+/* if the opening animation ever stalls, never leave the screen covered */
+setTimeout(function(){try{var i=g('intro');if(i&&i.classList.contains('on')){i.classList.remove('on');i.style.opacity=''}document.body.classList.add('ready')}catch(e){}},9000);
 })();
 </script></body></html>

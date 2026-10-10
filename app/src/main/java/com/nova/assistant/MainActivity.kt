@@ -236,6 +236,12 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun stopSpeak() { NovaService.instance?.stopSpeaking() }
 
+        @JavascriptInterface
+        fun sendText(t: String): String = NovaService.instance?.typed(t.take(500)) ?: "off"
+
+        @JavascriptInterface
+        fun wakeNow() { NovaService.instance?.wakeNow() }
+
         /** The optional Groq key is only ever written here, never sent back to the page. ok / invalid / fail. */
         @JavascriptInterface
         fun saveGroqKey(raw: String): String = try {

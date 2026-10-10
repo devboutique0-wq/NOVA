@@ -326,6 +326,15 @@ class NovaService : Service() {
     }
 
     fun stopSpeaking() { try { tts?.stop() } catch (e: Exception) { }; ttsActive = false }
+
+    /** Typed chat: runs exactly like a spoken command. A typed "yes" never approves a risky action (that needs the spoken yes). */
+    fun typed(text: String): String {
+        if (!alive) return "off"
+        if (busy) return "busy"
+        busy = true
+        Thread { process(ByteArray(0), text, 0) }.start()
+        return "sent"
+    }
     fun announce(text: String) { h.post { if (alive) say(text) } }
     fun reloadVoice() { cfg.applyVoice(tts) }
     fun speakTest(text: String) { cfg.applyVoice(tts); speak(text, false, false) }
