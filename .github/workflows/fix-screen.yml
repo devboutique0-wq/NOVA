@@ -1,0 +1,130 @@
+name: fix-screen
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch screen reading (skip NOVA own window, wider command match)
+        run: |
+          cat > /tmp/p1.py <<'PYEOF'
+          import sys
+          R = sys.argv[1] if len(sys.argv) > 1 else '.'
+          def rd(p): return open(R + '/' + p, encoding='utf-8').read()
+          def wr(p, s): open(R + '/' + p, 'w', encoding='utf-8').write(s)
+          K = 'app/src/main/java/com/nova/assistant/'
+
+          # 1. accessibility config: allow reading the list of windows
+          p = 'app/src/main/res/xml/accessibility_config.xml'
+          s = rd(p)
+          if 'flagRetrieveInteractiveWindows' not in s:
+              a = 'flagReportViewIds|flagIncludeNotImportantViews'
+              assert s.count(a) == 1
+              s = s.replace(a, a + '|flagRetrieveInteractiveWindows')
+              wr(p, s)
+
+          # 2. NovaAccessibilityService: readScreen skips NOVA's own window and uses the other app window
+          p = K + 'NovaAccessibilityService.kt'
+          s = rd(p)
+          if 'fun otherAppRoot(' not in s:
+              a = '''            val s = instance ?: return null
+                      val root = s.rootInActiveWindow ?: return null
+                      val out = ArrayList<String>()
+                      collect(root, 0, out, includeEditable)
+                      return Snap(root.packageName?.toString() ?: "", out)
+                  }
+          '''
+              assert s.count(a) == 1
+              b = '''            val s = instance ?: return null
+                      var root = s.rootInActiveWindow
+                      if (root == null || root.packageName?.toString() == s.packageName) {
+                          val alt = otherAppRoot(s)
+                          if (alt != null) root = alt
+                      }
+                      if (root == null) return null
+                      val out = ArrayList<String>()
+                      collect(root, 0, out, includeEditable)
+                      return Snap(root.packageName?.toString() ?: "", out)
+                  }
+
+                  /** Top application window that is NOT NOVA (used when NOVA's own card or chat has the focus). */
+                  private fun otherAppRoot(s: NovaAccessibilityService): AccessibilityNodeInfo? {
+                      return try {
+                          s.windows
+                              .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
+                              .sortedByDescending { it.layer }
+                              .mapNotNull { it.root }
+                              .firstOrNull { it.packageName?.toString() != s.packageName }
+                      } catch (e: Exception) { null }
+                  }
+          '''
+              s = s.replace(a, b)
+              wr(p, s)
+
+          # 3. NovaService.analyzeScreen: wait for another app when NOVA itself is on screen, report real reason
+          p = K + 'NovaService.kt'
+          s = rd(p)
+          if 'FIXSCREEN1' not in s:
+              a = '''        val snap = NovaAccessibilityService.readScreen(false)   // password-free, non-editable text only
+                  val lines = snap?.lines ?: emptyList()
+          '''
+              assert s.count(a) == 1
+              b = '''        var snap = NovaAccessibilityService.readScreen(false)   // password-free, non-editable text only  // FIXSCREEN1
+                  if (snap == null || snap.pkg == packageName) {
+                      // NOVA's own chat/card is in front: give the user time to open the other app, then read it
+                      announce(tr("Jo screen padhni hai wo kholo, main 8 second mein padhungi", "Open the screen you want read, I will read it in 8 seconds"))
+                      val until = System.currentTimeMillis() + 9000L
+                      while (System.currentTimeMillis() < until) {
+                          try { Thread.sleep(700) } catch (e: InterruptedException) { break }
+                          val sn = NovaAccessibilityService.readScreen(false)
+                          if (sn != null && sn.pkg != packageName && sn.pkg.isNotEmpty()) { snap = sn; break }
+                      }
+                      if (snap == null || snap.pkg == packageName) return tr(
+                          "Mujhe koi dusra app nahi dikha. NOVA se bahar jaakar dobara bolo: screen dekho",
+                          "I did not see another app. Leave NOVA and say it again: analyze screen"
+                      )
+                  }
+                  val lines = snap?.lines ?: emptyList()
+          '''
+              s = s.replace(a, b)
+              a2 = '''            "Is screen par padhne layak text nahi mila. Main sirf accessibility text padhta hoon, images nahi. Canvas, game aur secure screens nahi padh sakta",
+                      "I found no readable text here. I only read accessibility text, not images, and I cannot read canvas, game or secure screens"
+                  )'''
+              assert s.count(a2) == 1
+              b2 = '''            "Is screen par padhne layak text nahi mila (app: ${snap?.pkg}). Main sirf accessibility text padhta hoon, images nahi. Canvas, game aur secure screens nahi padh sakta",
+                      "I found no readable text here (app: ${snap?.pkg}). I only read accessibility text, not images, and I cannot read canvas, game or secure screens"
+                  )'''
+              s = s.replace(a2, b2)
+              wr(p, s)
+
+          # 4. Logic: wider whole-word match for "screen par kya hai", "screen dikha", ...
+          p = K + 'Logic.kt'
+          s = rd(p)
+          if 'FIXSCREEN2' not in s:
+              a = '''        if (has("screen") &&
+                      (has("analyze", "analyse", "analysis", "dekho", "check", "read", "summarize", "summary") ||
+                          (has("what") && has("on")))
+                  ) return Cmd("analyze")
+          '''
+              assert s.count(a) == 1
+              b = '''        if (has("screen") && !has("brightness", "brightnes", "timeout", "lock", "rotate", "rotation", "record", "recording", "shot", "off", "band") && // FIXSCREEN2
+                      (has("analyze", "analyse", "analysis", "dekho", "check", "read", "summarize", "summary",
+                          "dekh", "dekhna", "dikh", "dikha", "dikhao", "dikhta", "padh", "padho", "padhna", "batao", "bata", "kya", "likha",
+                          "describe", "tell", "see") ||
+                          (has("what") && has("on")))
+                  ) return Cmd("analyze")
+          '''
+              s = s.replace(a, b)
+              wr(p, s)
+          print('ok')
+          PYEOF
+          python3 /tmp/p1.py .
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Fix screen reading: skip NOVA own window, wider match, honest errors"
+          git push
