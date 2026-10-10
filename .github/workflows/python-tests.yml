@@ -1,0 +1,45 @@
+name: Python tests (NOVA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/**"
+      - "app/src/main/assets/knowledge.json"
+      - "app/src/main/java/**/*.kt"
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Source guards (no !! and no catch (_ in app code)
+        run: |
+          if grep -rn '!!' app/src/main/java | grep -v '"[^"]*!![^"]*"' ; then
+            echo "Found !! in main code"; exit 1
+          fi
+          if grep -rEn 'catch \(_' app/src/main/java ; then
+            echo "Found catch (_ in main code"; exit 1
+          fi
+
+      - name: Knowledge pack is valid
+        run: python3 tools/validate_skillpack.py
+
+      - name: Knowledge contract
+        run: python3 tools/test_knowledge_contract.py
+
+      - name: Hindi (Devanagari) contract
+        run: python3 tools/test_hindi_contract.py
+
+      - name: Free AI chain contract
+        run: python3 tools/test_chain_contract.py
+
+      - name: Personal memory contract
+        run: python3 tools/test_memory_contract.py
