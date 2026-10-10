@@ -617,7 +617,7 @@ class MainActivity : Activity() {
                 .put("contacts", granted(Manifest.permission.READ_CONTACTS))
                 .put("writeSettings", Settings.System.canWrite(this@MainActivity))
                 .put("battery", (getSystemService(POWER_SERVICE) as? android.os.PowerManager)?.isIgnoringBatteryOptimizations(packageName) == true)
-                .put("pattern", PatternUnlock.isSet(this))
+                .put("pattern", PatternUnlock.isSet(this@MainActivity))
                 .put("feedUrl", cfg.feedUrl)
                 .put("running", NovaService.running)
                 .put("engine", LocalBrains.factory != null)
