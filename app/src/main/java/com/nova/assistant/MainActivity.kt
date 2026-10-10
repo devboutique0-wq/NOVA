@@ -72,7 +72,7 @@ class MainActivity : Activity() {
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                 val u = request?.url?.toString() ?: return blocked()
-                return if (u.startsWith(ASSET_PREFIX)) null else blocked()
+                return if (u.startsWith(ASSET_PREFIX) || u.startsWith("data:") || u.startsWith("blob:")) null else blocked()
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -225,6 +225,61 @@ class MainActivity : Activity() {
         }
     }
 
+    // ---- FIXIMG1: picked photo + AI image (explicit user taps only)
+    private var pickedPhoto: ByteArray? = null
+    @Volatile private var imgBusy = false
+
+    private fun runJs(js: String) {
+        runOnUiThread { if (!isDestroyed) web.evaluateJavascript(js, null) }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_PICK || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        Thread {
+            try {
+                val raw = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (raw == null || raw.isEmpty()) { runJs("onPhotoErr('Photo padh nahi paya')"); return@Thread }
+                if (raw.size > 30000000) { runJs("onPhotoErr('Photo bahut badi hai')"); return@Thread }
+                val small = ImageGen.shrink(raw, 1280)
+                if (small == null) { runJs("onPhotoErr('Ye photo format nahi padh paya')"); return@Thread }
+                pickedPhoto = small
+                val thumb = ImageGen.shrink(small, 160) ?: small
+                runJs("onPhoto(" + JSONObject.quote(ImageGen.b64(thumb)) + ")")
+            } catch (e: Throwable) {
+                runJs("onPhotoErr('Photo padhne mein dikkat')")
+            }
+        }.start()
+    }
+
+    private fun startImage(prompt: String, photo: ByteArray?) {
+        imgBusy = true
+        Thread {
+            var js = ""
+            try {
+                val full = if (photo != null)
+                    "Edit the attached photo exactly as requested and keep everything else, especially faces and identity, unchanged. Request: " + prompt
+                else prompt
+                val r = ImageGen.generate(this, full, photo)
+                var thumb = ""
+                var saved = ""
+                val img = r.img
+                if (r.ok && img != null) {
+                    saved = ImageGen.saveToGallery(this, img) ?: ""
+                    thumb = ImageGen.b64(ImageGen.shrink(img, 1024) ?: img)
+                }
+                val good = r.ok && thumb.isNotEmpty()
+                js = "onImage(" + good + "," + JSONObject.quote(r.msg) + "," + JSONObject.quote(thumb) + "," + JSONObject.quote(saved) + ")"
+            } catch (e: Throwable) {
+                js = "onImage(false," + JSONObject.quote("Image banate waqt dikkat aayi") + ",\"\",\"\")"
+            }
+            imgBusy = false
+            runJs(js)
+        }.start()
+    }
+
     inner class Bridge {
         @JavascriptInterface
         fun vibrate(ms: Int) { vibe(ms.toLong().coerceIn(5L, 400L)) }
@@ -258,6 +313,49 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun wakeNow() { NovaService.instance?.wakeNow() }
+
+        @JavascriptInterface
+        fun pickPhoto(): String {
+            runOnUiThread {
+                try {
+                    val i = Intent(Intent.ACTION_GET_CONTENT)
+                    i.type = "image/*"
+                    i.addCategory(Intent.CATEGORY_OPENABLE)
+                    startActivityForResult(Intent.createChooser(i, "Photo chuno"), REQ_PICK)
+                } catch (e: Exception) {
+                    runJs("onPhotoErr('Gallery nahi khuli')")
+                }
+            }
+            return "ok"
+        }
+
+        @JavascriptInterface
+        fun clearPhoto() { pickedPhoto = null }
+
+        /** started / asking (waits for the HAAN tap) / busy / nokey / empty. A photo is only uploaded after that tap. */
+        @JavascriptInterface
+        fun makeImage(prompt: String): String {
+            val p = prompt.trim().take(800)
+            if (p.isEmpty()) return "empty"
+            if (!SecureStore.hasKeys(this@MainActivity)) return "nokey"
+            if (imgBusy) return "busy"
+            val photo = pickedPhoto
+            if (photo == null) { startImage(p, null); return "started" }
+            runOnUiThread {
+                try {
+                    android.app.AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Photo Google ko bhejein?")
+                        .setMessage("Ye photo edit ke liye internet par Google Gemini ko bheji jayegi.")
+                        .setPositiveButton("HAAN, BHEJO") { _, _ -> startImage(p, photo) }
+                        .setNegativeButton("NAHI") { _, _ -> runJs("onImgCancel()") }
+                        .setOnCancelListener { runJs("onImgCancel()") }
+                        .show()
+                } catch (e: Exception) {
+                    runJs("onImgCancel()")
+                }
+            }
+            return "asking"
+        }
 
         /** The optional Groq key is only ever written here, never sent back to the page. ok / invalid / fail. */
         @JavascriptInterface
@@ -554,5 +652,6 @@ class MainActivity : Activity() {
         const val REQ_START = 1
         const val REQ_CONTACTS = 2
         const val REQ_BASIC = 3
+        const val REQ_PICK = 4
     }
 }

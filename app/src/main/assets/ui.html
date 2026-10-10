@@ -176,8 +176,18 @@ html.lowfx .f{clip-path:none}
 <div class="log" id="log"></div>
 <div class="row"><button id="btn">ACTIVATE</button><button class="sm" id="quiet">CHUP</button><button class="sm" id="chatb">CHAT</button><button class="sm" id="gear">SETTINGS</button></div>
 </div>
+<style>/* FIXIMG-UI */
+.imr{display:flex;gap:8px;align-items:center;padding-top:8px;flex-wrap:wrap}
+.imr button.sm{padding:6px 12px;font-size:10px;letter-spacing:1px}
+.imr button.imon{background:rgba(47,184,255,.28);box-shadow:0 0 12px rgba(47,184,255,.45)}
+#c_thw{display:none;align-items:center;gap:6px}
+#c_thumb{width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid rgba(47,184,255,.5)}
+.gimg{display:block;max-width:100%;border-radius:10px;margin-bottom:6px}
+.sv{font-size:11px;opacity:.7}
+</style>
 <div id="chat"><div class="chh"><b>NOVA CHAT</b><button class="sm" id="c_close">BAND KARO</button></div>
 <div id="clog"></div>
+<div class="imr"><button class="sm" id="c_imode">IMAGE: OFF</button><button class="sm" id="c_photo">PHOTO CHUNO</button><span id="c_thw"><img id="c_thumb" alt=""><button class="sm" id="c_thx">X</button></span></div>
 <div class="chi"><input id="c_in" type="text" placeholder="NOVA se kuch bhi likho..." autocomplete="off" enterkeyhint="send">
 <button class="icb" id="c_mic" aria-label="mic"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM6 11a6 6 0 0012 0M12 17v4"/></svg></button>
 <button class="icb" id="c_send" aria-label="send"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></svg></button></div></div>
@@ -876,5 +886,39 @@ if(cl&&window.MutationObserver){
     else if(n.classList.contains('me')){rm();dots=document.createElement('div');dots.className='msg ai typing';dots.innerHTML='<i></i><i></i><i></i>';cl.appendChild(dots);cl.scrollTop=cl.scrollHeight;tmo=setTimeout(rm,40000)}
   })})}).observe(cl,{childList:true});
 }
+})();
+</script><script>
+/* FIXIMG-UI: image generate / photo edit inside chat */
+(function(){
+function g(i){return document.getElementById(i)}
+var ci=g('c_in'),cl=g('clog'),imode=g('c_imode'),thw=g('c_thw'),thumb=g('c_thumb'),on=false,ph0=ci.placeholder;
+function say(t,c){var d=document.createElement('div');d.className='msg '+c;d.textContent=t;cl.appendChild(d);cl.scrollTop=cl.scrollHeight}
+function setMode(v){on=v;imode.textContent=v?'IMAGE: ON':'IMAGE: OFF';if(v)imode.classList.add('imon');else imode.classList.remove('imon');ci.placeholder=v?'Kya banana hai ya photo mein kya badalna hai...':ph0}
+imode.onclick=function(){setMode(!on)};
+g('c_photo').onclick=function(){try{Android.pickPhoto()}catch(e){say('Photo chunna abhi nahi chala','ai')}};
+g('c_thx').onclick=function(){try{Android.clearPhoto()}catch(e){}thw.style.display='none';thumb.removeAttribute('src')};
+function imgSend(){
+  var t=ci.value.trim();if(!t)return;var r='';
+  try{r=Android.makeImage(t)}catch(e){r='fail'}
+  if(r==='started'||r==='asking'){ci.value='';say(t,'me');say(r==='asking'?'Photo bhejne se pehle HAAN/NAHI wala box dekho...':'Image ban rahi hai, 20 se 60 second lagte hain...','ai')}
+  else if(r==='busy')say('Pehli image abhi ban rahi hai, thoda ruko','ai');
+  else if(r==='nokey')say('Image ke liye Gemini key chahiye. Settings mein key daalo.','ai');
+  else say('Image shuru nahi ho paayi','ai')
+}
+var bar=document.querySelector('.chi');
+bar.addEventListener('click',function(e){if(on&&e.target&&e.target.closest&&e.target.closest('#c_send')){e.stopPropagation();e.preventDefault();imgSend()}},true);
+bar.addEventListener('keydown',function(e){if(on&&e.key==='Enter'&&e.target===ci){e.stopPropagation();e.preventDefault();imgSend()}},true);
+window.onPhoto=function(b){thumb.src='data:image/jpeg;base64,'+b;thw.style.display='inline-flex';setMode(true);say('Photo lag gayi. Ab likho ki isme kya badalna hai.','ai')};
+window.onPhotoErr=function(m){say(m,'ai')};
+window.onImgCancel=function(){say('Theek hai, photo nahi bheji.','ai')};
+window.onImage=function(ok,msg,b,saved){
+  if(ok&&b){
+    var d=document.createElement('div');d.className='msg ai';
+    var im=document.createElement('img');im.className='gimg';im.src='data:image/jpeg;base64,'+b;d.appendChild(im);
+    if(msg){var p=document.createElement('div');p.textContent=msg;d.appendChild(p)}
+    if(saved){var sv=document.createElement('div');sv.className='sv';sv.textContent='Saved: '+saved;d.appendChild(sv)}
+    cl.appendChild(d);cl.scrollTop=cl.scrollHeight
+  }else say(msg||'Image nahi bani','ai')
+};
 })();
 </script></body></html>
