@@ -19,11 +19,9 @@ object LocalBrains {
     /** An engine integration sets this: model file path -> a LocalBrain, or null if the file cannot be loaded. */
     @Volatile var factory: ((String) -> LocalBrain?)? = null
 
-    /** Installs the real engine (llama.cpp) once. Safe to call many times. Does not load any model yet. */
+    /** Offline engine is switched off for now (llama.cpp library needs Kotlin 2.x). Kept so callers still compile. */
     fun installEngine(ctx: Context) {
-        if (factory != null) return
-        val resolver = ctx.applicationContext.contentResolver
-        factory = { path -> LlamaBrain.create(resolver, path) }
+        // intentionally empty: factory stays null, the offline-model button stays hidden
     }
 
     private val lock = Any()
