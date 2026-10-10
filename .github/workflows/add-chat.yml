@@ -1,0 +1,152 @@
+name: add-chat
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch chat screen, typed bridge, manifest
+        run: |
+          cat > /tmp/patch_chat.py <<'PYEOF'
+          import re, sys
+          R = sys.argv[1] if len(sys.argv) > 1 else '.'
+          def rd(p): return open(R + '/' + p, encoding='utf-8').read()
+          def wr(p, s): open(R + '/' + p, 'w', encoding='utf-8').write(s)
+
+          # ---- 1. NovaService.kt: typed chat entry ----
+          p = 'app/src/main/java/com/nova/assistant/NovaService.kt'
+          s = rd(p)
+          if 'fun typed(' not in s:
+              a = '    fun stopSpeaking() { try { tts?.stop() } catch (e: Exception) { }; ttsActive = false }\n'
+              assert s.count(a) == 1
+              s = s.replace(a, a + '''
+              /** Typed chat: runs exactly like a spoken command. A typed "yes" never approves a risky action (that needs the spoken yes). */
+              fun typed(text: String): String {
+                  if (!alive) return "off"
+                  if (busy) return "busy"
+                  busy = true
+                  Thread { process(ByteArray(0), text, 0) }.start()
+                  return "sent"
+              }
+          ''')
+              wr(p, s)
+
+          # ---- 2. MainActivity.kt: bridge ----
+          p = 'app/src/main/java/com/nova/assistant/MainActivity.kt'
+          s = rd(p)
+          if 'fun sendText(' not in s:
+              a = '        @JavascriptInterface\n        fun stopSpeak() { NovaService.instance?.stopSpeaking() }\n'
+              assert s.count(a) == 1
+              s = s.replace(a, a + '''
+                  @JavascriptInterface
+                  fun sendText(t: String): String = NovaService.instance?.typed(t.take(500)) ?: "off"
+
+                  @JavascriptInterface
+                  fun wakeNow() { NovaService.instance?.wakeNow() }
+          ''')
+              wr(p, s)
+
+          # ---- 3. Manifest: WAKE_LOCK + pattern screen (same as add-pattern) ----
+          p = 'app/src/main/AndroidManifest.xml'
+          s = rd(p)
+          if 'PatternSetupActivity' not in s:
+              a = '    <uses-permission android:name="android.permission.VIBRATE"/>\n'
+              assert s.count(a) == 1
+              if 'WAKE_LOCK' not in s:
+                  s = s.replace(a, a + '    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n')
+              b = '        <service\n            android:name=".NovaService"'
+              assert s.count(b) == 1
+              act = ('        <activity\n            android:name=".PatternSetupActivity"\n            android:exported="true"\n'
+                     '            android:label="NOVA Pattern">\n            <intent-filter>\n'
+                     '                <action android:name="android.intent.action.MAIN"/>\n'
+                     '                <category android:name="android.intent.category.LAUNCHER"/>\n'
+                     '            </intent-filter>\n        </activity>\n')
+              s = s.replace(b, act + b)
+              wr(p, s)
+
+          # ---- 4. ui.html: chat screen + intro failsafe ----
+          p = 'app/src/main/assets/ui.html'
+          s = rd(p)
+          if 'id="chat"' not in s:
+              css = '''
+          .row{flex-wrap:wrap;justify-content:center}
+          #chat{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;background:radial-gradient(circle at 50% 20%,#0b2147,#050b1c 65%,#02040b);padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px)}
+          #chat.on{display:flex}
+          .chh{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid rgba(47,184,255,.25)}
+          .chh b{letter-spacing:6px;font-weight:300;font-size:16px;color:var(--c1);text-shadow:0 0 12px var(--c1)}
+          #clog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px 2px}
+          .chi{display:flex;gap:8px;align-items:center;padding-top:8px}
+          #c_in{flex:1;min-width:0;padding:12px 14px;border-radius:24px;border:1px solid var(--c2);background:rgba(0,0,0,.5);color:#fff;font-size:15px}
+          .chi button.icb{flex:0 0 44px;width:44px;height:44px;border-radius:22px}
+          '''
+              a = '</style></head>'
+              assert s.count(a) == 1
+              s = s.replace(a, css + a)
+
+              a = '<button class="sm" id="gear">SETTINGS</button>'
+              assert s.count(a) == 1
+              s = s.replace(a, '<button class="sm" id="chatb">CHAT</button>' + a)
+
+              html = '''<div id="chat"><div class="chh"><b>NOVA CHAT</b><button class="sm" id="c_close">BAND KARO</button></div>
+          <div id="clog"></div>
+          <div class="chi"><input id="c_in" type="text" placeholder="NOVA se kuch bhi likho..." autocomplete="off" enterkeyhint="send">
+          <button class="icb" id="c_mic" aria-label="mic"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM6 11a6 6 0 0012 0M12 17v4"/></svg></button>
+          <button class="icb" id="c_send" aria-label="send"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z"/></svg></button></div></div>
+          '''
+              a = '<div id="sheet">'
+              assert s.count(a) == 1
+              s = s.replace(a, html + a)
+
+              js = r'''<script>
+          /* chat screen + intro failsafe */
+          (function(){
+          function g(i){return document.getElementById(i)}
+          var chat=g('chat'),cl=g('clog'),ci=g('c_in'),skipMe=0;
+          function cadd(t,c){var d=document.createElement('div');d.className='msg '+c;d.textContent=t;cl.appendChild(d);cl.scrollTop=cl.scrollHeight}
+          function openChat(){chat.classList.add('on');if(!cl.children.length)cadd('Main NOVA hoon. Neeche likho ya mic dabao. (Chat ke liye pehle ACTIVATE dabana hai.)','ai');setTimeout(function(){ci.focus()},150)}
+          function closeChat(){chat.classList.remove('on');ci.blur()}
+          function send(){
+            var t=ci.value.trim();if(!t)return;var r='off';
+            try{r=Android.sendText(t)}catch(e){}
+            if(r==='sent'){ci.value='';cadd(t,'me');try{add(t,'me')}catch(e){}skipMe++}
+            else if(r==='busy'){cadd('NOVA abhi kaam kar raha hai, thoda ruko','ai')}
+            else{cadd('NOVA abhi band hai. Pehle home screen par ACTIVATE dabao, phir yahan likho.','ai')}
+          }
+          g('chatb').onclick=openChat;g('c_close').onclick=closeChat;g('c_send').onclick=send;
+          ci.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();send()}});
+          g('c_mic').onclick=function(){
+            var run=false;try{run=Android.running()}catch(e){}
+            if(!run){var r='';try{r=Android.toggle()}catch(e){}
+              if(r==='started'){try{setOn(true)}catch(e){}cadd('NOVA chalu ho gaya. Ab "'+((window.S&&S.wake)||'nova')+'" bolo ya dobara mic dabao.','ai')}
+              else if(r==='perm'||r==='nomic'){cadd('Mic permission chahiye. Allow dabao ya Settings > Apps > NOVA se allow karo.','ai')}
+              return}
+            try{Android.wakeNow()}catch(e){}cadd('Sun raha hu... bolo','ai')
+          };
+          var _on=window.onNova;
+          window.onNova=function(r,t){
+            if(r==='me'&&skipMe>0){skipMe--;return}
+            if(r==='me'||r==='ai')cadd(t,r);
+            if(_on)_on(r,t)
+          };
+          var _nb=window.novaBack;
+          window.novaBack=function(){if(chat.classList.contains('on')){closeChat();return 'handled'}return _nb?_nb():'exit'};
+          /* if the opening animation ever stalls, never leave the screen covered */
+          setTimeout(function(){try{var i=g('intro');if(i&&i.classList.contains('on')){i.classList.remove('on');i.style.opacity=''}document.body.classList.add('ready')}catch(e){}},9000);
+          })();
+          </script>'''
+              a = '</script></body></html>'
+              assert s.count(a) == 1
+              s = s.replace(a, '</script>' + js + '</body></html>')
+              wr(p, s)
+          print('patched ok')
+          PYEOF
+          python3 /tmp/patch_chat.py .
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "bot@example.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add chat screen, typed commands, intro failsafe, pattern screen entry"
+          git push
