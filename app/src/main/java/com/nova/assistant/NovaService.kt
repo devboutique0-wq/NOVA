@@ -94,6 +94,9 @@ class NovaService : Service() {
     @Volatile private var pending: Pending? = null
     @Volatile private var lastKind = ""                      // kind of the command the last turn ran (decides spoken or silent reply)
     @Volatile private var historyAt = 0L                     // when the cloud chat memory was last used
+    @Volatile private var cloudCoolUntil = 0L                // after a cloud failure the cloud is skipped until this time (AiRouter.cooldownMs)
+    @Volatile private var lastCloudFail = ""                 // Logic.failureKind of the last cloud failure, "" = no failure
+    @Volatile private var cloudActed = false                 // true once a cloud tool ran in this request (then no local answer is added)
     @Volatile private var dictatePending: Pending? = null   // the pending that waits for a DICTATED driving reply (not a yes/no)
     @Volatile private var dictTarget: Driving.Msg? = null    // the message that dictated reply answers (memory only)
     @Volatile private var answerWindow = false
@@ -249,8 +252,14 @@ class NovaService : Service() {
         t.start()
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) LocalBrains.release()   // free the offline model when RAM is short
+    }
+
     override fun onDestroy() {
         alive = false
+        LocalBrains.release()
         Driving.enabled = false
         Driving.inbox.clear()
         DrivingBridge.forgetAll()
@@ -378,16 +387,18 @@ class NovaService : Service() {
     private fun modelOk(dir: File): Boolean =
         File(dir, "am/final.mdl").isFile && File(dir, "graph/HCLr.fst").isFile && File(dir, "graph/Gr.fst").isFile
 
-    private fun loadModel(): Model {
-        val dir = File(filesDir, "model-en")
+    private fun loadModel(): Model = loadModelDir("model-en")
+
+    private fun loadModelDir(name: String): Model {
+        val dir = File(filesDir, name)
         val done = File(dir, ".done")
         if (!done.exists() || !modelOk(dir)) {
-            sys(tr("Pehli baar model tayyar ho raha hai, thoda ruko...", "Preparing the model for the first time..."))
+            if (name == "model-en") sys(tr("Pehli baar model tayyar ho raha hai, thoda ruko...", "Preparing the model for the first time..."))
             dir.deleteRecursively()
-            copyAssets("model-en", dir)
+            copyAssets(name, dir)
             if (!modelOk(dir)) {
                 dir.deleteRecursively()
-                throw IllegalStateException("model files missing inside the app")
+                throw IllegalStateException("model files missing inside the app: $name")
             }
             done.writeText("1")
         }
@@ -396,6 +407,15 @@ class NovaService : Service() {
         } catch (t: Throwable) {
             dir.deleteRecursively()   // corrupt copy: it is rebuilt from the APK on the next start
             throw t
+        }
+    }
+
+    /** Indian-English model for the COMMAND recognizer only. Any problem -> null, and the caller keeps the main model. */
+    private fun loadCommandModel(): Model? {
+        return try {
+            if (assets.list("model-en-in").isNullOrEmpty()) null else loadModelDir("model-en-in")
+        } catch (t: Throwable) {
+            null
         }
     }
 
@@ -427,6 +447,7 @@ class NovaService : Service() {
         var model: Model? = null
         var wake: Recognizer? = null
         var cmd: Recognizer? = null
+        var cmdModel: Model? = null
         var rec: AudioRecord? = null
         var tone: ToneGenerator? = null
         try {
@@ -437,7 +458,9 @@ class NovaService : Service() {
             Logic.setWake(wakeWord)          // a custom wake word must never stay inside the command text
             val wk = Recognizer(md, RATE.toFloat(), Logic.wakeGrammar(wakeWord))
             wake = wk
-            val cm = Recognizer(md, RATE.toFloat())
+            val cmModel = loadCommandModel()   // en-in for commands; wake word and vocabulary stay on model-en
+            cmdModel = cmModel
+            val cm = Recognizer(cmModel ?: md, RATE.toFloat())
             cmd = cm
             val minBuf = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             val rc = AudioRecord(
@@ -474,6 +497,7 @@ class NovaService : Service() {
             var wasBlocked = false
             var readErrors = 0
             var peak = 0.0                    // loudest recent chunk: a wake word must be spoken, not just a faint sound
+            var wakeHits = 0                  // consecutive recognizer results that contained the wake word
             var lastCaptureEnd = 0L           // cooldown against a second false wake right after a turn
             val pre = ArrayList<ShortArray>() // last ~0.5 s of audio, so the first words after the wake word are not lost
 
@@ -541,6 +565,7 @@ class NovaService : Service() {
                     wk.reset()
                     cm.reset()
                     pre.clear()
+                    wakeHits = 0
                     skip = 2
                 }
                 if (skip > 0) { skip--; continue }
@@ -575,9 +600,12 @@ class NovaService : Service() {
                     val done = wk.acceptWaveForm(buf, n)
                     val txt = if (done) wk.getResult() else wk.getPartialResult()
                     val wakeNow = Logic.heardWake(txt, wakeWord)
+                    wakeHits = Logic.nextWakeHits(wakeHits, wakeNow)
                     if (wakeNow && (peak < maxOf(900.0, noise * 3.0) || System.currentTimeMillis() - lastCaptureEnd < Logic.WAKE_COOLDOWN_MS)) {
                         wk.reset()                 // too faint or too soon: a false wake (TV, room noise, echo of our voice)
-                    } else if (wakeNow) {
+                        wakeHits = 0
+                    } else if (wakeNow && Logic.wakeConfirmed(wakeHits, done)) {
+                        wakeHits = 0
                         pending = null // a new command cancels any waiting confirmation
                         dictatePending = null
                         dictTarget = null
@@ -617,6 +645,7 @@ class NovaService : Service() {
                         listening = false
                         lastCaptureEnd = System.currentTimeMillis()
                         val isAnswer = answerCapture
+                        val wasDict = dictCapture
                         answerCapture = false
                         dictCapture = false
                         if (!endpoint) {
@@ -630,17 +659,17 @@ class NovaService : Service() {
                         val dur = totalMs
                         cm.reset()
                         wk.reset()
-                        if (!heard) {
-                            mode("on")
-                            armSleep(2500L)
+                        if (Logic.isFalseWake(heard, text, isAnswer || wasDict, SecureStore.hasGroq(this))) {
+                            h.post { hud?.setReply("") }
+                            if (isAnswer || wasDict) mode("on") else mode("sleep")   // a false wake leaves quietly: no speech, no card
+                            armSleep(if (isAnswer || wasDict) 2500L else 800L)
                             if (isAnswer) {
                                 pending = null
                                 dictatePending = null
                                 dictTarget = null
                                 say(tr("Jawab nahi mila, isliye cancel kar diya", "No answer heard, so I cancelled it"))
-                            } else {
+                            } else if (!wasDict) {
                                 sys(tr("Kuch suna nahi, dobara \"$wakeWord\" bolo", "Heard nothing, say \"$wakeWord\" again"))
-                                h.post { hud?.setReply(tr("Kuch suna nahi", "Heard nothing")) }
                             }
                             continue
                         }
@@ -664,6 +693,7 @@ class NovaService : Service() {
             try { tone?.release() } catch (t: Throwable) { }
             try { wake?.close() } catch (t: Throwable) { }
             try { cmd?.close() } catch (t: Throwable) { }
+            try { cmdModel?.close() } catch (t: Throwable) { }
             try { model?.close() } catch (t: Throwable) { }
             if (alive) {   // the loop ended by itself (error): do not pretend to listen
                 alive = false
@@ -918,6 +948,13 @@ class NovaService : Service() {
     private fun handle(pcm: ByteArray, text: String): String {
         listener?.invoke("me", "🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)")))
         h.post { hud?.setHeard("🎤 " + (if (text.isNotBlank()) text else tr("(awaaz)", "(voice)"))) }
+        val ls = if (text.isBlank()) null else LocalSkills.answer(text, java.time.LocalDate.now(), cfg.lang)   // Layer 0: calc / convert / dates / emergency numbers, offline
+        if (ls != null) {
+            lastTurnLocal = true
+            lastKind = "local_skill"
+            brain.record(System.currentTimeMillis(), text, "local", "local_skill")
+            return ls
+        }
         val c0 = if (text.isBlank()) null else Logic.classify(text)
         val sk = if (c0 == null && text.isNotBlank()) brain.resolve(text) else null   // Layer 1: shortcuts + fuzzy match
         var c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
@@ -933,7 +970,9 @@ class NovaService : Service() {
         else if (sk != null) brain.record(now, text, "skill", sk.name)
         else brain.record(now, text, "unknown", "")
         if (c != null) return runCommand(c)                       // local, offline, no network
-        if (text.isNotBlank()) {                                  // Layer 2: optional offline model (a translator only)
+        val said = if (groqText.isNotBlank()) groqText else text
+        val junk = groqText.isBlank() && Logic.isJunk(text)       // noise / cough / TV: never sent to any model, never acted on
+        if (text.isNotBlank() && !junk) {                         // Layer 2: optional offline model (a translator only)
             val line = LocalBrains.ask(this, text)
             val mc = line?.let { Logic.classify(it) }
             if (line != null && mc != null && LocalBrainRules.accepted(mc)) {
@@ -946,17 +985,38 @@ class NovaService : Service() {
                 return runCommand(mc)
             }
         }
-        if (SecureStore.hasKeys(this)) {                           // only when the user added an optional key
-            if (groqText.isBlank() && Logic.isJunk(text)) {                             // noise / cough / TV: never sent to the cloud, never acted on
-                return tr("Samajh nahi aaya, dobara bolo", "I did not catch that, please say it again")
-            }
-            lastKind = "cloud"
-            return askCloud(pcm, if (groqText.isNotBlank()) groqText else text)
+        // Answer sources in order: cloud (only with the user's key, not cooling down) and the offline chat model (if installed).
+        val steps = AiRouter.plan(SecureStore.hasKeys(this), now < cloudCoolUntil, LocalBrains.available(this), said)
+        if (steps.isNotEmpty()) {
+            if (junk) return tr("Samajh nahi aaya, dobara bolo", "I did not catch that, please say it again")
+            val ans = Routing.run(steps, said, { cloudStep(pcm, said) }, { localAnswer(said) },
+                { ms -> cloudCoolUntil = System.currentTimeMillis() + ms })
+            if (ans != null) return ans
         }
         return tr(
             "Ye command local mode mein samajh nahi aaya. Battery, torch, volume, ya open YouTube jaise commands bolo. Khule sawaalon ke liye settings mein API key (optional) daalo.",
             "I did not understand that as a local command. Try battery, torch, volume or open YouTube. For open questions add an optional API key in Settings."
         )
+    }
+
+    /** The cloud as one answer source: runs askCloud and reports whether it failed and whether a tool already acted. */
+    private fun cloudStep(pcm: ByteArray, said: String): Routing.CloudResult {
+        lastCloudFail = ""
+        cloudActed = false
+        lastKind = "cloud"
+        val r = askCloud(pcm, said)
+        val fail = lastCloudFail
+        return Routing.CloudResult(r, fail.isEmpty(), cloudActed, if (fail.isEmpty()) "other" else fail)
+    }
+
+    /** The offline chat model as one answer source: TEXT ONLY, never an action. null = nothing to say. */
+    private fun localAnswer(said: String): String? {
+        if (said.isBlank()) return null
+        val en = cfg.lang == "en"
+        LocalChat.preAnswer(said, en)?.let { lastKind = "local_chat"; return it }   // crisis / live-info questions get a fixed safe answer
+        val a = LocalBrains.chat(this, said, en) ?: return null
+        lastKind = "local_chat"
+        return (if (en) LocalChat.offlinePrefixEn else LocalChat.offlinePrefixHi) + a
     }
 
     /** The user's answer to a pending confirmation. ONLY a clear local "yes" approves; the cloud is never asked. */
@@ -1176,6 +1236,9 @@ class NovaService : Service() {
                 "settings" -> openSettings(c.arg, c.num == 2)
                 "camera" -> launch(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), null, "Camera")
                 "open_app" -> openApp(c.arg)
+                "timer" -> timerTool(c.num, c.arg)
+                "alarm" -> alarmTool(c.num / 60, c.num % 60, c.arg)
+                "alarm_any" -> Timers.resolveAny(c.num, java.time.LocalTime.now()).let { alarmTool(it / 60, it % 60, c.arg) }
                 "tap" -> tapCmd(c.arg)
                 "type" -> typeCmd(c.arg)
                 "scroll" -> scrollCmd(c.arg)
@@ -1504,7 +1567,7 @@ class NovaService : Service() {
         val i = Intent(AlarmClock.ACTION_SET_ALARM)
             .putExtra(AlarmClock.EXTRA_HOUR, hour).putExtra(AlarmClock.EXTRA_MINUTES, minute)
             .putExtra(AlarmClock.EXTRA_MESSAGE, label).putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-        val t = String.format(Locale.ENGLISH, "%02d:%02d", hour, minute)
+        val t = Timers.clock(hour * 60 + minute)
         return if (fire(i)) R(true, tr("$t ke alarm ki request bheji. Android confirm nahi karta, clock app mein dekh lo",
             "Requested an alarm for $t. Android gives no confirmation, please check the clock app"))
         else R(false, tr("Alarm set karne wala app nahi mila", "No app could set the alarm"))
@@ -1515,8 +1578,9 @@ class NovaService : Service() {
         val i = Intent(AlarmClock.ACTION_SET_TIMER)
             .putExtra(AlarmClock.EXTRA_LENGTH, seconds).putExtra(AlarmClock.EXTRA_MESSAGE, label)
             .putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-        return if (fire(i)) R(true, tr("$seconds second ke timer ki request bheji. Android confirm nahi karta",
-            "Requested a $seconds second timer. Android gives no confirmation"))
+        val d = Timers.human(seconds, cfg.lang == "en")
+        return if (fire(i)) R(true, tr("$d ke timer ki request bheji. Android confirm nahi karta, clock app mein dekh lo",
+            "Requested a $d timer. Android gives no confirmation, please check the clock app"))
         else R(false, tr("Timer set karne wala app nahi mila", "No app could set the timer"))
     }
 
@@ -1672,7 +1736,7 @@ class NovaService : Service() {
         return sb.toString().trim()
     }
 
-    private fun cloudFailure(code: Int): String = when (Logic.failureKind(code)) {
+    private fun cloudFailure(code: Int): String = when (Logic.failureKind(code).also { lastCloudFail = it }) {
         "nokey" -> tr("AI key nahi hai. Local commands chalte rahenge", "No AI key is set. Local commands still work")
         "network" -> tr("Internet nahi hai ya bahut slow hai. Local commands phir bhi chalte hain", "No internet or it is too slow. Local commands still work")
         "key" -> tr("API key galat ya band lagti hai. Settings mein check karo", "The API key looks wrong or disabled. Check it in Settings")
@@ -1775,8 +1839,8 @@ class NovaService : Service() {
         for (step in 0 until Logic.MAX_TOOL_STEPS) {
             val (code, resp) = postFallback(cloudBody(contents, true, systemPrompt()))
             if (code !in 200..299) return cloudFailure(code)
-            val content = candidateContent(resp) ?: return tr("Jawab nahi mila", "No answer received")
-            val rparts = content.optJSONArray("parts") ?: return tr("Jawab nahi mila", "No answer received")
+            val content = candidateContent(resp) ?: run { lastCloudFail = "other"; return tr("Jawab nahi mila", "No answer received") }
+            val rparts = content.optJSONArray("parts") ?: run { lastCloudFail = "other"; return tr("Jawab nahi mila", "No answer received") }
             val calls = ArrayList<JSONObject>()
             val sb = StringBuilder()
             for (i in 0 until rparts.length()) {
@@ -1791,6 +1855,7 @@ class NovaService : Service() {
             }
             contents.put(content)
             val res = JSONArray()
+            cloudActed = true                       // a tool is about to run: never add a local answer after this
             for (fc in calls) {
                 val name = fc.optString("name")
                 val out = if (executed++ >= 8) "skipped: too many tool calls"
@@ -1805,6 +1870,7 @@ class NovaService : Service() {
             }
             contents.put(JSONObject().put("role", "user").put("parts", res))
         }
+        lastCloudFail = "other"
         return tr("Kaam poora nahi ho paya", "I could not finish that")
     }
 

@@ -52,8 +52,11 @@ object Updater {
     /** https only, no user-info tricks, host must be on the list (or equal to [extraHost], the feed's own host). */
     fun hostAllowed(url: String, extraHost: String? = null): Boolean {
         val h = hostOf(url) ?: return false
-        return h in HOSTS || (extraHost != null && h == extraHost.lowercase())
+        return h in HOSTS || isHfHost(h) || (extraHost != null && h == extraHost.lowercase())
     }
+
+    /** Hugging Face serves big files from changing CDN hosts under its own domains; the SHA-256 pin protects the content. */
+    fun isHfHost(h: String): Boolean = h.endsWith(".hf.co") || h.endsWith(".huggingface.co")
 
     /** The feed URL itself is chosen by the user, so any https host is fine - but it must be https. */
     fun feedUrlOk(url: String): Boolean = hostOf(url.trim()) != null && url.trim().length <= 300

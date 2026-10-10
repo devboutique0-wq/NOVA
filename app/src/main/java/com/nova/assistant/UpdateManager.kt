@@ -220,8 +220,10 @@ object UpdateManager {
         }
         synchronized(lock) {
             val s = load(ctx)
+            val keepBuiltIn = s.offers.any { it.id == ModelCatalog.ID }     // the built-in offline model survives a feed refresh
             s.offers.clear()
             s.offers.addAll(items)
+            if (keepBuiltIn && s.offers.none { it.id == ModelCatalog.ID }) s.offers.add(ModelCatalog.ITEM)
             s.feedHost = host
             s.lastCheck = System.currentTimeMillis()
             save(ctx, s)
@@ -230,6 +232,23 @@ object UpdateManager {
     }
 
     fun lastCheck(ctx: Context): Long = synchronized(lock) { load(ctx).lastCheck }
+
+    /**
+     * Puts the built-in offline model (ModelCatalog.ITEM) on the offer list so the user can tap DOWNLOAD.
+     * Nothing is downloaded here. null = offered, otherwise a short reason.
+     */
+    fun offerOfflineBrain(ctx: Context): String? = synchronized(lock) {
+        val s = load(ctx)
+        val item = ModelCatalog.ITEM
+        val why = Updater.validate(item, appVersion(ctx), s.feedHost)
+        if (why != null) return@synchronized why
+        s.declined.remove(item.id)
+        if (s.offers.none { it.id == item.id }) s.offers.add(item)
+        save(ctx, s)
+        null
+    }
+
+    fun modelInstalledId(ctx: Context): String = synchronized(lock) { load(ctx).modelId }
 
     // ------------------------------------------------------------------ install (after the user said yes)
 
@@ -259,6 +278,21 @@ object UpdateManager {
 
         val dir = File(ctx.filesDir, "updates"); dir.mkdirs()
         val part = File(dir, Updater.safeName(id) + ".part")
+        if (item.type == "model") {
+            // big file: resumable download (a stopped download keeps the .part file; tapping again continues)
+            status[id] = "downloading 0%"
+            val r = ModelDownload.download(
+                item.url, part, item.size, item.sha256,
+                { Updater.hostAllowed(it, s0.feedHost) }, { false },
+                { pct -> status[id] = "downloading $pct%" }, dir.usableSpace
+            )
+            return when (r) {
+                is ModelDownload.Result.Ok -> applyModel(ctx, item, r.file)
+                is ModelDownload.Result.Fail ->
+                    if (r.resumable) Pair(false, "Download stopped (" + r.reason + "). Tap again to resume")
+                    else Pair(false, "Download refused (" + r.reason + "), the file was discarded")
+            }
+        }
         if (dir.usableSpace < item.size + item.size / 5) return Pair(false, "Not enough free storage")
 
         status[id] = "downloading 0%"

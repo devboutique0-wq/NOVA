@@ -14,6 +14,9 @@ interface LocalBrain {
 
     /** Returns the raw model text, or null on failure. May be slow; the caller applies a time limit. */
     fun complete(prompt: String): String?
+
+    /** Frees the native model (RAM). Called when the phone is short on memory and when the service stops. */
+    fun close() {}
 }
 
 object LocalBrainRules {

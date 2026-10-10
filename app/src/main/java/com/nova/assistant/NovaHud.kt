@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -21,15 +22,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
-import java.util.Random
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sin
 
 /**
- * Pure drawing logic for the "transformer" card. No Android window code here, so it is easy to reason about.
- * 12 steel plates fly in from random directions, spinning, and snap together into one card; the text appears
- * after they have joined. Reverse for hiding.
+ * Pure drawing maths for the NOVA card (no Android window code). The card is a dark glass panel with a glowing
+ * orb; it fades and scales in. (The plate helpers of the old "transformer" card are kept only because they are tested.)
  */
 internal object HudMath {
     const val COLS = 4
@@ -49,6 +48,19 @@ internal object HudMath {
         val c3 = c1 + 1f
         val u = x - 1f
         return 1f + c3 * u * u * u + c1 * u * u
+    }
+
+    /** Pop-in curve for the glass card: t 0..1 -> 0..1, fast start, soft landing. */
+    fun popEase(t: Float): Float {
+        val k = t.coerceIn(0f, 1f)
+        val u = 1f - k
+        return 1f - u * u * u
+    }
+
+    /** Brightness 0..1 of the glowing border: a slow breathing, a little stronger while listening. */
+    fun glowLevel(nowMs: Long, state: String): Float {
+        val base = if (state == "listen") 0.65f else 0.5f
+        return (base + 0.25f * sin(nowMs / 450f)).coerceIn(0f, 1f)
     }
 
     const val BARS = 28
@@ -140,7 +152,7 @@ class NovaHud(private val ctx: Context) {
             PixelFormat.TRANSLUCENT
         )
         lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        lp.y = (72 * ctx.resources.displayMetrics.density).toInt()
+        lp.y = (44 * ctx.resources.displayMetrics.density).toInt()
         try {
             wm.addView(nv, lp)
             view = nv
@@ -203,8 +215,11 @@ class NovaHud(private val ctx: Context) {
 
 private class HudView(ctx: Context) : View(ctx) {
     private val d = ctx.resources.displayMetrics.density
-    private val cardW = (minOf(ctx.resources.displayMetrics.widthPixels - 40 * d, 340 * d)).toInt()
-    private val cardH = (206 * d).toInt()
+    private val margin = 10f * d                      // room around the card for the glow
+    private val cardW = (minOf(ctx.resources.displayMetrics.widthPixels - 24 * d, 380 * d)).toInt()
+    private val cardH = (190f * d).toInt()
+    private val viewW = cardW + (2 * margin).toInt()
+    private val viewH = cardH + (2 * margin).toInt()
 
     var heard = ""
     var reply = ""
@@ -213,58 +228,48 @@ private class HudView(ctx: Context) : View(ctx) {
     @Volatile var level = 0f            // mic loudness 0..1 (written from the audio thread)
     private var smooth = 0f
 
-    private var t = 0f                     // 0 = scattered, 1 = assembled
+    private var t = 0f                     // 0 = hidden, 1 = fully shown
     private var anim: ValueAnimator? = null
-    private var pulse = 0f
+    private var ticker: ValueAnimator? = null
 
-    private val rnd = Random(7L)
-    private val fromX = FloatArray(HudMath.PANELS)
-    private val fromY = FloatArray(HudMath.PANELS)
-    private val fromRot = FloatArray(HudMath.PANELS)
+    private val cyan = 0xFF27E1FF.toInt()
+    private val blue = 0xFF2F7BFF.toInt()
+    private val violet = 0xFFA35CFF.toInt()
 
-    private val plate = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f * d; color = 0xFF27E1FF.toInt() }
-    private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 3f * d; color = 0xFF27E1FF.toInt() }
-    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF27E1FF.toInt() }
-    private val head = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF27E1FF.toInt(); textSize = 12f * d; typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-        letterSpacing = 0.15f
-    }
-    private val small = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF8FA3B5.toInt(); textSize = 12f * d }
-    private val big = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEAF6FF.toInt(); textSize = 15f * d }
-    private val rect = RectF()
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val border = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val bar = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f * d }
-    private val scan = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var plateShader: LinearGradient? = null
-    private val core = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f * d; strokeCap = Paint.Cap.ROUND; color = 0xFF2FE6FF.toInt() }
-    private val inset = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF050A19.toInt() }
-    private val strip = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = 1.6f * d; strokeCap = Paint.Cap.ROUND; color = 0xFF2FE6FF.toInt() }
-    private val rivet = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFB9D0F0.toInt() }
-    private val beam = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val inRect = RectF()
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.6f * d }
+    private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2.4f * d; strokeCap = Paint.Cap.ROUND }
+    private val orbFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val dot = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val title = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); textSize = 18f * d; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD) }
+    private val sub = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9FB4D6.toInt(); textSize = 12.5f * d }
+    private val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEAF2FF.toInt(); textSize = 14.5f * d }
+    private val hint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF6F86AD.toInt(); textSize = 13f * d }
+    private val rect = RectF()
+    private val oval = RectF()
+    private var fillShader: LinearGradient? = null
+    private var borderShader: LinearGradient? = null
+    private var barShader: LinearGradient? = null
 
     init {
-        for (i in 0 until HudMath.PANELS) {
-            val ang = rnd.nextFloat() * (2.0 * Math.PI).toFloat()
-            val dist = (220f + rnd.nextFloat() * 260f) * d
-            fromX[i] = Math.cos(ang.toDouble()).toFloat() * dist
-            fromY[i] = Math.sin(ang.toDouble()).toFloat() * dist
-            fromRot[i] = (rnd.nextFloat() - 0.5f) * 540f
-        }
         setOnClickListener { onDismissTap?.invoke() }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(cardW, cardH)
+        setMeasuredDimension(viewW, viewH)
     }
 
     fun changeState(s: String) { state = s; invalidate() }
 
-    fun assemble() { run(0f, 1f, 650L, null) }
-    fun disassemble(end: () -> Unit) { run(t, 0f, 420L, end) }
-    fun cancelAnim() { anim?.cancel(); anim = null }
+    fun assemble() { run(0f, 1f, 360L, null) }
+    fun disassemble(end: () -> Unit) { run(t, 0f, 240L, end) }
+    fun cancelAnim() {
+        anim?.cancel(); anim = null
+        ticker?.cancel(); ticker = null
+    }
 
     private fun run(from: Float, to: Float, ms: Long, end: (() -> Unit)?) {
         anim?.cancel()
@@ -278,161 +283,163 @@ private class HudView(ctx: Context) : View(ctx) {
             override fun onAnimationEnd(animation: android.animation.Animator) {
                 if (cancelled) return          // a newer animation replaced this one
                 if (end != null) end()
-                else startPulse()
+                else startTicker()
             }
         })
         anim = a
         a.start()
     }
 
-    private fun startPulse() {
+    /** Keeps the orb, waveform and glow moving while the card is shown. */
+    private fun startTicker() {
+        ticker?.cancel()
         val a = ValueAnimator.ofFloat(0f, 1f)
-        a.duration = 1100L
+        a.duration = 1000L
         a.repeatCount = ValueAnimator.INFINITE
-        a.repeatMode = ValueAnimator.REVERSE
-        a.addUpdateListener { pulse = it.animatedValue as Float; invalidate() }
-        anim = a
+        a.interpolator = LinearInterpolator()
+        a.addUpdateListener { invalidate() }
+        ticker = a
         a.start()
     }
 
     override fun onDetachedFromWindow() {
-        anim?.cancel()
-        anim = null
+        anim?.cancel(); anim = null
+        ticker?.cancel(); ticker = null
         super.onDetachedFromWindow()
     }
 
+    private fun stateColor(): Int = when (state) {
+        "think" -> violet
+        "listen" -> cyan
+        else -> blue
+    }
+
     override fun onDraw(c: Canvas) {
-        val w = cardW.toFloat()
-        val h = cardH.toFloat()
-        val gap = 2f * d
-        val pw = w / HudMath.COLS
-        val ph = h / HudMath.ROWS
-        for (i in 0 until HudMath.PANELS) {
-            val col = i % HudMath.COLS
-            val row = i / HudMath.COLS
-            val p = HudMath.plateProgress(i, t)
-            val e = HudMath.easeOutBack(p)
-            val cx = col * pw + pw / 2f
-            val cy = row * ph + ph / 2f
-            val k = 1f - e
-            c.save()
-            c.translate(cx + fromX[i] * k, cy + fromY[i] * k)
-            c.rotate(fromRot[i] * k)
-            val s = 0.35f + 0.65f * minOf(e, 1f)
-            c.scale(s, s)
-            val sh = plateShader ?: LinearGradient(
-                -pw / 2f, -ph / 2f, pw / 2f, ph / 2f,
-                intArrayOf(0xFF1A2640.toInt(), 0xFF6F86AD.toInt(), 0xFF0F1A2E.toInt(), 0xFF8FA6C9.toInt(), 0xFF16213A.toInt()),
-                floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f), Shader.TileMode.CLAMP
-            ).also { plateShader = it }
-            val pa = minOf(1f, p * 2.5f)
-            plate.shader = sh
-            plate.alpha = (255 * pa).toInt()
-            rect.set(-pw / 2f + gap, -ph / 2f + gap, pw / 2f - gap, ph / 2f - gap)
-            c.drawRoundRect(rect, 5f * d, 5f * d, plate)
-            // raised inner panel, light strip and rivets (the pod look)
-            inRect.set(rect.left + 4f * d, rect.top + 4f * d, rect.right - 4f * d, rect.bottom - 4f * d)
-            inset.alpha = (120 * pa).toInt()
-            c.drawRoundRect(inRect, 3f * d, 3f * d, inset)
-            strip.alpha = (255 * pa * (0.35f + 0.65f * pulse)).toInt()
-            c.drawLine(inRect.left + 4f * d, inRect.top, inRect.right - 4f * d, inRect.top, strip)
-            rivet.alpha = (230 * pa).toInt()
-            val rr = 1.3f * d
-            c.drawCircle(rect.left + 2.5f * d, rect.top + 2.5f * d, rr, rivet)
-            c.drawCircle(rect.right - 2.5f * d, rect.top + 2.5f * d, rr, rivet)
-            c.drawCircle(rect.left + 2.5f * d, rect.bottom - 2.5f * d, rr, rivet)
-            c.drawCircle(rect.right - 2.5f * d, rect.bottom - 2.5f * d, rr, rivet)
-            edge.alpha = (200 * pa).toInt()
-            c.drawRoundRect(rect, 5f * d, 5f * d, edge)
-            c.restore()
-        }
-
-        // blue seam flash through the middle as the last plates click together
-        val fl = HudMath.seamFlare(t)
-        if (fl > 0f) {
-            val bx = w / 2f
-            beam.shader = LinearGradient(
-                bx - 16f * d, 0f, bx + 16f * d, 0f,
-                intArrayOf(0x002FB8FF, 0xFFBFEFFF.toInt(), 0x002FB8FF), null, Shader.TileMode.CLAMP
-            )
-            beam.alpha = (255 * fl).toInt()
-            c.drawRect(bx - 16f * d, 0f, bx + 16f * d, h, beam)
-        }
-
-        val ta = HudMath.textAlpha(t)
-        if (ta <= 0f) return
-        // glowing frame once joined
-        glow.alpha = ((60 + 90 * pulse) * ta).toInt().coerceIn(0, 255)
-        rect.set(1.5f * d, 1.5f * d, w - 1.5f * d, h - 1.5f * d)
-        c.drawRoundRect(rect, 8f * d, 8f * d, glow)
-
-        val pad = 16f * d
-        val label = when (state) {
-            "listen" -> "N O V A  //  LISTENING"
-            "think" -> "N O V A  //  THINKING"
-            else -> "N O V A"
-        }
-        // glowing core badge with two spinning arcs
-        val ccx = pad + 10f * d
-        val ccy = pad + 8f * d
-        core.color = 0xFF04122B.toInt()
-        core.alpha = (255 * ta).toInt()
-        c.drawCircle(ccx, ccy, 7f * d, core)
-        dot.alpha = (ta * (140 + 115 * pulse)).toInt().coerceIn(0, 255)
-        c.drawCircle(ccx, ccy, 3f * d, dot)
-        val spin = (SystemClock.uptimeMillis() % 2400L) / 2400f * 360f
-        arc.alpha = (255 * ta).toInt()
-        inRect.set(ccx - 10f * d, ccy - 10f * d, ccx + 10f * d, ccy + 10f * d)
-        c.drawArc(inRect, spin, 100f, false, arc)
-        c.drawArc(inRect, spin + 180f, 100f, false, arc)
-        head.alpha = (255 * ta).toInt()
-        c.drawText(label, pad + 26f * d, pad + 12f * d, head)
-
-        var y = pad + 26f * d
-        if (heard.isNotBlank()) {
-            small.alpha = (255 * ta).toInt()
-            c.drawText(TextUtils.ellipsize(heard, small, w - 2 * pad, TextUtils.TruncateAt.END).toString(), pad, y + 10f * d, small)
-        }
-        y += 22f * d
-        val body = if (reply.isNotBlank()) reply else if (state == "listen") "Bolo, main sun raha hoon..." else "..."
-        big.alpha = (255 * ta).toInt()
-        val lay = build(body, big, (w - 2 * pad).toInt(), 4)
-        c.save()
-        c.translate(pad, y)
-        lay.draw(c)
-        c.restore()
-
-        // ---- motion layer: ripples, mic waveform, thinking scanner (all drawn each frame by the pulse animator)
+        val e = HudMath.popEase(t)
+        if (e <= 0f) return
         val now = SystemClock.uptimeMillis()
         smooth += (level - smooth) * 0.3f
-        val cx0 = pad + 10f * d
-        val cy0 = pad + 8f * d
+        val w = viewW.toFloat()
+        val h = viewH.toFloat()
+        val left = margin
+        val top = margin
+        val right = w - margin
+        val bottom = h - margin
+        val radius = 24f * d
+
+        val sc = 0.9f + 0.1f * e
+        val sv = c.save()
+        c.scale(sc, sc, w / 2f, h / 2f)
+        val layer = c.saveLayerAlpha(0f, 0f, w, h, (255 * e).toInt().coerceIn(0, 255))
+
+        // glass body
+        val fs = fillShader ?: LinearGradient(0f, top, 0f, bottom,
+            intArrayOf(0xF2101C44.toInt(), 0xF20A1030.toInt(), 0xF2160C38.toInt()), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP
+        ).also { fillShader = it }
+        fill.shader = fs
+        rect.set(left, top, right, bottom)
+        c.drawRoundRect(rect, radius, radius, fill)
+
+        // glowing gradient border: three soft outer strokes + one crisp line
+        val gl = HudMath.glowLevel(now, state)
+        val bs = borderShader ?: LinearGradient(left, top, right, bottom,
+            intArrayOf(cyan, blue, violet), null, Shader.TileMode.CLAMP
+        ).also { borderShader = it }
+        border.shader = bs
+        for (k in 3 downTo 1) {
+            border.strokeWidth = (1.5f + k * 2.6f) * d
+            border.alpha = (28 * gl * (4 - k)).toInt().coerceIn(0, 255)
+            c.drawRoundRect(rect, radius, radius, border)
+        }
+        border.strokeWidth = 1.5f * d
+        border.alpha = (150 + 100 * gl).toInt().coerceIn(0, 255)
+        c.drawRoundRect(rect, radius, radius, border)
+
+        // orb
+        val pad = 16f * d
+        val r = 22f * d
+        val ocx = left + pad + r + 4f * d
+        val ocy = top + pad + r + 2f * d
+        val sColor = stateColor()
+        halo.shader = RadialGradient(ocx, ocy, r * 2.1f, intArrayOf((sColor and 0x00FFFFFF) or 0x66000000, (sColor and 0x00FFFFFF)), null, Shader.TileMode.CLAMP)
+        c.drawCircle(ocx, ocy, r * 2.1f, halo)
         if (state == "listen") {
             for (k in 0 until 3) {
                 val p = ((now % 1800L) / 1800f + k / 3f) % 1f
-                val ra = (200 * ta * HudMath.rippleAlpha(p)).toInt().coerceIn(0, 255)
-                ring.color = 0x0027E1FF or (ra shl 24)
-                c.drawCircle(cx0, cy0, (6f + (14f + 22f * smooth) * p) * d, ring)
+                val ra = (190 * HudMath.rippleAlpha(p)).toInt().coerceIn(0, 255)
+                ring.color = (sColor and 0x00FFFFFF) or (ra shl 24)
+                c.drawCircle(ocx, ocy, r * (0.9f + (0.9f + 0.9f * smooth) * p), ring)
             }
         }
+        orbFill.shader = RadialGradient(ocx - r * 0.25f, ocy - r * 0.3f, r,
+            intArrayOf(0xFF1B2C6B.toInt(), 0xFF070D27.toInt()), null, Shader.TileMode.CLAMP)
+        c.drawCircle(ocx, ocy, r * 0.82f, orbFill)
+        val spin = (now % (if (state == "think") 900L else 2600L)) / (if (state == "think") 900f else 2600f) * 360f
+        oval.set(ocx - r, ocy - r, ocx + r, ocy + r)
+        arc.color = cyan
+        c.drawArc(oval, spin, 110f, false, arc)
+        arc.color = violet
+        c.drawArc(oval, -spin * 0.7f + 180f, 110f, false, arc)
+        if (state == "think") {
+            for (k in 0 until 3) {
+                val a = Math.toRadians((spin * 1.3f + k * 120f).toDouble())
+                dot.color = HudMath.mix(cyan, violet, k / 2f)
+                c.drawCircle(ocx + (Math.cos(a) * r * 0.42f).toFloat(), ocy + (Math.sin(a) * r * 0.42f).toFloat(), 2.6f * d, dot)
+            }
+        } else {
+            for (k in 0 until 5) {
+                val v = HudMath.barHeight(k * 5, HudMath.BARS, smooth, now, state)
+                val bh = (3f + v * 15f) * d
+                bar.shader = null
+                bar.color = HudMath.mix(cyan, violet, k / 4f)
+                val bx = ocx + (k - 2) * 5.2f * d
+                rect.set(bx - 1.5f * d, ocy - bh / 2f, bx + 1.5f * d, ocy + bh / 2f)
+                c.drawRoundRect(rect, 1.5f * d, 1.5f * d, bar)
+            }
+        }
+
+        // heading + live text
+        val tx = ocx + r + 18f * d
+        val textW = right - pad - tx
+        val head = when (state) {
+            "listen" -> "Listening\u2026"
+            "think" -> "Thinking\u2026"
+            else -> "NOVA"
+        }
+        c.drawText(head, tx, ocy - 2f * d, title)
+        val line = heard.removePrefix("\uD83C\uDFA4").trim().ifBlank {
+            when (state) { "listen" -> "I'm listening. You can speak now."; "think" -> "Working on your request"; else -> "More than an assistant" }
+        }
+        c.drawText(TextUtils.ellipsize(line, sub, textW, TextUtils.TruncateAt.END).toString(), tx, ocy + 18f * d, sub)
+
+        // waveform
         val n = HudMath.BARS
-        val bw = (w - 2 * pad) / n
-        val base = h - 14f * d
+        val bx0 = left + pad
+        val bw = (right - pad - bx0) / n
+        val base = top + pad + 96f * d
+        val bs2 = barShader ?: LinearGradient(bx0, 0f, right - pad, 0f, intArrayOf(cyan, blue, violet), null, Shader.TileMode.CLAMP).also { barShader = it }
+        bar.shader = bs2
         for (i in 0 until n) {
             val v = HudMath.barHeight(i, n, smooth, now, state)
-            val bh = 4f * d + v * 30f * d
-            val col = HudMath.mix(0xFF2FE6FF.toInt(), 0xFF1B7CFF.toInt(), i / (n - 1f))
-            bar.color = (col and 0x00FFFFFF) or (((ta * (140 + 115 * v)).toInt().coerceIn(0, 255)) shl 24)
-            rect.set(pad + i * bw + bw * 0.2f, base - bh, pad + i * bw + bw * 0.8f, base)
+            val bh = 3f * d + v * 28f * d
+            bar.alpha = (120 + 135 * v).toInt().coerceIn(0, 255)
+            rect.set(bx0 + i * bw + bw * 0.22f, base - bh, bx0 + i * bw + bw * 0.78f, base)
             c.drawRoundRect(rect, bw * 0.3f, bw * 0.3f, bar)
         }
-        if (state == "think") {                       // a soft light band sweeping over the whole card
-            val sx = ((now % 1100L) / 1100f) * (w + 80f * d) - 40f * d
-            scan.shader = LinearGradient(sx - 40f * d, 0f, sx + 40f * d, 0f,
-                intArrayOf(0x0027E1FF, 0x4027E1FF, 0x0027E1FF), null, Shader.TileMode.CLAMP)
-            rect.set(2f * d, 2f * d, w - 2f * d, h - 2f * d)
-            c.drawRoundRect(rect, 8f * d, 8f * d, scan)
+        bar.shader = null
+
+        // reply (or a hint while nothing was said yet)
+        val by = base + 12f * d
+        val bodyW = (right - pad - bx0).toInt()
+        if (reply.isNotBlank()) {
+            val lay = build(reply, body, bodyW, 3)
+            c.save(); c.translate(bx0, by); lay.draw(c); c.restore()
+        } else if (state == "listen") {
+            val lay = build("\u201Copen YouTube\u201D  \u00B7  \u201Ctorch on\u201D  \u00B7  \u201Cvolume badhao\u201D", hint, bodyW, 2)
+            c.save(); c.translate(bx0, by); lay.draw(c); c.restore()
         }
+        c.restoreToCount(layer)
+        c.restoreToCount(sv)
     }
 
     private fun build(text: String, paint: TextPaint, width: Int, maxLines: Int): StaticLayout {

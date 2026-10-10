@@ -116,7 +116,7 @@ class LogicTest {
         assertEquals(cmd("time"), Logic.classify("what time is it"))
         assertEquals(cmd("time"), Logic.classify("nova what time is it"))
         assertNull(Logic.classify("time zone"))
-        assertNull(Logic.classify("set a timer for five minutes"))
+        assertEquals(Logic.Cmd("timer", "", 300), Logic.classify("set a timer for five minutes"))   // v15b: offline timer
     }
 
     @Test fun classify_date() {
@@ -215,7 +215,7 @@ class LogicTest {
         assertNull(Logic.classify("what is the capital of france"))
         assertNull(Logic.classify("tell me a story about a dragon who loves music and flies over mountains every morning"))
         assertNull(Logic.classify("open " + "a".repeat(200)))
-        assertNull(Logic.classify("set an alarm for seven"))
+        assertEquals(Logic.Cmd("alarm_any", "", 420), Logic.classify("set an alarm for seven"))   // v15b: offline alarm
     }
 
     @Test fun norm_makesVoskTextComparable() {

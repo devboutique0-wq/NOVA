@@ -44,3 +44,19 @@ class HudMotionTest {
         assertEquals(0f, HudMath.seamFlare(1f), 0.0001f)
     }
 }
+
+class HudGlassTest {
+    @org.junit.Test fun popEaseEndpointsAndMonotonic() {
+        org.junit.Assert.assertEquals(0f, HudMath.popEase(0f), 0.0001f)
+        org.junit.Assert.assertEquals(1f, HudMath.popEase(1f), 0.0001f)
+        org.junit.Assert.assertTrue(HudMath.popEase(0.3f) < HudMath.popEase(0.6f))
+        org.junit.Assert.assertEquals(1f, HudMath.popEase(5f), 0.0001f)
+    }
+
+    @org.junit.Test fun glowStaysInRange() {
+        for (st in listOf("listen", "think", "reply")) for (ms in 0L..4000L step 250L) {
+            val g = HudMath.glowLevel(ms, st)
+            org.junit.Assert.assertTrue(g in 0f..1f)
+        }
+    }
+}

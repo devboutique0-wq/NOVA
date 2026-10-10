@@ -575,8 +575,23 @@ class MainActivity : Activity() {
                 .put("battery", (getSystemService(POWER_SERVICE) as? android.os.PowerManager)?.isIgnoringBatteryOptimizations(packageName) == true)
                 .put("feedUrl", cfg.feedUrl)
                 .put("running", NovaService.running)
+                .put("engine", LocalBrains.factory != null)
+                .put("ramMb", totalRamMb())
+                .put("ramOk", ModelCatalog.ramOk(totalRamMb()))
+                .put("brainInstalled", UpdateManager.activeModelPath(this@MainActivity).isNotEmpty())
                 .toString()
         }
+
+        private fun totalRamMb(): Long {
+            val am = getSystemService(ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return 0L
+            val mi = android.app.ActivityManager.MemoryInfo()
+            am.getMemoryInfo(mi)
+            return mi.totalMem / (1024L * 1024L)
+        }
+
+        /** Puts the built-in offline model on the offer list (nothing is downloaded). "ok" or a short reason. */
+        @JavascriptInterface
+        fun offerOfflineBrain(): String = UpdateManager.offerOfflineBrain(this@MainActivity) ?: "ok"
 
         /** Asks Android to stop limiting NOVA's battery use (so the mic service is not killed). The user taps Allow. */
         @JavascriptInterface

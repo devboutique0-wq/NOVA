@@ -162,7 +162,67 @@ button:not(#btn){position:relative;overflow:hidden}
 html.lowfx #btn:after,html.lowfx .orbbox canvas,html.lowfx #dot{animation:none}
 html.lowfx .f{clip-path:none}
 @media (prefers-reduced-motion:reduce){#btn:after,.orbbox canvas,#dot,.typing i{animation:none}}
-</style></head>
+</style>
+<style id="theme-v2">
+/* THEME-V2: holographic glass look, same cyan / blue / violet palette as the floating card. Colours and shapes only: no ids, no scripts. */
+:root{--c1:#27e1ff;--c2:#2f7bff;--c3:#a35cff;--ink:#eaf2ff;--mut:#8fa3c8;--glass:rgba(14,22,56,.62);--line:rgba(80,150,255,.28);--grad:linear-gradient(90deg,#27e1ff,#2f7bff 55%,#a35cff)}
+html,body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:radial-gradient(120% 70% at 50% 0%,#12206a 0%,#080f33 45%,#04061a 100%)}
+body:before{background:radial-gradient(60% 40% at 85% 12%,rgba(163,92,255,.22),transparent 70%),radial-gradient(55% 40% at 10% 60%,rgba(39,225,255,.10),transparent 70%),linear-gradient(rgba(80,150,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(80,150,255,.035) 1px,transparent 1px);background-size:auto,auto,40px 40px,40px 40px}
+#app,.wrap{max-width:560px;margin:0 auto}
+.logo{font-weight:600;letter-spacing:10px;background:linear-gradient(90deg,#eaf8ff,#a9cbff 50%,#dcc0ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 12px rgba(47,123,255,.7))}
+#dot{background:#35e0a0;box-shadow:0 0 10px #35e0a0;-webkit-text-fill-color:initial}
+button.icb{border-radius:14px;border:1px solid var(--line);background:var(--glass);box-shadow:0 0 0 1px rgba(255,255,255,.03) inset}
+button.icb svg{stroke:#bfeaff}
+.status{margin-top:10px;font-size:11px;letter-spacing:3px;color:var(--c1);opacity:.9}
+.badge{margin-top:8px;padding:5px 14px;border-radius:999px;font-size:10px;letter-spacing:1.5px;background:rgba(53,224,160,.08);border:1px solid rgba(53,224,160,.45);color:#7ff3c3}
+.badge.cloud{background:rgba(39,225,255,.08);border-color:rgba(39,225,255,.5);color:var(--c1)}
+.feats{gap:12px}
+.f{flex:0 0 124px;clip-path:none;border-radius:20px;padding:14px 12px;background:linear-gradient(160deg,rgba(47,123,255,.20),rgba(163,92,255,.08) 70%,rgba(255,255,255,.02));border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.03) inset}
+.f svg{width:30px;height:30px;padding:6px;border-radius:10px;background:rgba(39,225,255,.10);border:1px solid rgba(39,225,255,.35);stroke:var(--c1)}
+.f b{margin-top:10px;font-size:11.5px;letter-spacing:1px;color:#fff}
+.f i{opacity:.65;color:var(--mut)}
+.greet{border-radius:18px;border:1px solid var(--line);border-left:3px solid var(--c1);background:linear-gradient(90deg,rgba(47,123,255,.18),rgba(163,92,255,.05))}
+.msg{border-radius:18px;font-size:14px;line-height:1.45}
+.me{background:linear-gradient(135deg,rgba(47,123,255,.34),rgba(163,92,255,.26));border:1px solid rgba(120,150,255,.55);border-bottom-right-radius:6px}
+.ai{background:rgba(39,225,255,.08);border:1px solid rgba(39,225,255,.38);border-bottom-left-radius:6px}
+button{font-family:inherit;color:#e9f6ff;cursor:pointer}
+button.sm{border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.045);color:#cfe4ff;padding:10px 14px;font-size:11px;letter-spacing:1.5px;font-weight:600;box-shadow:none}
+button.sm:active{background:rgba(39,225,255,.18)}
+#btn{padding:16px 24px;border-radius:999px;border:1.5px solid transparent;font-size:14px;font-weight:700;letter-spacing:4px;color:#fff;background:linear-gradient(rgba(10,18,52,.92),rgba(10,18,52,.92)) padding-box,var(--grad) border-box;box-shadow:0 0 26px rgba(47,123,255,.45),0 0 60px rgba(163,92,255,.18)}
+#btn:after{border-radius:999px;border-color:var(--c2)}
+#app>.row{width:100%;gap:8px;padding:12px;margin-top:6px;border-radius:28px;background:var(--glass);border:1px solid var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 -6px 30px rgba(0,0,0,.35)}
+#app>.row #btn{flex:1 1 100%}
+#app>.row button.sm{flex:1 1 0;min-width:0;padding:11px 6px}
+.rp{background:rgba(39,225,255,.32)}
+/* settings */
+#panel{background:linear-gradient(180deg,#0a1240 0%,#050a24 55%,#03061a 100%);padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 48px;max-width:640px;margin:0 auto}
+#panel h2{font-weight:600;letter-spacing:8px;font-size:17px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 10px rgba(47,123,255,.55))}
+#panel label{font-size:12px;letter-spacing:.6px;color:#cfe0ff;opacity:1;font-weight:600}
+#panel input[type=text],#panel input[type=password],#panel select,#panel textarea,#u_feed,#g_key{border-radius:14px;border:1px solid var(--line);background:rgba(4,8,30,.7);color:#fff;padding:12px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s,box-shadow .2s}
+#panel textarea{display:block;width:100%;margin-top:6px}
+#panel input:focus,#panel select:focus,#panel textarea:focus{border-color:var(--c1);box-shadow:0 0 0 3px rgba(39,225,255,.16)}
+#panel small{color:var(--mut);opacity:1}
+#panel .box,#st_box{border-radius:20px;border:1px solid var(--line);background:linear-gradient(160deg,rgba(47,123,255,.12),rgba(163,92,255,.05) 70%,rgba(255,255,255,.015));padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+#st_box b{color:var(--c1)}
+input[type=checkbox],input[type=range]{accent-color:var(--c1)}
+#smsg{color:#ffd98a}
+.ok{color:#7ff3c3}.bad{color:#ff9aa8}
+/* chat, sheets, update centre */
+#chat{background:radial-gradient(120% 60% at 50% 0%,#12206a,#060b26 60%,#03061a)}
+.chh b{font-weight:600;letter-spacing:6px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+.chh{border-bottom:1px solid var(--line)}
+#c_in{border-radius:999px;border:1px solid var(--line);background:rgba(4,8,30,.75);font-family:inherit;outline:none}
+#c_in:focus{border-color:var(--c1);box-shadow:0 0 0 3px rgba(39,225,255,.16)}
+.chi button.icb{background:linear-gradient(rgba(10,18,52,.9),rgba(10,18,52,.9)) padding-box,var(--grad) border-box;border:1.5px solid transparent}
+.ucb,.sh{background:linear-gradient(180deg,#101c4a,#060b26);border:1px solid var(--line);box-shadow:0 0 40px rgba(47,123,255,.25)}
+.sh{border-top:1.5px solid var(--c2)}
+.ucb h3,.sh h3{font-weight:600;color:#fff;text-shadow:none}
+.ucb h4{color:var(--c1)}
+.cmd{border:1px dashed rgba(39,225,255,.55);border-radius:10px;background:rgba(39,225,255,.06)}
+.ucr{border-top:1px solid var(--line)}
+*{scrollbar-width:thin;scrollbar-color:rgba(80,150,255,.35) transparent}
+</style>
+</head>
 <body>
 <div id="intro" class="on"><canvas id="fx"></canvas><div id="cap"><b></b><span></span></div><div id="hint">TAP FOR SOUND</div>
 <div id="spl"><div class="ring"><b>NOVA</b></div><p id="spt">YOUR AI COMPANION</p></div>
@@ -486,17 +546,26 @@ window.onFlow=function(r){
 /* ===== UPDATE CENTER: kya naya hai + permission check + update (har kaam aapki permission se) ===== */
 var UC=$('uc'),ucAutoDone=false,ucNoteTxt='',ucBusy=false,UCV='nova_seen_ver';
 var CHANGES=[
+ 'Offline timer, reminder aur alarm: "nova das minute baad chai yaad dilao", "set alarm for six thirty am". Phone ka Clock app asli ghanti bajata hai.',
+ 'Offline skills (bina internet/key): calculator, unit convert (kg/lb, km/miles, C/F, cup/chamach), tarikh ka hisaab (45 din baad), emergency numbers, basic first aid.',
  'SLEEP MODE: NOVA sirf wake word par jaagta hai. Kaam khatam hote hi wapas so jata hai (chat memory bhi saaf).',
  'Bina wajah ke sawal (shortcut yaad rakhu?) ab nahi aate. Galat wake aur purani command repeat hone ke fixes.',
  'Jawab screen par aate hain. Bolna sirf confirmation, alert aur driving mode mein.',
  'Driving mode: messages bol kar sunata hai, jawab YES ke baad hi bhejta hai.',
- 'Blue Transformer screen, wake par floating card, sound aur vibration.',
+ 'Naya glass card: wake par glowing orb, waveform aur jawab. Poora app naye holographic theme mein.',
+ 'Sirf wake word se jaagta hai: ek akeli awaaz ya shor se nahi. Galat wake par NOVA chup-chaap wapas so jata hai.',
+ 'Command sunne ke liye Indian-English model (behtar pehchaan).',
  'Default assistant option: Home / power button dabake rakhne par NOVA jaagta hai.',
  'Update Center (yeh screen): kya naya hai, kaunsi permission baaki hai, update install.',
+ 'Offline brain (Update Center > OFFLINE BRAIN): model ka download ab ruk kar dobara chalu hota hai, aur net/AI fail hone par jawab offline model se aayega (engine judne ke baad).',
  'Dhyan: yeh sab abhi phone par test hona baaki hai. Kuch gadbad mile to batao.'];
 function el(tg,cl,tx){var e=document.createElement(tg);if(cl)e.className=cl;if(tx!==undefined)e.textContent=tx;return e}
 function ucStat(){try{return JSON.parse(Android.getStatus())}catch(e){return null}}
-function ucOffers(){try{return JSON.parse(Android.getUpdates()).offers||[]}catch(e){return[]}}
+var BRAIN_ID='qwen2.5-0.5b-instruct-q4km';
+function ucAll(){try{return JSON.parse(Android.getUpdates()).offers||[]}catch(e){return[]}}
+function ucOffers(){return ucAll().filter(function(o){return o.id!==BRAIN_ID})}
+function ucBrainOffer(){var a=ucAll();for(var i=0;i<a.length;i++)if(a[i].id===BRAIN_ID)return a[i];return null}
+function ucBrainGet(){ucDo(function(){var r=Android.offerOfflineBrain();var o=ucBrainOffer();if(r!=='ok'||!o){ucNote('Offline brain abhi offer nahi ho paya: '+r);return}ucInstall(o)})}
 function ucDo(fn){try{fn()}catch(e){ucNote('Ye option is version mein available nahi hai')}}
 var UCP=[
  ['mic','Microphone','Wake word sunne ke liye',1,function(){Android.requestBasics()}],
@@ -536,6 +605,17 @@ function ucRender(){
     if(!ok){var bt=el('button','sm','ALLOW');bt.onclick=function(){ucDo(p[4])};r.appendChild(bt)}
     b.appendChild(r);
   });
+  b.appendChild(el('h4',0,'OFFLINE BRAIN'));
+  (function(){
+    var r=el('div','ucr'),t=el('div','t','Offline AI: Qwen2.5-0.5B (491 MB)');
+    var bo=ucBrainOffer(),stx=bo?bo.status:'';
+    var why=st.brainInstalled?'Download ho chuka hai.':(!st.engine?'Abhi engine nahi judi hai, isliye download band hai. Engine agle update mein aayegi.':(!st.ramOk?'Is phone mein RAM kam hai ('+st.ramMb+' MB), isliye offer nahi kiya.':'491 MB hai, Wi-Fi par karo. Chhota model hai: galti kar sakta hai, kabhi koi kaam khud nahi karta.'));
+    t.appendChild(el('small',0,why+(stx&&stx!=='offered'?' - '+stx:'')));r.appendChild(t);
+    if(stx.indexOf('downloading')===0)ucBusy=true;
+    if(st.brainInstalled){var bd=el('button','sm','HATAO');bd.onclick=function(){ucDo(function(){ucNote(Android.rollbackUpdate(BRAIN_ID))});ucRender()};r.appendChild(bd)}
+    else if(st.engine&&st.ramOk&&stx.indexOf('downloading')!==0){var bg=el('button','sm',stx.indexOf('failed')===0?'DOBARA':'DOWNLOAD');bg.onclick=ucBrainGet;r.appendChild(bg)}
+    b.appendChild(r);
+  })();
   b.appendChild(el('h4',0,'UPDATES'));
   if(!of.length)b.appendChild(el('div','ucn',st.feedUrl?'Abhi koi naya update nahi hai.':'Update feed URL set nahi hai (Settings > UPDATES).'));
   of.forEach(function(o){

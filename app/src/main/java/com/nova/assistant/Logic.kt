@@ -107,6 +107,26 @@ object Logic {
     fun heardWake(json: String, wake: String): Boolean =
         rawText(json).split(" ").any { it == wake }
 
+    // ---------------------------------------------------------------- strict wake: only a real "nova" wakes NOVA
+
+    const val WAKE_CONFIRM_HITS = 2          // the wake word must show up in this many consecutive recognizer results (~0.2 s)
+
+    /** Consecutive-hit counter: a single glitch result (noise, TV, a click) resets to 0 on the next chunk and never wakes NOVA. */
+    fun nextWakeHits(prev: Int, heardNow: Boolean): Int = if (heardNow) prev + 1 else 0
+
+    /** A finished (final) wake result counts at once; a partial one must be repeated first. */
+    fun wakeConfirmed(hits: Int, isFinal: Boolean): Boolean = hits >= 1 && (isFinal || hits >= WAKE_CONFIRM_HITS)
+
+    /**
+     * True when a wake turned out to be false: nothing was said, or only noise came out (offline mode). NOVA then goes back to
+     * sleep quietly - no spoken "I did not understand", no card left behind. Never for yes/no answers and dictated replies.
+     */
+    fun isFalseWake(heard: Boolean, text: String, isAnswerOrDictation: Boolean, hasCloudHearing: Boolean): Boolean {
+        if (!heard) return true
+        if (isAnswerOrDictation || hasCloudHearing) return false
+        return isJunk(text)
+    }
+
     // ---------------------------------------------------------------- yes / no
 
     private val YES = setOf("yes", "yeah", "yep", "yup", "okay", "ok", "sure", "haan", "han", "ha", "ji")
@@ -365,6 +385,9 @@ object Logic {
         // ---- quiet replies on / off (default on: replies are shown in the chat, not spoken)
         if (core in setOf("quiet mode on", "silent replies on", "voice replies off")) return Cmd("quiet_on")
         if (core in setOf("quiet mode off", "silent replies off", "voice replies on")) return Cmd("quiet_off")
+
+        // ---- timer / reminder / alarm (offline; the phone's Clock app does the real ringing)
+        Timers.parse(t)?.let { return it }
 
         // ---- driving mode (read messages aloud, fixed quick replies). Checked before the free-text "type" rule.
         Driving.command(n, core)?.let { return it }
