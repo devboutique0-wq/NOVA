@@ -1,0 +1,407 @@
+name: fix-image
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch AI image generate and photo edit
+        run: |
+          cat > /tmp/p2.py <<'PYEOF'
+          import sys
+          R = sys.argv[1] if len(sys.argv) > 1 else '.'
+          def rd(p): return open(R + '/' + p, encoding='utf-8').read()
+          def wr(p, s): open(R + '/' + p, 'w', encoding='utf-8').write(s)
+          K = 'app/src/main/java/com/nova/assistant/'
+
+          # ---------------------------------------------------------------- 1. ImageGen.kt (new file)
+          IMAGEGEN = r'''package com.nova.assistant
+
+          import android.content.ContentValues
+          import android.content.Context
+          import android.graphics.Bitmap
+          import android.graphics.BitmapFactory
+          import android.graphics.Matrix
+          import android.os.Build
+          import android.os.Environment
+          import android.provider.MediaStore
+          import android.util.Base64
+          import org.json.JSONArray
+          import org.json.JSONObject
+          import java.io.ByteArrayInputStream
+          import java.io.ByteArrayOutputStream
+          import java.io.File
+          import java.net.HttpURLConnection
+          import java.net.URL
+
+          /**
+           * AI image generate / edit with the user's own Gemini key. Only called after an explicit tap in the chat screen.
+           * When a photo is attached, the user must also tap HAAN in a native box before anything is uploaded.
+           * The key goes in a request header only, never in a URL or a log.
+           */
+          object ImageGen {
+              class Out(val ok: Boolean, val msg: String, val img: ByteArray? = null)
+
+              // newest first; older ones are only tried when a newer id answers 404
+              private val MODELS = listOf("gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "gemini-2.5-flash-image")
+
+              fun b64(b: ByteArray): String = Base64.encodeToString(b, Base64.NO_WRAP)
+
+              /** Decodes, honours the EXIF rotation, scales so the longest side is at most maxSide, returns JPEG bytes. */
+              fun shrink(raw: ByteArray, maxSide: Int): ByteArray? {
+                  try {
+                      val o = BitmapFactory.Options()
+                      o.inJustDecodeBounds = true
+                      BitmapFactory.decodeByteArray(raw, 0, raw.size, o)
+                      if (o.outWidth <= 0 || o.outHeight <= 0) return null
+                      var sample = 1
+                      while (maxOf(o.outWidth, o.outHeight) / sample > maxSide * 2) sample *= 2
+                      val o2 = BitmapFactory.Options()
+                      o2.inSampleSize = sample
+                      var bmp: Bitmap = BitmapFactory.decodeByteArray(raw, 0, raw.size, o2) ?: return null
+                      var rot = 0f
+                      try {
+                          val ex = android.media.ExifInterface(ByteArrayInputStream(raw))
+                          rot = when (ex.getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, 1)) {
+                              6 -> 90f
+                              3 -> 180f
+                              8 -> 270f
+                              else -> 0f
+                          }
+                      } catch (e: Exception) {
+                      }
+                      val sc = maxSide.toFloat() / maxOf(bmp.width, bmp.height)
+                      val m = Matrix()
+                      if (sc < 1f) m.postScale(sc, sc)
+                      if (rot != 0f) m.postRotate(rot)
+                      if (!m.isIdentity) bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, m, true)
+                      val bo = ByteArrayOutputStream()
+                      bmp.compress(Bitmap.CompressFormat.JPEG, 88, bo)
+                      return bo.toByteArray()
+                  } catch (e: Throwable) {
+                      return null
+                  }
+              }
+
+              fun generate(ctx: Context, prompt: String, photo: ByteArray?): Out {
+                  val keys = SecureStore.getKeys(ctx)
+                      .ifEmpty { listOf(SecureStore.getKey(ctx)).filter { it.isNotBlank() } }
+                      .distinct()
+                  if (keys.isEmpty()) return Out(false, "Gemini key nahi hai. Settings mein key daalo.")
+                  val parts = JSONArray()
+                  parts.put(JSONObject().put("text", prompt))
+                  if (photo != null) {
+                      parts.put(JSONObject().put("inline_data", JSONObject().put("mime_type", "image/jpeg").put("data", b64(photo))))
+                  }
+                  val body = JSONObject()
+                      .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
+                      .put("generationConfig", JSONObject().put("responseModalities", JSONArray().put("TEXT").put("IMAGE")))
+                      .toString()
+                  val deadline = System.currentTimeMillis() + 150000L
+                  var code0 = 404
+                  for (model in MODELS) {
+                      for (key in keys) {
+                          if (System.currentTimeMillis() > deadline) return Out(false, failMsg(code0))
+                          val r = post(model, key, body)
+                          val code = r.first
+                          if (code in 200..299) {
+                              val ex = extract(r.second)
+                              val img = ex.first
+                              if (img != null) return Out(true, ex.second, img)
+                              return Out(
+                                  false,
+                                  if (ex.second.isNotEmpty()) "Gemini ne image nahi di: " + ex.second.take(300)
+                                  else "Gemini ne image nahi di (shayad content policy). Alag shabdon mein try karo."
+                              )
+                          }
+                          if (code == 404) break
+                          code0 = code
+                      }
+                  }
+                  return Out(false, failMsg(code0))
+              }
+
+              private fun failMsg(code: Int): String = when (code) {
+                  429 -> "Gemini ka limit ya quota khatam hai (code 429). Image ke liye aksar billing wali key chahiye, free key par band ho sakta hai. Thodi der baad try karo."
+                  400, 403 -> "Gemini ne request nahi mani (code $code). Key galat, billing band, ya region ki dikkat ho sakti hai. AI Studio mein check karo."
+                  401 -> "Key galat lag rahi hai (code 401). Settings mein dobara daalo."
+                  404 -> "Image model abhi mila nahi (code 404)."
+                  else -> "Network ya Gemini server ki dikkat (code $code). Thodi der baad try karo."
+              }
+
+              private fun post(model: String, key: String, body: String): Pair<Int, String> {
+                  try {
+                      val c = URL("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
+                          .openConnection() as HttpURLConnection
+                      c.requestMethod = "POST"
+                      c.connectTimeout = 15000
+                      c.readTimeout = 80000
+                      c.doOutput = true
+                      c.setRequestProperty("Content-Type", "application/json")
+                      c.setRequestProperty("x-goog-api-key", key)
+                      c.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                      val code = c.responseCode
+                      val stream = if (code in 200..299) c.inputStream else c.errorStream
+                      val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                      c.disconnect()
+                      return Pair(code, text)
+                  } catch (e: Exception) {
+                      return Pair(599, "")
+                  }
+              }
+
+              /** First image of the answer plus any plain text. */
+              private fun extract(resp: String): Pair<ByteArray?, String> {
+                  try {
+                      val parts = JSONObject(resp).optJSONArray("candidates")?.optJSONObject(0)
+                          ?.optJSONObject("content")?.optJSONArray("parts") ?: return Pair(null, "")
+                      var img: ByteArray? = null
+                      val sb = StringBuilder()
+                      for (i in 0 until parts.length()) {
+                          val p = parts.optJSONObject(i) ?: continue
+                          if (p.optBoolean("thought", false)) continue
+                          val inl = p.optJSONObject("inlineData") ?: p.optJSONObject("inline_data")
+                          if (inl != null) {
+                              if (img == null) img = Base64.decode(inl.optString("data"), Base64.DEFAULT)
+                          } else if (p.has("text")) {
+                              sb.append(p.optString("text")).append(' ')
+                          }
+                      }
+                      return Pair(img, sb.toString().trim())
+                  } catch (e: Exception) {
+                      return Pair(null, "")
+                  }
+              }
+
+              /** Saves into Gallery > Pictures > NOVA (Android 10+). Returns a short place name, or null on failure. */
+              fun saveToGallery(ctx: Context, data: ByteArray): String? {
+                  try {
+                      val isPng = data.size > 4 && data[0] == 0x89.toByte() && data[1] == 0x50.toByte()
+                      val ext = if (isPng) "png" else "jpg"
+                      val mime = if (isPng) "image/png" else "image/jpeg"
+                      val name = "NOVA_" + System.currentTimeMillis() + "." + ext
+                      if (Build.VERSION.SDK_INT >= 29) {
+                          val cv = ContentValues()
+                          cv.put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                          cv.put(MediaStore.Images.Media.MIME_TYPE, mime)
+                          cv.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/NOVA")
+                          cv.put(MediaStore.Images.Media.IS_PENDING, 1)
+                          val res = ctx.contentResolver
+                          val uri = res.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv) ?: return null
+                          val os = res.openOutputStream(uri) ?: return null
+                          os.use { it.write(data) }
+                          val done = ContentValues()
+                          done.put(MediaStore.Images.Media.IS_PENDING, 0)
+                          res.update(uri, done, null, null)
+                          return "Gallery > Pictures > NOVA"
+                      }
+                      val dir = ctx.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return null
+                      dir.mkdirs()
+                      File(dir, name).writeBytes(data)
+                      return "App folder (Android/data/com.nova.assistant/files/Pictures)"
+                  } catch (e: Throwable) {
+                      return null
+                  }
+              }
+          }
+          '''
+          p = K + 'ImageGen.kt'
+          import os
+          if not os.path.exists(R + '/' + p):
+              wr(p, IMAGEGEN)
+
+          # ---------------------------------------------------------------- 2. MainActivity.kt
+          p = K + 'MainActivity.kt'
+          s = rd(p)
+          if 'FIXIMG1' not in s:
+              a = '    inner class Bridge {\n'
+              assert s.count(a) == 1
+              b = '''    // ---- FIXIMG1: picked photo + AI image (explicit user taps only)
+              private var pickedPhoto: ByteArray? = null
+              @Volatile private var imgBusy = false
+
+              private fun runJs(js: String) {
+                  runOnUiThread { if (!isDestroyed) web.evaluateJavascript(js, null) }
+              }
+
+              @Suppress("DEPRECATION")
+              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+                  super.onActivityResult(requestCode, resultCode, data)
+                  if (requestCode != REQ_PICK || resultCode != RESULT_OK) return
+                  val uri = data?.data ?: return
+                  Thread {
+                      try {
+                          val raw = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                          if (raw == null || raw.isEmpty()) { runJs("onPhotoErr('Photo padh nahi paya')"); return@Thread }
+                          if (raw.size > 30000000) { runJs("onPhotoErr('Photo bahut badi hai')"); return@Thread }
+                          val small = ImageGen.shrink(raw, 1280)
+                          if (small == null) { runJs("onPhotoErr('Ye photo format nahi padh paya')"); return@Thread }
+                          pickedPhoto = small
+                          val thumb = ImageGen.shrink(small, 160) ?: small
+                          runJs("onPhoto(" + JSONObject.quote(ImageGen.b64(thumb)) + ")")
+                      } catch (e: Throwable) {
+                          runJs("onPhotoErr('Photo padhne mein dikkat')")
+                      }
+                  }.start()
+              }
+
+              private fun startImage(prompt: String, photo: ByteArray?) {
+                  imgBusy = true
+                  Thread {
+                      var js = ""
+                      try {
+                          val full = if (photo != null)
+                              "Edit the attached photo exactly as requested and keep everything else, especially faces and identity, unchanged. Request: " + prompt
+                          else prompt
+                          val r = ImageGen.generate(this, full, photo)
+                          var thumb = ""
+                          var saved = ""
+                          val img = r.img
+                          if (r.ok && img != null) {
+                              saved = ImageGen.saveToGallery(this, img) ?: ""
+                              thumb = ImageGen.b64(ImageGen.shrink(img, 1024) ?: img)
+                          }
+                          val good = r.ok && thumb.isNotEmpty()
+                          js = "onImage(" + good + "," + JSONObject.quote(r.msg) + "," + JSONObject.quote(thumb) + "," + JSONObject.quote(saved) + ")"
+                      } catch (e: Throwable) {
+                          js = "onImage(false," + JSONObject.quote("Image banate waqt dikkat aayi") + ",\\"\\",\\"\\")"
+                      }
+                      imgBusy = false
+                      runJs(js)
+                  }.start()
+              }
+
+          ''' + a
+              s = s.replace(a, b)
+
+              a = '        @JavascriptInterface\n        fun wakeNow() { NovaService.instance?.wakeNow() }\n'
+              assert s.count(a) == 1
+              b = a + '''
+                  @JavascriptInterface
+                  fun pickPhoto(): String {
+                      runOnUiThread {
+                          try {
+                              val i = Intent(Intent.ACTION_GET_CONTENT)
+                              i.type = "image/*"
+                              i.addCategory(Intent.CATEGORY_OPENABLE)
+                              startActivityForResult(Intent.createChooser(i, "Photo chuno"), REQ_PICK)
+                          } catch (e: Exception) {
+                              runJs("onPhotoErr('Gallery nahi khuli')")
+                          }
+                      }
+                      return "ok"
+                  }
+
+                  @JavascriptInterface
+                  fun clearPhoto() { pickedPhoto = null }
+
+                  /** started / asking (waits for the HAAN tap) / busy / nokey / empty. A photo is only uploaded after that tap. */
+                  @JavascriptInterface
+                  fun makeImage(prompt: String): String {
+                      val p = prompt.trim().take(800)
+                      if (p.isEmpty()) return "empty"
+                      if (!SecureStore.hasKeys(this@MainActivity)) return "nokey"
+                      if (imgBusy) return "busy"
+                      val photo = pickedPhoto
+                      if (photo == null) { startImage(p, null); return "started" }
+                      runOnUiThread {
+                          try {
+                              android.app.AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                                  .setTitle("Photo Google ko bhejein?")
+                                  .setMessage("Ye photo edit ke liye internet par Google Gemini ko bheji jayegi.")
+                                  .setPositiveButton("HAAN, BHEJO") { _, _ -> startImage(p, photo) }
+                                  .setNegativeButton("NAHI") { _, _ -> runJs("onImgCancel()") }
+                                  .setOnCancelListener { runJs("onImgCancel()") }
+                                  .show()
+                          } catch (e: Exception) {
+                              runJs("onImgCancel()")
+                          }
+                      }
+                      return "asking"
+                  }
+          '''
+              s = s.replace(a, b)
+
+              a = '        const val REQ_BASIC = 3\n'
+              assert s.count(a) == 1
+              s = s.replace(a, a + '        const val REQ_PICK = 4\n')
+
+              a = 'return if (u.startsWith(ASSET_PREFIX)) null else blocked()'
+              assert s.count(a) == 1
+              s = s.replace(a, 'return if (u.startsWith(ASSET_PREFIX) || u.startsWith("data:") || u.startsWith("blob:")) null else blocked()')
+              wr(p, s)
+
+          # ---------------------------------------------------------------- 3. ui.html
+          p = 'app/src/main/assets/ui.html'
+          s = rd(p)
+          if 'FIXIMG-UI' not in s:
+              a = '<div id="chat"><div class="chh">'
+              assert s.count(a) == 1
+              css = '''<style>/* FIXIMG-UI */
+          .imr{display:flex;gap:8px;align-items:center;padding-top:8px;flex-wrap:wrap}
+          .imr button.sm{padding:6px 12px;font-size:10px;letter-spacing:1px}
+          .imr button.imon{background:rgba(47,184,255,.28);box-shadow:0 0 12px rgba(47,184,255,.45)}
+          #c_thw{display:none;align-items:center;gap:6px}
+          #c_thumb{width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid rgba(47,184,255,.5)}
+          .gimg{display:block;max-width:100%;border-radius:10px;margin-bottom:6px}
+          .sv{font-size:11px;opacity:.7}
+          </style>
+          '''
+              s = s.replace(a, css + a)
+
+              a = '<div id="clog"></div>\n<div class="chi">'
+              assert s.count(a) == 1
+              row = '<div id="clog"></div>\n<div class="imr"><button class="sm" id="c_imode">IMAGE: OFF</button><button class="sm" id="c_photo">PHOTO CHUNO</button><span id="c_thw"><img id="c_thumb" alt=""><button class="sm" id="c_thx">X</button></span></div>\n<div class="chi">'
+              s = s.replace(a, row)
+
+              a = '</script></body></html>'
+              assert s.count(a) == 1
+              js = '''</script><script>
+          /* FIXIMG-UI: image generate / photo edit inside chat */
+          (function(){
+          function g(i){return document.getElementById(i)}
+          var ci=g('c_in'),cl=g('clog'),imode=g('c_imode'),thw=g('c_thw'),thumb=g('c_thumb'),on=false,ph0=ci.placeholder;
+          function say(t,c){var d=document.createElement('div');d.className='msg '+c;d.textContent=t;cl.appendChild(d);cl.scrollTop=cl.scrollHeight}
+          function setMode(v){on=v;imode.textContent=v?'IMAGE: ON':'IMAGE: OFF';if(v)imode.classList.add('imon');else imode.classList.remove('imon');ci.placeholder=v?'Kya banana hai ya photo mein kya badalna hai...':ph0}
+          imode.onclick=function(){setMode(!on)};
+          g('c_photo').onclick=function(){try{Android.pickPhoto()}catch(e){say('Photo chunna abhi nahi chala','ai')}};
+          g('c_thx').onclick=function(){try{Android.clearPhoto()}catch(e){}thw.style.display='none';thumb.removeAttribute('src')};
+          function imgSend(){
+            var t=ci.value.trim();if(!t)return;var r='';
+            try{r=Android.makeImage(t)}catch(e){r='fail'}
+            if(r==='started'||r==='asking'){ci.value='';say(t,'me');say(r==='asking'?'Photo bhejne se pehle HAAN/NAHI wala box dekho...':'Image ban rahi hai, 20 se 60 second lagte hain...','ai')}
+            else if(r==='busy')say('Pehli image abhi ban rahi hai, thoda ruko','ai');
+            else if(r==='nokey')say('Image ke liye Gemini key chahiye. Settings mein key daalo.','ai');
+            else say('Image shuru nahi ho paayi','ai')
+          }
+          var bar=document.querySelector('.chi');
+          bar.addEventListener('click',function(e){if(on&&e.target&&e.target.closest&&e.target.closest('#c_send')){e.stopPropagation();e.preventDefault();imgSend()}},true);
+          bar.addEventListener('keydown',function(e){if(on&&e.key==='Enter'&&e.target===ci){e.stopPropagation();e.preventDefault();imgSend()}},true);
+          window.onPhoto=function(b){thumb.src='data:image/jpeg;base64,'+b;thw.style.display='inline-flex';setMode(true);say('Photo lag gayi. Ab likho ki isme kya badalna hai.','ai')};
+          window.onPhotoErr=function(m){say(m,'ai')};
+          window.onImgCancel=function(){say('Theek hai, photo nahi bheji.','ai')};
+          window.onImage=function(ok,msg,b,saved){
+            if(ok&&b){
+              var d=document.createElement('div');d.className='msg ai';
+              var im=document.createElement('img');im.className='gimg';im.src='data:image/jpeg;base64,'+b;d.appendChild(im);
+              if(msg){var p=document.createElement('div');p.textContent=msg;d.appendChild(p)}
+              if(saved){var sv=document.createElement('div');sv.className='sv';sv.textContent='Saved: '+saved;d.appendChild(sv)}
+              cl.appendChild(d);cl.scrollTop=cl.scrollHeight
+            }else say(msg||'Image nahi bani','ai')
+          };
+          })();
+          </script></body></html>'''
+              s = s.replace(a, js)
+              wr(p, s)
+          print('ok')
+          PYEOF
+          python3 /tmp/p2.py .
+      - name: Commit
+        run: |
+          git config user.name "nova-bot"
+          git config user.email "nova-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Add AI image generate and photo edit in chat"
+          git push
