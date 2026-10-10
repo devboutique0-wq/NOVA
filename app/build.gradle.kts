@@ -54,8 +54,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     testImplementation("junit:junit:4.13.2")
 }
+
+// Fix: pin versions so the build works with AGP 8.5.2, compileSdk 34 and Kotlin 1.9.0.
 configurations.all {
     resolutionStrategy {
-        force("androidx.core:core:1.13.1", "androidx.core:core-ktx:1.13.1")
+        force(
+            "androidx.core:core:1.13.1",
+            "androidx.core:core-ktx:1.13.1",
+            "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
+        )
     }
 }
