@@ -280,6 +280,28 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    // ---- FIXTEST: image API test (asks first, may cost a little)
+    private fun runImageTest() {
+        imgBusy = true
+        Thread {
+            var line = ""
+            try {
+                val r = ImageGen.generate(this, "A plain blue circle on a white background, minimal", null)
+                val img = r.img
+                if (r.ok && img != null) {
+                    val saved = ImageGen.saveToGallery(this, img)
+                    line = "PASS  Image banana: image mili (" + (img.size / 1024) + " KB). Gallery save: " + (saved ?: "FAIL")
+                } else {
+                    line = "FAIL  Image banana: " + r.msg
+                }
+            } catch (e: Throwable) {
+                line = "FAIL  Image test beech mein ruk gaya"
+            }
+            imgBusy = false
+            runJs("onSelfTest(" + JSONObject.quote(line) + ")")
+        }.start()
+    }
+
     inner class Bridge {
         @JavascriptInterface
         fun vibrate(ms: Int) { vibe(ms.toLong().coerceIn(5L, 400L)) }
@@ -313,6 +335,56 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun wakeNow() { NovaService.instance?.wakeNow() }
+
+        @JavascriptInterface
+        fun selfTest(): String {
+            if (SelfTest.running) return "busy"
+            SelfTest.start(
+                this@MainActivity,
+                { l -> runJs("onSelfTest(" + JSONObject.quote(l) + ")") },
+                { rep -> runJs("onSelfTestDone(" + JSONObject.quote(rep) + ")") }
+            )
+            return "started"
+        }
+
+        @JavascriptInterface
+        fun selfTestImage(): String {
+            if (!SecureStore.hasKeys(this@MainActivity)) return "nokey"
+            if (imgBusy) return "busy"
+            runOnUiThread {
+                try {
+                    android.app.AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Image test karein?")
+                        .setMessage("Gemini se 1 chhoti image banegi. Billing wali key par thoda paisa lag sakta hai.")
+                        .setPositiveButton("HAAN") { _, _ -> runImageTest() }
+                        .setNegativeButton("NAHI", null)
+                        .show()
+                } catch (e: Exception) {
+                }
+            }
+            return "asking"
+        }
+
+        @JavascriptInterface
+        fun copyText(t: String): String = try {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("NOVA report", t.take(20000)))
+            "ok"
+        } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
+        fun shareText(t: String): String {
+            runOnUiThread {
+                try {
+                    val i = Intent(Intent.ACTION_SEND)
+                    i.type = "text/plain"
+                    i.putExtra(Intent.EXTRA_TEXT, t.take(20000))
+                    startActivity(Intent.createChooser(i, "Report bhejo"))
+                } catch (e: Exception) {
+                }
+            }
+            return "ok"
+        }
 
         @JavascriptInterface
         fun pickPhoto(): String {

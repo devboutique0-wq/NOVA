@@ -104,12 +104,31 @@ object ImageGen {
         return Out(false, failMsg(code0))
     }
 
-    private fun failMsg(code: Int): String = when (code) {
+    fun failMsg(code: Int): String = when (code) {
         429 -> "Gemini ka limit ya quota khatam hai (code 429). Image ke liye aksar billing wali key chahiye, free key par band ho sakta hai. Thodi der baad try karo."
         400, 403 -> "Gemini ne request nahi mani (code $code). Key galat, billing band, ya region ki dikkat ho sakti hai. AI Studio mein check karo."
         401 -> "Key galat lag rahi hai (code 401). Settings mein dobara daalo."
         404 -> "Image model abhi mila nahi (code 404)."
         else -> "Network ya Gemini server ki dikkat (code $code). Thodi der baad try karo."
+    }
+
+    /** One tiny text request, only to see whether key + network work. Returns (http code, model id). */
+    fun textPing(ctx: Context): Pair<Int, String> {
+        val keys = SecureStore.getKeys(ctx)
+            .ifEmpty { listOf(SecureStore.getKey(ctx)).filter { it.isNotBlank() } }
+            .distinct()
+        if (keys.isEmpty()) return Pair(0, "")
+        val body = JSONObject().put(
+            "contents",
+            JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", "Reply with the single word OK"))))
+        ).toString()
+        var last = Pair(599, "")
+        for (model in (listOf(Logic.DEFAULT_MODEL) + Logic.MODELS).distinct()) {
+            val r = post(model, keys[0], body)
+            last = Pair(r.first, model)
+            if (r.first in 200..299) return last
+        }
+        return last
     }
 
     private fun post(model: String, key: String, body: String): Pair<Int, String> {

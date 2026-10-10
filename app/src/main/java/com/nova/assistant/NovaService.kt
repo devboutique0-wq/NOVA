@@ -327,6 +327,21 @@ class NovaService : Service() {
 
     fun stopSpeaking() { try { tts?.stop() } catch (e: Exception) { }; ttsActive = false }
 
+    // ---- FIXTEST: hooks for Settings > SELF TEST. They only read state or run harmless local tools.
+    fun testState(): String {
+        val t = tts
+        val hi = try {
+            if (t == null) "tts=none" else when (t.isLanguageAvailable(java.util.Locale("hi", "IN"))) {
+                TextToSpeech.LANG_AVAILABLE, TextToSpeech.LANG_COUNTRY_AVAILABLE, TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE -> "hindi_voice=ok"
+                else -> "hindi_voice=missing"
+            }
+        } catch (e: Exception) { "hindi_voice=unknown" }
+        return "alive=" + alive + " ttsReady=" + ttsReady + " " + hi + " busy=" + busy
+    }
+    fun testBattery(): String = batteryReply()
+    fun testTorch(on: Boolean): Pair<Boolean, String> { val r = torch(on); return Pair(r.ok, r.msg) }
+    fun testVolume(action: String): Pair<Boolean, String> { val r = volume(action, -1); return Pair(r.ok, r.msg) }
+
     /** Typed chat: runs exactly like a spoken command. A typed "yes" never approves a risky action (that needs the spoken yes). */
     fun typed(text: String): String {
         if (!alive) return "off"

@@ -195,6 +195,19 @@ html.lowfx .f{clip-path:none}
 <div id="uc"><div class="ucb" id="ucb"></div></div>
 <div id="panel">
 <h2>SETTINGS</h2>
+<div id="st_box"><!-- FIXTEST-UI -->
+<b>SELF TEST (sab kuch asli mein)</b>
+<small>Pehle saari permissions allow karo aur home par ACTIVATE dabao. Phir SAB TEST KARO. Test lagbhag 40 second chalta hai: torch ek second jalegi, volume thoda badhega-ghategi, aur Android Settings screen khulke wapas aayegi. Koi call, message ya payment nahi hota.</small>
+<div class="row"><button class="sm" id="st_run">SAB TEST KARO</button><button class="sm" id="st_img">IMAGE TEST</button></div>
+<pre id="st_out"></pre>
+<div class="row"><button class="sm" id="st_copy">COPY REPORT</button><button class="sm" id="st_share">SHARE</button></div>
+</div>
+<style>
+#st_box{border:1px solid rgba(47,184,255,.3);border-radius:12px;padding:12px;margin:6px 0 14px}
+#st_box b{letter-spacing:2px;font-size:12px;color:var(--c1)}
+#st_box small{display:block;margin:6px 0 10px;opacity:.75;line-height:1.4}
+#st_out{font:11px/1.45 monospace;white-space:pre-wrap;word-break:break-word;max-height:46vh;overflow-y:auto;margin:10px 0;opacity:.95}
+</style>
 
 <label>WAKE WORD (jis shabd se NOVA jaagta hai)
 <input type="text" id="s_wake" maxlength="12" autocapitalize="none" autocomplete="off"></label>
@@ -920,5 +933,27 @@ window.onImage=function(ok,msg,b,saved){
     cl.appendChild(d);cl.scrollTop=cl.scrollHeight
   }else say(msg||'Image nahi bani','ai')
 };
+})();
+</script><script>
+/* FIXTEST-UI */
+(function(){
+function g(i){return document.getElementById(i)}
+var out=g('st_out'),rep='';
+function add(l){out.textContent+=(out.textContent?'\n':'')+l;out.scrollTop=out.scrollHeight}
+g('st_run').onclick=function(){
+  var r='';try{r=Android.selfTest()}catch(e){r='fail'}
+  if(r==='started'){out.textContent='';rep='';add('Test shuru... screen se bahar mat jao, Settings screen khulke wapas aayegi')}
+  else if(r==='busy')add('Test pehle se chal raha hai');
+  else add('Test shuru nahi hua')
+};
+g('st_img').onclick=function(){
+  var r='';try{r=Android.selfTestImage()}catch(e){r='fail'}
+  if(r==='nokey')add('Image test ke liye Gemini key chahiye');
+  else if(r==='busy')add('Image kaam pehle se chal raha hai')
+};
+g('st_copy').onclick=function(){var t=rep||out.textContent;var r='';try{r=Android.copyText(t)}catch(e){}g('st_copy').textContent=(r==='ok')?'COPY HO GAYA':'COPY NAHI HUA'};
+g('st_share').onclick=function(){try{Android.shareText(rep||out.textContent)}catch(e){}};
+window.onSelfTest=function(l){add(l)};
+window.onSelfTestDone=function(r){rep=r;out.textContent=r;g('st_copy').textContent='COPY REPORT'};
 })();
 </script></body></html>
