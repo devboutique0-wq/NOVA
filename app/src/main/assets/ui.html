@@ -450,6 +450,14 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
 </div>
 
 <div class="box">
+<label style="margin-top:0">MODEL DOWNLOAD</label>
+<label class="chk"><input type="checkbox" id="am_on"> Awaaz-pehchaan model apne aap download ho (14 MB)</label>
+<small id="am_state"></small>
+<div class="row"><button class="sm" id="am_voice">AWAAZ MODEL (14 MB)</button><button class="sm" id="am_brain">QWEN (491 MB)</button></div>
+<small>Qwen apne aap download nahi hota. Is build me offline engine band hai, isliye abhi Qwen lene ka fayda nahi.</small>
+</div>
+
+<div class="box">
 <label style="margin-top:0">BAAT-CHEET MODE</label>
 <label class="chk"><input type="checkbox" id="cv_on"> Jawab ke baad NOVA 3 baar tak bina "nova" bole sunta rahe</label>
 <small>Band karne par har baat ke liye "nova" bolna padega.</small>
@@ -599,6 +607,20 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
     alEl.addEventListener("change",function(){
       try{Android.setAlerts(alEl.checked);say(alEl.checked?"Battery alert on":"Battery alert off",true)}catch(x){say("Switch save nahi hua",false)}
     })}
+  var amEl=g("am_on");
+  function amState(){var st=g("am_state");if(!st)return;try{st.textContent=Android.voiceModelReady()?"Awaaz model tayyar hai.":"Awaaz model abhi nahi hai."}catch(x){}}
+  if(amEl){try{amEl.checked=!!Android.getAutoModels()}catch(x){}
+    amEl.addEventListener("change",function(){
+      try{Android.setAutoModels(amEl.checked);say(amEl.checked?"Auto download on":"Auto download off",true)}catch(x){say("Switch save nahi hua",false)}
+    })}
+  var amV=g("am_voice");
+  if(amV)amV.addEventListener("click",function(){
+    try{var r=Android.downloadVoiceModel();say(r==="ready"?"Awaaz model pehle se hai":r==="busy"?"Download chal raha hai, ruko":"Download shuru, chat dekho",r!=="busy")}catch(x){say("Nahi hua",false)}
+    setTimeout(amState,15000);setTimeout(amState,45000)});
+  var amB=g("am_brain");
+  if(amB)amB.addEventListener("click",function(){
+    try{if(!Android.brainEngineReady()){say("Offline engine is build me band hai, Qwen abhi bekaar hoga",false);return}ucBrainGet()}catch(x){say("Nahi hua",false)}});
+  amState();
   var vlEl=g("vl_on");
   function vlState(){var st=g("vl_state");if(!st)return;try{st.textContent=Android.hasVoiceProfile()?"Awaaz save hai.":"Pehle awaaz save karo."}catch(x){}}
   if(vlEl){try{vlEl.checked=!!Android.getVoiceLock()}catch(x){}

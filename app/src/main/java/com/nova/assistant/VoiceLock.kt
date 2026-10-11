@@ -93,8 +93,29 @@ object VoiceLock {
         }
     }
 
-    /** Downloads the public speaker model once (about 14 MB). Returns null on success, else a short reason. */
+    private val downloading = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * Downloads the public speaker model once (about 14 MB). Returns null on success, else a short reason ("busy" = another
+     * download is already running, so a second tap never starts a parallel one). Up to 3 tries with a slow-network timeout.
+     */
     fun downloadModel(ctx: Context): String? {
+        if (modelReady(ctx)) return null
+        if (!downloading.compareAndSet(false, true)) return "busy"
+        try {
+            var last: String? = "unknown"
+            for (attempt in 1..3) {
+                last = downloadOnce(ctx)
+                if (last == null) return null
+                if (attempt < 3) try { Thread.sleep(2000) } catch (e: InterruptedException) { return last }
+            }
+            return last
+        } finally {
+            downloading.set(false)
+        }
+    }
+
+    private fun downloadOnce(ctx: Context): String? {
         if (modelReady(ctx)) return null
         val tmpZip = File(ctx.cacheDir, "spk.zip.part")
         val tmpDir = File(ctx.cacheDir, "spk_unpack")
@@ -108,8 +129,8 @@ object VoiceLock {
                 if (u.protocol != "https" || !(u.host == MODEL_HOST || u.host.endsWith(".$MODEL_HOST"))) return "blocked host"
                 val x = u.openConnection() as HttpURLConnection
                 x.instanceFollowRedirects = false
-                x.connectTimeout = 10000
-                x.readTimeout = 30000
+                x.connectTimeout = 20000
+                x.readTimeout = 60000
                 x.setRequestProperty("User-Agent", "NOVAAndroidAssistant/6.17 (speaker model)")
                 val code = x.responseCode
                 if (code in 300..399) {

@@ -46,6 +46,19 @@ object ExtCfg {
         } catch (e: Exception) { }
     }
 
+    private const val AUTO_MODELS = "auto_models"
+
+    /** v17: download the small voice-check model by itself when the mic service starts. Default ON (about 14 MB). */
+    fun autoModels(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(AUTO_MODELS, true)
+    } catch (e: Exception) { true }
+
+    fun setAutoModels(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(AUTO_MODELS, on).apply()
+        } catch (e: Exception) { }
+    }
+
     private const val VOICE_LOCK = "voice_lock"
 
     /** v17 "only my voice": when ON (and a voiceprint exists) every spoken turn must match the owner. Default OFF until enrolled. */

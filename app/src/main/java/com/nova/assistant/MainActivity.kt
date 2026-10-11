@@ -640,6 +640,21 @@ class MainActivity : Activity() {
         fun setConvo(on: Boolean): String { ExtCfg.setConvo(this@MainActivity, on); return "ok" }
 
         @JavascriptInterface
+        fun getAutoModels(): Boolean = ExtCfg.autoModels(this@MainActivity)
+
+        @JavascriptInterface
+        fun setAutoModels(on: Boolean): String { ExtCfg.setAutoModels(this@MainActivity, on); return "ok" }
+
+        @JavascriptInterface
+        fun voiceModelReady(): Boolean = VoiceLock.modelReady(this@MainActivity)
+
+        @JavascriptInterface
+        fun downloadVoiceModel(): String = ModelAuto.manualVoice(this@MainActivity)
+
+        @JavascriptInterface
+        fun brainEngineReady(): Boolean = LocalBrains.factory != null
+
+        @JavascriptInterface
         fun getVoiceLock(): Boolean = ExtCfg.voiceLock(this@MainActivity) && VoiceLock.hasProfile(this@MainActivity)
 
         @JavascriptInterface

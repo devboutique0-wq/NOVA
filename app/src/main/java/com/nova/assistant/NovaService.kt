@@ -478,8 +478,12 @@ class NovaService : Service() {
             if (!VoiceLock.modelReady(this)) {
                 listener?.invoke("ai", tr("Awaaz pehchaan ka chhota model download ho raha hai (lagbhag 14 MB)...", "Downloading the small voice model (about 14 MB)..."))
                 val err = VoiceLock.downloadModel(this)
+                if (err == "busy") {
+                    listener?.invoke("ai", tr("Download pehle se chal raha hai, thoda ruko. Dobara mat dabao.", "The download is already running, please wait. Do not tap again."))
+                    return@Thread
+                }
                 if (err != null) {
-                    listener?.invoke("ai", tr("Model download nahi hua ($err). Internet check karke dobara dabao.", "The model did not download ($err). Check the internet and try again."))
+                    listener?.invoke("ai", tr("Model download nahi hua ($err). Wi-Fi/internet check karke dobara dabao.", "The model did not download ($err). Check Wi-Fi/internet and try again."))
                     return@Thread
                 }
             }
@@ -577,6 +581,7 @@ class NovaService : Service() {
                 fatal(tr("Mic busy hai (koi doosra app use kar raha hai).", "The mic is busy (another app is using it)."))
                 return
             }
+            ModelAuto.autoStart(this)   // v17: voice-check model by itself (small, once, only if auto is ON)
             mode("sleep")
             sys(tr("Sleep mode - \"$wakeWord\" bolo to jaagunga", "Asleep - say \"$wakeWord\" to wake me"))
 
@@ -1054,8 +1059,9 @@ class NovaService : Service() {
     }
 
     private fun handle(pcm: ByteArray, rawText: String): String {
-        // PART 4: Hindi typed in Devanagari (keyboard or a cloud listener) becomes Roman first; everything below sees Roman words only.
-        val text = if (HindiRoman.hasDevanagari(rawText)) HindiRoman.toRoman(rawText) else rawText
+        // VoiceText is a conservative text-only layer. Keep original rawText for display and let the existing
+        // classifier/brain/confirmation pipeline make every routing decision. Typed text is not alias-rewritten.
+        val text = VoiceText.normalize(rawText, canonicalizeAsrAliases = pcm.isNotEmpty())
         // PART 2: a personal-memory command is handled FIRST and never reaches brain.record (that file keeps heard text on disk),
         // the cloud, the free chain or any model. The words of "yaad rakh ..." are not shown in the chat or on the card.
         val memCmd = if (text.isBlank()) null else Logic.classify(text)?.takeIf { PersonalMemory.isMemoryKind(it.kind) }
@@ -1330,7 +1336,8 @@ class NovaService : Service() {
         if (code !in 200..299) return ""
         val raw = candidateText(resp).trim().trim('"').trim()
         if (raw.isBlank()) return ""
-        return Logic.stripWake(HindiRoman.toRoman(raw).lowercase())
+        val roman = HindiRoman.toRoman(raw).lowercase()
+        return Logic.stripWake(VoiceText.normalize(roman))
     }
 
     /** Optional Groq Whisper listening (only when the user added a Groq key). Worker thread. The text can start a normal command, never approve one. */
@@ -1341,7 +1348,8 @@ class NovaService : Service() {
         val raw = r.text
         if (raw == null) return ""   // v31: silent fallback, the next listener (or the local one) simply takes over
         if (raw.isBlank()) return ""
-        return Logic.stripWake(HindiRoman.toRoman(raw).lowercase())
+        val roman = HindiRoman.toRoman(raw).lowercase()
+        return Logic.stripWake(VoiceText.normalize(roman))
     }
 
     /** Registers a dangerous action (call, WhatsApp send). It only runs after a spoken, local "yes". */
@@ -1780,7 +1788,7 @@ class NovaService : Service() {
             "Is kaam ke liye Accessibility permission chahiye. Pehle use on karo",
             "This job needs the Accessibility permission. Turn it on first"
         )
-        if (!SecureStore.hasKeys(this)) return tr(
+        if (!SecureStore.hasKeys(this) && !agentChainReady()) return tr(
             "Abhi ye kaam shuru nahi ho pa raha. Settings me key check karo",
             "I cannot start this job right now. Check the key in Settings"
         )
@@ -1884,6 +1892,29 @@ class NovaService : Service() {
     }
 
     /** Worker thread. Returns the sentence to speak at the end. Hard caps: AgentRules.MAX_STEPS and MAX_MS. */
+    /** The free online chain can drive the agent only when the owner left it ON and added a Groq or OpenRouter key. */
+    private fun agentChainReady(): Boolean =
+        ExtCfg.freeChain(this) && (SecureStore.hasGroq(this) || SecureStore.hasSlot(this, "openrouter"))
+
+    /** One text-only agent answer from the free chain (keys only, no keyless provider). null = nothing usable. */
+    private fun agentChain(system: String, user: String): String? = try {
+        ProviderChain.run(
+            FreeProviders.ordered(),
+            { name ->
+                when (name) {
+                    "groq" -> SecureStore.getGroq(this)
+                    "openrouter" -> SecureStore.getSlot(this, "openrouter")
+                    else -> ""
+                }
+            },
+            { id -> id != "pollinations" },
+            system,
+            user,
+            freeCooldowns,
+            { System.currentTimeMillis() }
+        ) { p, _, body, key -> FreeHttp.post(p, body, key) }.text
+    } catch (t: Throwable) { null }
+
     private fun agentRun(task: String): String {
         val t0 = SystemClock.elapsedRealtime()
         val hist = ArrayList<String>()
@@ -1917,13 +1948,18 @@ class NovaService : Service() {
                 .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
                 .put("generationConfig", JSONObject().put("temperature", 0.1).put("responseMimeType", "application/json").put("maxOutputTokens", 2048))
                 .toString()
-            val (code, resp) = postFallback(body)
+            // v17: Gemini first (it can also see the picture). If Gemini is out of quota or fails, the user's own free keys
+            // (Groq / OpenRouter) answer from the same screen TEXT, no picture. Whoever answers, the safety check below still decides.
+            val gem = if (SecureStore.hasKeys(this)) postFallback(body) else Pair(0, "")
+            val code = gem.first
+            var answer: String? = if (code in 200..299) candidateText(gem.second) else null
+            if (answer == null && agentChainReady() && !agentCancel) answer = agentChain(AgentRules.systemPrompt(), prompt)
             if (agentCancel) return tr("Kaam rok diya", "Task stopped")
-            if (code !in 200..299) return tr(
+            if (answer == null) return tr(
                 "Abhi jawab nahi mila (" + Logic.failureKind(code) + "). Kaam ruk gaya",
                 "No answer right now (" + Logic.failureKind(code) + "). The task stopped"
             )
-            val a = AgentRules.parse(candidateText(resp))
+            val a = AgentRules.parse(answer)
             if (a == null) {
                 bad++
                 hist.add("step $step: (your last answer was not one valid JSON object, answer again with exactly one)")

@@ -28,7 +28,7 @@ check("every action goes through AgentRules.check before agentDo", NS.index("Age
 check("DENY and CONFIRM are both handled", "Verdict.DENY" in NS and "Verdict.CONFIRM" in NS)
 check("step and time caps used", "AgentRules.MAX_STEPS" in NS and "AgentRules.MAX_MS" in NS)
 check("protected screens are not sent to the cloud", "val nodes: List<AgentRules.Node> = if (shielded) emptyList()" in NS)
-check("agent needs Accessibility and a Gemini key", "NovaAccessibilityService.instance == null" in NS and "SecureStore.hasKeys(this)) return tr(" in NS)
+check("agent needs Accessibility and at least one AI key (Gemini, or Groq/OpenRouter via the free chain)", "NovaAccessibilityService.instance == null" in NS and "!SecureStore.hasKeys(this) && !agentChainReady()) return tr(" in NS)
 check("password fields skipped in the snapshot", "if (n.isPassword) return" in AS)
 check("typed text is never listed", "[text box, filled]" in AS)
 check("prompt tells the model to scroll when the item is missing", "scroll and look again" in AR)
