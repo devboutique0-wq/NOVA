@@ -445,6 +445,9 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
 <label style="margin-top:0">MERI AWAAZ (SIRF MAIN)</label>
 <label class="chk"><input type="checkbox" id="vl_on"> Sirf meri awaaz par jawab do</label>
 <small id="vl_state">Pehle awaaz save karo.</small>
+<label style="margin-top:8px">Kitni sakhti</label>
+<select id="vl_lvl"><option value="0">STRICT (sirf main, default)</option><option value="1">NORMAL</option><option value="2">LOOSE (aasaani se pehchane)</option></select>
+<small>Kisi aur ki awaaz par bhi NOVA bole to STRICT rakho. Meri awaaz par "Anjaan awaaz" aaye to NORMAL karo. Chat me "Awaaz match" number dikhta hai.</small>
 <div class="row"><button class="sm" id="vl_save">AWAAZ SAVE KARO</button><button class="sm" id="vl_del">AWAAZ HATAO</button></div>
 <small>Pehle ACTIVATE dabao. Save karte waqt chat me jo likha aaye wahi karo. Kisi ki recording se ye dhoka kha sakta hai, isliye paise/call/delete par "haan" ka sawaal pehle jaisa rahega.</small>
 </div>
@@ -622,10 +625,15 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
     try{if(!Android.brainEngineReady()){say("Offline engine is build me band hai, Qwen abhi bekaar hoga",false);return}ucBrainGet()}catch(x){say("Nahi hua",false)}});
   amState();
   var vlEl=g("vl_on");
-  function vlState(){var st=g("vl_state");if(!st)return;try{st.textContent=Android.hasVoiceProfile()?"Awaaz save hai.":"Pehle awaaz save karo."}catch(x){}}
+  function vlState(){var st=g("vl_state");if(!st)return;try{
+    var has=!!Android.hasVoiceProfile(),on=!!Android.getVoiceLock(),mdl=!!Android.voiceModelReady();
+    st.textContent=(has?"Awaaz save: haan":"Awaaz save: nahi")+" | Lock: "+(on?"ON (sirf meri awaaz)":"OFF (sabki awaaz chalegi)")+" | Model: "+(mdl?"tayyar":"nahi")}catch(x){}}
+  var vlL=g("vl_lvl");
+  if(vlL){try{vlL.value=String(Android.getVoiceLevel())}catch(x){}
+    vlL.addEventListener("change",function(){try{Android.setVoiceLevel(parseInt(vlL.value,10));say("Sakhti badal di",true)}catch(x){say("Nahi hua",false)}})}
   if(vlEl){try{vlEl.checked=!!Android.getVoiceLock()}catch(x){}
     vlEl.addEventListener("change",function(){
-      try{var r=Android.setVoiceLock(vlEl.checked);if(r==="noprofile"){vlEl.checked=false;say("Pehle awaaz save karo",false)}else say(vlEl.checked?"Sirf aapki awaaz":"Sabki awaaz chalegi",true)}catch(x){say("Switch save nahi hua",false)}
+      try{var r=Android.setVoiceLock(vlEl.checked);if(r==="noprofile"){vlEl.checked=false;say("Pehle awaaz save karo",false)}else say(vlEl.checked?"Sirf aapki awaaz":"Sabki awaaz chalegi",true);vlState()}catch(x){say("Switch save nahi hua",false)}
     })}
   var vlS=g("vl_save");
   if(vlS)vlS.addEventListener("click",function(){

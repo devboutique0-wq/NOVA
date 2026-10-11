@@ -15,6 +15,13 @@ object SpeakerRules {
 
     enum class Verdict { ALLOW, REJECT, TOO_SHORT }
 
+    /** Owner's strictness knob: 0 = STRICT (default), 1 = NORMAL (the old 0.5), 2 = LOOSE. A lower distance limit refuses more voices. */
+    fun thresholdFor(level: Int): Double = when (level) {
+        1 -> 0.5
+        2 -> 0.6
+        else -> 0.4
+    }
+
     /** 0 = same direction, 2 = opposite. Mismatched, empty or all-zero vectors are 2.0 (never a match). */
     fun cosineDistance(a: DoubleArray, b: DoubleArray): Double {
         if (a.isEmpty() || a.size != b.size) return 2.0
@@ -41,10 +48,10 @@ object SpeakerRules {
         return out
     }
 
-    fun decide(vec: DoubleArray?, frames: Int, profile: DoubleArray?, isAnswer: Boolean): Verdict {
+    fun decide(vec: DoubleArray?, frames: Int, profile: DoubleArray?, isAnswer: Boolean, threshold: Double = THRESHOLD): Verdict {
         if (vec == null || profile == null) return Verdict.REJECT
         val need = if (isAnswer) MIN_FRAMES_ANSWER else MIN_FRAMES_COMMAND
         if (frames < need) return Verdict.TOO_SHORT
-        return if (cosineDistance(vec, profile) <= THRESHOLD) Verdict.ALLOW else Verdict.REJECT
+        return if (cosineDistance(vec, profile) <= threshold) Verdict.ALLOW else Verdict.REJECT
     }
 }

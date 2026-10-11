@@ -59,6 +59,19 @@ object ExtCfg {
         } catch (e: Exception) { }
     }
 
+    private const val VOICE_LEVEL = "voice_level"
+
+    /** v17: how strict the voice lock is. 0 STRICT (default), 1 NORMAL, 2 LOOSE. */
+    fun voiceLevel(ctx: Context): Int = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getInt(VOICE_LEVEL, 0).coerceIn(0, 2)
+    } catch (e: Exception) { 0 }
+
+    fun setVoiceLevel(ctx: Context, level: Int) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putInt(VOICE_LEVEL, level.coerceIn(0, 2)).apply()
+        } catch (e: Exception) { }
+    }
+
     private const val VOICE_LOCK = "voice_lock"
 
     /** v17 "only my voice": when ON (and a voiceprint exists) every spoken turn must match the owner. Default OFF until enrolled. */

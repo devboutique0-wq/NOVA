@@ -529,7 +529,12 @@ class NovaService : Service() {
             return false
         }
         val profile = VoiceLock.loadProfile(this)
-        return when (SpeakerRules.decide(got?.first, got?.second ?: 0, profile, isAnswer)) {
+        val thr = SpeakerRules.thresholdFor(ExtCfg.voiceLevel(this))
+        if (got != null && profile != null) {   // shown in the chat so the owner can see (and tune) how close a voice was
+            val d = SpeakerRules.cosineDistance(got.first, profile)
+            sys(tr("Awaaz match: " + "%.2f".format(d) + " (seema " + "%.2f".format(thr) + ")", "Voice match: " + "%.2f".format(d) + " (limit " + "%.2f".format(thr) + ")"))
+        }
+        return when (SpeakerRules.decide(got?.first, got?.second ?: 0, profile, isAnswer, thr)) {
             SpeakerRules.Verdict.ALLOW -> true
             SpeakerRules.Verdict.TOO_SHORT -> { voiceDeny(tr("Awaaz bahut chhoti thi, pehchaan nahi paya. Dobara bolo.", "Too short to recognise your voice. Say it again.")); false }
             SpeakerRules.Verdict.REJECT -> {

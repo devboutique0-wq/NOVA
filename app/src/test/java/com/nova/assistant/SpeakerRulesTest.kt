@@ -22,6 +22,17 @@ class SpeakerRulesTest {
         assertEquals(SpeakerRules.Verdict.ALLOW, SpeakerRules.decide(me, 40, me, true))
     }
 
+    @Test fun strictnessLevelsChangeTheLimit() {
+        assertEquals(0.4, SpeakerRules.thresholdFor(0), 0.0)
+        assertEquals(0.5, SpeakerRules.thresholdFor(1), 0.0)
+        assertEquals(0.6, SpeakerRules.thresholdFor(2), 0.0)
+        assertEquals(0.4, SpeakerRules.thresholdFor(99), 0.0)
+        val near = doubleArrayOf(1.0, 0.6, 0.0, 0.5)    // a voice that is close but not the same
+        val d = SpeakerRules.cosineDistance(near, me)
+        assertTrue(d > 0.02 && d < 0.6)
+        assertEquals(SpeakerRules.Verdict.REJECT, SpeakerRules.decide(doubleArrayOf(0.2, 1.0, 0.6, 0.0), 200, me, false, SpeakerRules.thresholdFor(0)))
+    }
+
     @Test fun missingVectorOrProfileIsRejected() {
         assertEquals(SpeakerRules.Verdict.REJECT, SpeakerRules.decide(null, 200, me, false))
         assertEquals(SpeakerRules.Verdict.REJECT, SpeakerRules.decide(me, 200, null, false))

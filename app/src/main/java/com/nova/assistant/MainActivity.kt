@@ -658,6 +658,12 @@ class MainActivity : Activity() {
         fun getVoiceLock(): Boolean = ExtCfg.voiceLock(this@MainActivity) && VoiceLock.hasProfile(this@MainActivity)
 
         @JavascriptInterface
+        fun getVoiceLevel(): Int = ExtCfg.voiceLevel(this@MainActivity)
+
+        @JavascriptInterface
+        fun setVoiceLevel(level: Int): String { ExtCfg.setVoiceLevel(this@MainActivity, level); return "ok" }
+
+        @JavascriptInterface
         fun hasVoiceProfile(): Boolean = VoiceLock.hasProfile(this@MainActivity)
 
         @JavascriptInterface

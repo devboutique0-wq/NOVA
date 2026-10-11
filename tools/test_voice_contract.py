@@ -55,5 +55,8 @@ check("agent: free chain answers when Gemini fails", "agentChain(AgentRules.syst
 check("agent: safety check still runs after any answer", NS.index("val a = AgentRules.parse(answer)") < NS.index("AgentRules.check(a, node, pkg, packageName)"))
 check("agent: chain never uses keyless provider and never gets the picture", '{ id -> id != "pollinations" }' in NS and "agentChain(AgentRules.systemPrompt(), prompt)" in NS)
 check("agent start allowed with only a Groq/OpenRouter key", "!SecureStore.hasKeys(this) && !agentChainReady()" in NS)
+check("strictness knob: default STRICT, levels mapped", "else -> 0.4" in SR and "1 -> 0.5" in SR and "2 -> 0.6" in SR and "getInt(VOICE_LEVEL, 0)" in EC)
+check("service uses the knob and shows the match number", "SpeakerRules.thresholdFor(ExtCfg.voiceLevel(this))" in NS and "Awaaz match: " in NS)
+check("UI shows lock ON/OFF status and the knob", "Lock: " in UI and 'id="vl_lvl"' in UI and "Android.setVoiceLevel" in UI)
 print("ALL PASSED" if not fails else "%d failed" % fails)
 sys.exit(1 if fails else 0)
