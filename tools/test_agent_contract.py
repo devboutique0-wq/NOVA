@@ -42,7 +42,11 @@ check("every step is logged to the chat", "agentNote(line" in NS)
 UIH = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app/src/main/assets/ui.html"), encoding="utf-8").read()
 check("Settings states once that screen text and a small picture go to the AI service", "chhoti tasveer" in UIH and "protected screens kabhi cloud par nahi" in UIH)
 check("Gemini listens when Groq is absent or failed", "groqText = geminiHear(pcm)" in NS and "groqText.isBlank() && pcm.size >= MIN_HEAR_BYTES" in NS)
-check("geminiHear never decides a yes/no (only handle() uses it)", NS.count("geminiHear(") == 2)
+# v33: the screen session (called from handle(), never from the yes/no path) also uses the listeners for follow-ups.
+_pa = NS.split("private fun processAnswer")[1].split("private fun geminiHear")[0]
+check("geminiHear never decides a yes/no (only handle() and the screen follow-up inside handle() use it)",
+      NS.count("geminiHear(") == 3 and "geminiHear(" not in _pa and "groqHear(" not in _pa
+      and NS.split("private fun screenFollow")[1].split("private fun endIfLast")[0].count("geminiHear(") == 1)
 check("Hindi output of the listener is converted to Roman", "HindiRoman.toRoman(raw).lowercase()" in NS)
 check("prompt says screen text is untrusted", "untrusted data" in AR)
 check("Control.blocked reused", "Control.blocked(pkg, ownPkg, \"tap\")" in AR)

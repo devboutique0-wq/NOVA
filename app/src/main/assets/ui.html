@@ -416,6 +416,9 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
 <input type="password" id="or_key" placeholder="OpenRouter key (optional, free models)" autocomplete="off">
 <small>Wikipedia fallback sirf pehchane gaye general-knowledge sawaal ka topic public Wikipedia ko bhejta hai, poori chat ya awaaz nahi; jawab ke saath source link milta hai. Current news, weather, rates aur personal sawaal is lookup se skip hote hain. Baaki online AI ko tumhara sawaal bheja jaata hai; YAAD mein “Online AI ko bhi do” ON ho to max 3 relevant saved facts free AI chain ko mil sakte hain (Gemini ko nahi). Screen, notifications aur contacts Wikipedia lookup ko nahi bheje jaate. Pollinations ki nayi docs key maangti hain, isliye bina-key wala legacy try fail ya rate-limit ho sakta hai. Keys Android Keystore me encrypted rehti hain aur wapas screen par nahi dikhti.</small>
 <div class="row"><button class="sm" id="or_save">OPENROUTER SAVE</button><button class="sm" id="or_del">OPENROUTER HATAO</button></div>
+<input type="password" id="zai_key" placeholder="Z.ai (GLM, free China AI) key (optional, bina card)" autocomplete="off">
+<small>Z.ai (Zhipu GLM) ke free Flash models: z.ai par sirf email se sign-up, card nahi chahiye, phir API key banao. Dhyan do: is key ke saath tumhara sawaal China ke server ko jaata hai. Key sirf Groq/Qwen ke baad fallback mein use hoti hai.</small>
+<div class="row"><button class="sm" id="zai_save">Z.AI SAVE</button><button class="sm" id="zai_del">Z.AI HATAO</button></div>
 </div>
 
 <!-- PART2-MEMORY-UI -->
@@ -491,8 +494,8 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
   function g(id){return document.getElementById(id)}
   function say(t,ok){var m=g("smsg");if(!m)return;m.textContent=t;m.className=ok?"ok":"bad"}
   function gst(){var e=g("groqst");if(!e)return;var h=false;try{h=Android.hasGroqKey()}catch(x){}e.textContent=h?"- key saved":"- optional";e.className=h?"ok":""}
-  function cst(){var e=g("fcst");var on=false,kl=true,h=false,gk=false;try{on=Android.getFreeChain();kl=Android.getFreeKeyless();h=Android.hasOpenRouterKey();gk=Android.hasGroqKey()}catch(x){}
-    var t=[];if(on)t.push("Wikipedia (no-key facts)");if(gk)t.push("Groq");if(h)t.push("OpenRouter");if(kl)t.push("Pollinations (legacy no-key)");
+  function cst(){var e=g("fcst");var on=false,kl=true,h=false,gk=false,zk=false;try{on=Android.getFreeChain();kl=Android.getFreeKeyless();h=Android.hasOpenRouterKey();gk=Android.hasGroqKey();zk=Android.hasZaiKey()}catch(x){}
+    var t=[];if(on)t.push("Wikipedia (no-key facts)");if(gk)t.push("Groq");if(gk)t.push("Qwen");if(zk)t.push("GLM (Z.ai)");if(h)t.push("OpenRouter");if(kl)t.push("Pollinations (legacy no-key)");
     if(e){e.textContent=on?("- ON ("+(t.length?t.join(", "):"koi provider nahi")+")"):"- OFF";e.className=on?"ok":""}
     var c1=g("fc_on");if(c1)c1.checked=!!on;var c2=g("fc_kl");if(c2)c2.checked=!!kl}
   var fo=g("fc_on");
@@ -513,6 +516,20 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
     else if(r==="invalid"){say("Key galat lag rahi hai (kam se kam 20 akshar, bina space)",false)}
     else{say("OpenRouter key save nahi hui",false)}
     cst();
+  })}
+  var z1=g("zai_save");
+  if(z1){z1.addEventListener("click",function(){
+    var f=g("zai_key");var r="fail";
+    try{r=Android.saveZaiKey(f.value)}catch(x){}
+    if(r==="ok"){f.value="";say("Z.ai key save ho gayi",true)}
+    else if(r==="invalid"){say("Key galat lag rahi hai (kam se kam 20 akshar, bina space)",false)}
+    else{say("Z.ai key save nahi hui",false)}
+    cst();
+  })}
+  var z2=g("zai_del");
+  if(z2){z2.addEventListener("click",function(){
+    try{Android.clearZaiKey()}catch(x){}
+    say("Z.ai key hata di",true);cst();
   })}
   var o2=g("or_del");
   if(o2){o2.addEventListener("click",function(){
@@ -1419,6 +1436,7 @@ function fill(){
  ['Groq key (Hindi sunna)',B('hasGroqKey'),'','KEY',function(){go('g_key')}],
  ['Free online AI (Groq, OpenRouter, Pollinations)',B('getFreeChain'),'','OPTION',function(){go('fc_on')}],
  ['OpenRouter key',B('hasOpenRouterKey'),'','KEY',function(){go('or_key')}],
+ ['Z.ai (GLM) key',B('hasZaiKey'),'','KEY',function(){go('zai_key')}],
  ['Free image backup',B('getFreeImg'),B('hasImgKey')?'image key saved':'','OPTION',function(){go('i_on')}],
  ['Yaad (personal memory)',mc>0,mc+' baatein','OPEN',function(){go('mem_ch')}],
  ['Screen monitoring',!!se.screenMonitor,'','OPTION',function(){go('s_screen')}],

@@ -5,7 +5,7 @@ package com.nova.assistant
  * (org.json is only a stub in JVM unit tests, so this file has its own tiny JSON reader/writer).
  * The network call is passed in as a lambda, so every failover rule below is unit tested.
  *
- * Chain order used by the app (wired in part 1B): Gemini (existing, user key) -> Groq (user's free key)
+ * Chain order used by the app (wired in part 1B; v34 adds Qwen): Gemini (existing, user key) -> Groq (user's free key) -> Qwen (same Groq key) -> GLM (Z.ai, own free key)
  * -> OpenRouter free models (user's free key) -> Pollinations text (anonymous try; their current docs say a key is required, so this may 401 and is then skipped for 10 min) -> offline model -> offline skills.
  * Failover is between DIFFERENT providers and different models of ONE provider. It never rotates several
  * accounts of the same provider to get more quota (invariant 9).
@@ -171,7 +171,9 @@ class FreeProvider(
     val label: String,
     val url: String,
     val models: List<String>,
-    val keyName: String?
+    val keyName: String?,
+    /** Extra top-level JSON members for the request body (without braces), e.g. "thinking":{"type":"disabled"}. "" = none. */
+    val extra: String = ""
 )
 
 /** One HTTP answer. code 598 = network is down, 599 = timeout / IO error (same convention as Logic.nextStep). */
@@ -212,6 +214,30 @@ object FreeProviders {
         "groq", "Groq", "https://api.groq.com/openai/v1/chat/completions",
         listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant"), "groq"
     )
+    /**
+     * v34 Part 3: hosted Qwen, ONE table. Looked up 2026-10-11: Groq lists qwen/qwen3.8-27b (preview, same endpoint and same key as Groq,
+     * so no new key and no download). OpenRouter had a free Qwen (qwen/qwen3.8-27b:free) until 2026-10-06, but it is NOT in its free list now,
+     * so no OpenRouter Qwen row exists. If one comes back, add its id to a new provider here (one line). Preview models can disappear:
+     * a 404/400 simply moves on to the next provider.
+     */
+    val QWEN_MODELS_GROQ: List<String> = listOf("qwen/qwen3.8-27b")
+    /** Own provider id so Groq's llama quota and Qwen's quota are tracked (and cooled down) separately. Same URL, same Groq key. */
+    val GROQ_QWEN = FreeProvider(
+        "groqqwen", "Qwen (via Groq)", "https://api.groq.com/openai/v1/chat/completions",
+        QWEN_MODELS_GROQ, "groq"
+    )
+    /**
+     * v35: free CHINESE model (looked up 2026-10-11): Zhipu / Z.ai GLM Flash models are priced at zero on docs.z.ai, sign-up with e-mail
+     * on z.ai / bigmodel.cn, NO credit card (per freellm.net + docs.z.ai pricing page; NOT tested by us). OpenAI-style endpoint from docs.z.ai.
+     * Needs its own key (slot "zai"). "thinking disabled" so the small token budget is not spent on hidden reasoning (if the server
+     * rejects the field it answers 400 and the chain simply moves on). The question goes to a server in China: the Settings text says so.
+     * Not usable without a key or a phone number: DeepSeek / Moonshot (no free API), SiliconFlow / ModelScope (Chinese phone or Alibaba account).
+     */
+    val ZAI_MODELS: List<String> = listOf("glm-4.7-flash", "glm-4.5-flash")
+    val ZAI = FreeProvider(
+        "zai", "GLM (Z.ai, China)", "https://api.z.ai/api/paas/v4/chat/completions",
+        ZAI_MODELS, "zai", "\"thinking\":{\"type\":\"disabled\"}"
+    )
     val OPENROUTER = FreeProvider(
         "openrouter", "OpenRouter (free models)", "https://openrouter.ai/api/v1/chat/completions",
         listOf("openrouter/free", "meta-llama/llama-3.3-70b-instruct:free"), "openrouter"
@@ -221,7 +247,7 @@ object FreeProviders {
         listOf("openai/gpt-5.4-nano", "openai"), null
     )
 
-    fun ordered(): List<FreeProvider> = listOf(GROQ, OPENROUTER, POLLINATIONS)
+    fun ordered(): List<FreeProvider> = listOf(GROQ, GROQ_QWEN, ZAI, OPENROUTER, POLLINATIONS)
 
     const val MAX_USER_CHARS = 1000
     const val MAX_REPLY_CHARS = 700
@@ -240,12 +266,12 @@ object FreeProviders {
                 "Pakka na ho to bolo. Wapas sawaal mat poochho."
         }
 
-    fun buildBody(model: String, system: String, user: String, maxTokens: Int = 350): String {
+    fun buildBody(model: String, system: String, user: String, maxTokens: Int = 350, extra: String = ""): String {
         val u = if (user.length > MAX_USER_CHARS) user.substring(0, MAX_USER_CHARS) else user
         return "{\"model\":" + MiniJson.quote(model) +
             ",\"messages\":[{\"role\":\"system\",\"content\":" + MiniJson.quote(system) +
             "},{\"role\":\"user\",\"content\":" + MiniJson.quote(u) +
-            "}],\"max_tokens\":" + maxTokens + ",\"temperature\":0.6}"
+            "}],\"max_tokens\":" + maxTokens + ",\"temperature\":0.6" + (if (extra.isEmpty()) "" else "," + extra) + "}"
     }
 
     /** choices[0].message.content as clean spoken text, or null (also for 200-answers that carry an "error" object). */
@@ -403,7 +429,7 @@ object ProviderChain {
                     cool = false
                     break
                 }
-                val r = call(p, m, FreeProviders.buildBody(m, system, user), key)
+                val r = call(p, m, FreeProviders.buildBody(m, system, user, extra = p.extra), key)
                 if (r.code in 200..299) {
                     val t = FreeProviders.parseReply(r.body)
                     if (t != null) return ChainResult(t, p.id, m, "", tried)

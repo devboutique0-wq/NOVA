@@ -160,8 +160,15 @@ object SelfTest {
             if (r.first in 200..299) rec("PASS", "Gemini AI (text) jawab", "code=" + r.first + " model=" + r.second)
             else rec("FAIL", "Gemini AI (text) jawab", "code=" + r.first + " " + ImageGen.failMsg(r.first))
         }
-        if (SecureStore.hasGroq(ctx)) rec("SKIP", "Groq awaaz key", "key hai, par alag se test nahi kiya")
-        else rec("SKIP", "Groq awaaz key", "key nahi hai (optional)")
+        // v34: online free AI providers (Groq, Qwen via Groq, OpenRouter): one tiny request each, only for keys that exist
+        val chk = AutoSetup.checkProviders(ctx)
+        if (chk.isEmpty()) rec("SKIP", "Free AI (Groq / Qwen / OpenRouter)", "koi key nahi hai (optional)")
+        for ((label, code) in chk) {
+            val l = AutoSetupPlan.line(label, code)
+            rec(l.substringBefore(' '), "Free AI " + l.substringAfter(' ').substringBefore(" - "), l.substringAfter(" - ", ""))
+        }
+        for (l in AutoSetup.log()) rec(l.substringBefore(' '), "Auto setup", l.substringAfter(' '))
+        if (AutoSetup.log().isEmpty()) rec("INFO", "Auto setup", "background mein chalta hai; abhi koi line nahi")
         rec("INFO", "Image banana/edit", "iske liye neeche IMAGE TEST dabao (paisa lag sakta hai)")
 
         // ---- 7. things a machine cannot hear: the user answers these

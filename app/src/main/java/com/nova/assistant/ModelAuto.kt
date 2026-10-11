@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * v17 model downloads.
+ *  - v34: AutoSetup (one silent background runner) now starts this download; autoStart below is kept but no longer called.
  *  - Voice-check model (about 14 MB): downloaded by itself once the mic service runs (so the permissions are given),
  *    at most one attempt every 6 hours, only when the owner left "auto" ON. Also available as a manual button.
  *  - Qwen offline brain (491 MB): NEVER downloaded automatically. In this build the offline engine is switched off
@@ -37,6 +38,17 @@ object ModelAuto {
         if (running.get()) return "busy"
         runVoice(app, true)
         return "ok"
+    }
+
+    /** v34: silent variant for AutoSetup (no chat text). null = downloaded, "busy" = another download runs, otherwise the error. Worker thread. */
+    fun silentVoice(app: Context): String? {
+        if (VoiceLock.modelReady(app)) return null
+        if (!running.compareAndSet(false, true)) return "busy"
+        try {
+            return VoiceLock.downloadModel(app)
+        } finally {
+            running.set(false)
+        }
     }
 
     private fun runVoice(app: Context, manual: Boolean) {

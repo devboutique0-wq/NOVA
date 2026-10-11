@@ -351,26 +351,6 @@ class LogicTest {
         assertEquals(listOf("xxxxxxxxxx..."), Logic.topLines(listOf("x".repeat(100)), 3, 10))
     }
 
-    @Test fun detectAlert() {
-        assertEquals("payment failed", Logic.detectAlert(listOf("Home", "Payment failed")))
-        assertEquals("error", Logic.detectAlert(listOf("Error 404")))
-        assertEquals("could not", Logic.detectAlert(listOf("Could not connect")))
-        assertEquals("blocked", Logic.detectAlert(listOf("Network blocked")))
-        assertEquals("no internet connection", Logic.detectAlert(listOf("No internet connection")))
-        assertNull(Logic.detectAlert(listOf("Everything is fine")))
-        assertNull(Logic.detectAlert(listOf("Terror alert")))                    // whole words only
-        assertNull(Logic.detectAlert(listOf("x".repeat(101) + " error")))        // long chat text ignored
-        assertNull(Logic.detectAlert(emptyList()))
-    }
-
-    @Test fun shouldAnnounce_spamGuard() {
-        assertTrue(Logic.shouldAnnounce(1000L, -1L, "", "error"))
-        assertFalse(Logic.shouldAnnounce(1000L + Logic.ALERT_SAME_GAP_MS - 1, 1000L, "error", "error"))
-        assertTrue(Logic.shouldAnnounce(1000L + Logic.ALERT_SAME_GAP_MS, 1000L, "error", "error"))
-        assertFalse(Logic.shouldAnnounce(1000L + Logic.ALERT_MIN_GAP_MS - 1, 1000L, "error", "blocked"))
-        assertTrue(Logic.shouldAnnounce(1000L + Logic.ALERT_MIN_GAP_MS, 1000L, "error", "blocked"))
-    }
-
     @Test fun constants_areSane() {
         assertTrue(Logic.END_SILENCE_MS in 300..6000)
         assertTrue(Logic.MAX_COMMAND_MS > Logic.NO_SPEECH_COMMAND_MS)

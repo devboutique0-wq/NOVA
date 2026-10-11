@@ -544,6 +544,21 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun clearOpenRouterKey() { SecureStore.clearSlot(this@MainActivity, "openrouter") }
 
+        /** Optional Z.ai (Zhipu GLM, free Flash models) key for the free AI chain. Written only here, never sent back. ok / invalid / fail. */
+        @JavascriptInterface
+        fun saveZaiKey(raw: String): String = try {
+            val k = raw.trim()
+            if (k.length < 20 || k.length > 200 || k.any { it.isWhitespace() }) "invalid"
+            else if (SecureStore.saveSlot(this@MainActivity, "zai", k)) "ok"
+            else "fail"
+        } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
+        fun hasZaiKey(): Boolean = SecureStore.hasSlot(this@MainActivity, "zai")
+
+        @JavascriptInterface
+        fun clearZaiKey() { SecureStore.clearSlot(this@MainActivity, "zai") }
+
         @JavascriptInterface
         fun getFreeChain(): Boolean = ExtCfg.freeChain(this@MainActivity)
 

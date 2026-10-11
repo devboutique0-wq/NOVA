@@ -107,13 +107,70 @@ class FreeProvidersTest {
 
     @Test fun defaultProviderOrderAndShape() {
         val p = FreeProviders.ordered()
-        assertEquals(listOf("groq", "openrouter", "pollinations"), p.map { it.id })
-        assertNull(p[2].keyName)
+        assertEquals(listOf("groq", "groqqwen", "zai", "openrouter", "pollinations"), p.map { it.id })
+        assertNull(p[4].keyName)
         assertEquals("groq", p[0].keyName)
-        assertEquals("openrouter", p[1].keyName)
+        assertEquals("groq", p[1].keyName)          // Qwen rides on the Groq key: nothing new to set up
+        assertEquals("zai", p[2].keyName)           // free Chinese GLM: own key, no card
+        assertEquals("openrouter", p[3].keyName)
         for (x in p) {
             assertTrue(x.url.startsWith("https://"))
             assertTrue(x.models.isNotEmpty())
+        }
+        assertEquals(FreeProviders.QWEN_MODELS_GROQ, p[1].models)
+        assertTrue(p[1].models.all { it.startsWith("qwen/") })
+        assertEquals(p[0].url, p[1].url)
+    }
+
+    @Test fun qwenFallsBackAfterGroqWithoutAnotherKey() {
+        // Groq's llama models both fail with quota -> the Qwen row (same Groq key, own cooldown) answers.
+        val cd = Cooldowns()
+        val seen = ArrayList<String>()
+        val r = ProviderChain.run(
+            FreeProviders.ordered(), { n -> if (n == "groq") "gk" else "" }, { id -> id != "pollinations" },
+            "s", "u", cd, { 0L }
+        ) { p, m, _, _ ->
+            seen.add(p.id + ":" + m)
+            if (p.id == "groq") NetAnswer(429, "{}") else NetAnswer(200, "{\"choices\":[{\"message\":{\"content\":\"Qwen ka jawab.\"}}]}")
+        }
+        assertEquals("groqqwen", r.providerId)
+        assertEquals("Qwen ka jawab.", r.text)
+        assertTrue(cd.cooling("groq", 1L))
+        assertFalse(cd.cooling("groqqwen", 1L))
+        assertEquals(listOf("groq", "groqqwen"), r.tried)
+    }
+
+    @Test fun zaiRowBodyAndFailover() {
+        val z = FreeProviders.ZAI
+        assertEquals(FreeProviders.ZAI_MODELS, z.models)
+        assertTrue(z.models.all { it.startsWith("glm-") })
+        assertEquals("https://api.z.ai/api/paas/v4/chat/completions", z.url)
+        val body = FreeProviders.buildBody("glm-4.7-flash", "s", "u", extra = z.extra)
+        val root = MiniJson.parse(body)
+        assertEquals("glm-4.7-flash", MiniJson.field(root, "model"))
+        assertEquals("disabled", MiniJson.field(MiniJson.field(root, "thinking"), "type"))   // valid JSON with the extra member
+        assertNull(MiniJson.field(MiniJson.parse(FreeProviders.buildBody("m", "s", "u")), "thinking"))   // other providers unchanged
+        // Groq + Qwen both out of quota -> GLM answers with ITS key; chain passes the extra member on
+        val seen = ArrayList<String>()
+        val r = ProviderChain.run(
+            FreeProviders.ordered(), { n -> if (n == "groq") "gk" else if (n == "zai") "zk" else "" }, { id -> id != "pollinations" },
+            "s", "u", Cooldowns(), { 0L }
+        ) { p, m, b, k ->
+            seen.add(p.id + ":" + k + ":" + b.contains("thinking"))
+            if (p.id == "zai") NetAnswer(200, "{\"choices\":[{\"message\":{\"content\":\"GLM ka jawab.\"}}]}") else NetAnswer(429, "{}")
+        }
+        assertEquals("zai", r.providerId)
+        assertEquals("GLM ka jawab.", r.text)
+        assertTrue(seen.contains("zai:zk:true"))
+        assertTrue(seen.none { it.startsWith("groqqwen") && !it.contains(":gk:") })
+    }
+
+    @Test fun qwenIsSkippedWithoutAnyKeyAndNeverNamedToTheUser() {
+        val r = ProviderChain.run(FreeProviders.ordered(), { "" }, { id -> id != "pollinations" }, "s", "u", Cooldowns(), { 0L }) { _, _, _, _ -> NetAnswer(200, "") }
+        assertTrue(r.tried.isEmpty())
+        for (k in listOf("network", "quota", "key", "cooling", "slow", "other")) {
+            assertFalse(FreeProviders.failText(k, true).lowercase().contains("qwen"))
+            assertFalse(FreeProviders.failText(k, false).lowercase().contains("qwen"))
         }
     }
 

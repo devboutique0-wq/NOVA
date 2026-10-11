@@ -64,7 +64,7 @@ class NovaService : Service() {
 
     companion object {
         private const val MAX_FOLLOW = 3   // v16: at most 3 follow-up listens in a row without the wake word
-        private val NO_FOLLOW_KINDS = setOf("stop", "sleep", "agent", "image", "site", "learn", "publish")
+        private val NO_FOLLOW_KINDS = setOf("stop", "sleep", "agent", "image", "site", "learn", "publish", "screen_end")
         @Volatile var running = false
         @Volatile var uiVisible = false          // set by MainActivity.onResume/onPause (PART 2)
         var listener: ((String, String) -> Unit)? = null
@@ -116,6 +116,14 @@ class NovaService : Service() {
     @Volatile private var nextFollow = false
     @Volatile private var replyUtt = ""
     @Volatile private var followCount = 0
+    // v33 JARVIS screen session (ScreenSession.kt has the rules). Text only lives in memory, never on disk.
+    @Volatile private var scrState: ScreenSession.State? = null
+    @Volatile private var scrPkg = ""
+    @Volatile private var scrLabel = ""
+    @Volatile private var scrText = ""
+    @Volatile private var scrLines: List<String> = emptyList()
+    @Volatile private var turnIsFollow = false      // this turn was heard in the follow window (no wake word)
+    private val scrHist: MutableList<JSONObject> = Collections.synchronizedList(ArrayList<JSONObject>())
     @Volatile private var wakeRequest = false        // set by the default-assistant button (long-press Home / power): same as the wake word
     @Volatile private var alive = false             // per-instance: true from onCreate until onDestroy / loop failure
 
@@ -277,6 +285,7 @@ class NovaService : Service() {
 
     override fun onDestroy() {
         alive = false
+        AutoSetup.stop()
         LocalBrains.release()
         VoiceLock.release()
         Driving.enabled = false
@@ -324,7 +333,11 @@ class NovaService : Service() {
         if (id == null || id != curUtt) return
         ttsActive = false
         if (finished && id == confirmUtt) answerWindow = true
-        if (finished && id == replyUtt && ExtCfg.convo(this) && followCount < MAX_FOLLOW) followWindow = true
+        if (finished && id == replyUtt) {
+            val ss = scrState
+            if (ss != null) scrState = ScreenSession.refresh(ss, System.currentTimeMillis())   // the spoken reply does not eat the idle time
+            if (screenOpen() || (ExtCfg.convo(this) && followCount < MAX_FOLLOW)) followWindow = true
+        }
     }
 
     private fun say(text: String, confirm: Boolean = false): Boolean = speak(text, confirm, true)
@@ -379,6 +392,7 @@ class NovaService : Service() {
         if (!alive) return "off"
         if (busy) return "busy"
         busy = true
+        turnIsFollow = false   // v33: typed text never counts as a spoken follow-up
         Thread { process(ByteArray(0), text, 0) }.start()
         return "sent"
     }
@@ -392,6 +406,29 @@ class NovaService : Service() {
         if (Looper.myLooper() == Looper.getMainLooper()) return say(text)
         h.post { if (alive && !busy && !listening && !ttsActive && pending == null) say(text) }
         return true
+    }
+
+    /** v33 Part 2: the screen alert only ASKS. A spoken yes opens the screen session on that screen; no yes = silence. Main thread. */
+    @Volatile private var alertKind: String? = null
+
+    fun screenAlertAsk(sn: NovaAccessibilityService.Snap, hit: ScreenAlert.Hit): Boolean {
+        if (Looper.myLooper() != Looper.getMainLooper()) return false
+        if (!alive || !ttsReady || Driving.enabled || screenOpen()) return false
+        if (busy || listening || ttsActive || pending != null || answerWindow || followWindow || dictatePending != null) return false
+        val en = cfg.lang == "en"
+        val q = ScreenAlert.question(hit, appLabel(sn.pkg), en)
+        sys("alert: ${hit.key} | ${hit.line}")   // debug line in the chat only (not spoken)
+        val first = sn
+        pending = Pending(q, System.currentTimeMillis(), null) {
+            val cur = NovaAccessibilityService.readScreen(false)
+            val use = if (cur != null && cur.pkg.isNotEmpty() && cur.pkg != packageName) cur else first
+            val reply = screenStartFrom(use)
+            alertKind = lastKind
+            reply
+        }
+        val ok = say(q, true)
+        if (!ok) pending = null   // nothing was spoken: do not leave a hidden question waiting
+        return ok
     }
 
     // ------------------------------------------------------------------ Vosk model
@@ -586,7 +623,7 @@ class NovaService : Service() {
                 fatal(tr("Mic busy hai (koi doosra app use kar raha hai).", "The mic is busy (another app is using it)."))
                 return
             }
-            ModelAuto.autoStart(this)   // v17: voice-check model by itself (small, once, only if auto is ON)
+            AutoSetup.start(this)   // v34: voice-check model + provider health check, silently in the background (one runner)
             mode("sleep")
             sys(tr("Sleep mode - \"$wakeWord\" bolo to jaagunga", "Asleep - say \"$wakeWord\" to wake me"))
 
@@ -594,6 +631,7 @@ class NovaService : Service() {
             var capturing = false
             var answerCapture = false
             var dictCapture = false          // this capture is a dictated driving reply: longer, ends only on silence
+            var followCap = false            // v33: this capture started from the follow window (no wake word)
             var pcm = ByteArrayOutputStream()
             val cmdText = StringBuilder()
             var heard = false
@@ -694,10 +732,11 @@ class NovaService : Service() {
                     }
                     if (followWindow) {
                         followWindow = false
-                        if (pending == null && followCount < MAX_FOLLOW) { followCount++; startCapture(false); continue }
+                        if (pending == null && (followCount < MAX_FOLLOW || screenOpen())) { followCount++; followCap = true; startCapture(false); continue }
                     }
                     if (wakeRequest) {
                         wakeRequest = false
+                        followCap = false
                         followCount = 0
                         pending = null
                         dictatePending = null
@@ -719,6 +758,7 @@ class NovaService : Service() {
                     } else if (wakeNow && Logic.wakeConfirmed(wakeHits, done)) {
                         wakeHits = 0
                         followCount = 0
+                        followCap = false
                         pending = null // a new command cancels any waiting confirmation
                         dictatePending = null
                         dictTarget = null
@@ -759,6 +799,8 @@ class NovaService : Service() {
                         lastCaptureEnd = System.currentTimeMillis()
                         val isAnswer = answerCapture
                         val wasDict = dictCapture
+                        turnIsFollow = followCap && !isAnswer && !wasDict
+                        followCap = false
                         answerCapture = false
                         dictCapture = false
                         if (!endpoint) {
@@ -772,7 +814,7 @@ class NovaService : Service() {
                         val dur = totalMs
                         cm.reset()
                         wk.reset()
-                        if (Logic.isFalseWake(heard, text, isAnswer || wasDict, SecureStore.hasGroq(this))) {
+                        if (Logic.isFalseWake(heard, text, isAnswer || wasDict, SecureStore.hasGroq(this) || SecureStore.hasKeys(this))) {   // v32: Gemini can hear it too
                             h.post { hud?.setReply("") }
                             if (isAnswer || wasDict) mode("on") else mode("sleep")   // a false wake leaves quietly: no speech, no card
                             armSleep(if (isAnswer || wasDict) 2500L else 800L)
@@ -1091,6 +1133,10 @@ class NovaService : Service() {
             if (Logic.classify(text)?.kind == "stop") return runCommand(Logic.Cmd("stop"))
             return if (Logic.isJunk(text)) "" else tr("Abhi ek kaam chal raha hai. Rokne ke liye 'ruko' bolo", "A task is running. Say stop to cancel it")
         }
+        if (!agentRunning && screenOpen() && (text.isNotBlank() || pcm.isNotEmpty())) {   // v33: a screen session is open: follow-ups first
+            val sr = screenFollow(pcm, text)
+            if (sr != null) return sr
+        }
         if (text.isNotBlank() && AgentRules.isTask(text)) {
             lastTurnLocal = false
             lastKind = "agent"
@@ -1119,19 +1165,19 @@ class NovaService : Service() {
             lastKind = "image"
             return imageBegin(imgReq)
         }
-        val c0 = if (text.isBlank()) null else Logic.classify(text)
+        val c0 = if (text.isBlank()) null else Understand.classify(text)   // v32: long / casual sentences too ("mere mobile ko turant lock kar do")
         val sk = if (c0 == null && text.isNotBlank()) brain.resolve(text) else null   // Layer 1: shortcuts + fuzzy match
         var c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
         var groqText = ""
         if (c == null && pcm.isNotEmpty() && SecureStore.hasGroq(this)) {
             groqText = groqHear(pcm)
-            if (groqText.isNotBlank()) c = Logic.classify(groqText)
+            if (groqText.isNotBlank()) c = Understand.classify(groqText)
         }
         // v28: no Groq key, or Groq failed: the owner's Gemini key listens instead (Hindi / Hinglish / English, far better than the
         // small offline Vosk model, which only guesses Roman words). Only after the wake word, only if Vosk found no local command.
         if (c == null && groqText.isBlank() && pcm.size >= MIN_HEAR_BYTES) {
             groqText = geminiHear(pcm)
-            if (groqText.isNotBlank()) c = Logic.classify(groqText)
+            if (groqText.isNotBlank()) c = Understand.classify(groqText)
         }
         if (c == null && groqText.isNotBlank() && AgentRules.isTask(groqText)) {   // v28: a whole job heard by Groq Whisper or Gemini
             lastTurnLocal = false
@@ -1196,6 +1242,10 @@ class NovaService : Service() {
                 { ms -> cloudCoolUntil = System.currentTimeMillis() + ms })
             if (ans != null) return ans
         }
+        if (!SecureStore.hasKeys(this)) return tr(
+            "Ye abhi samajh nahi aaya. Chhota bolo, jaise 'phone lock karo'. Lambi baat ke liye Settings mein Gemini key daalo.",
+            "I did not catch that. Say it short, like 'lock phone'. For long sentences add a Gemini key in Settings."
+        )
         return tr(
             "Ye samajh nahi aaya. Ek baar aur, thoda saaf bolo.",
             "I did not catch that. Please say it once more, a bit clearer."
@@ -1268,6 +1318,7 @@ class NovaService : Service() {
                 when (name) {
                     "groq" -> SecureStore.getGroq(this)
                     "openrouter" -> SecureStore.getSlot(this, "openrouter")
+                    "zai" -> SecureStore.getSlot(this, "zai")
                     else -> ""
                 }
             },
@@ -1315,7 +1366,9 @@ class NovaService : Service() {
         } catch (t: Throwable) {
             tr("Kaam nahi ho paya", "That did not work")
         }
-        finishTurn(reply)
+        val k = alertKind   // set only by a yes to a screen alert: the screen session then keeps listening for follow-ups
+        alertKind = null
+        finishTurn(reply, k)
     }
 
     /**
@@ -1899,7 +1952,7 @@ class NovaService : Service() {
     /** Worker thread. Returns the sentence to speak at the end. Hard caps: AgentRules.MAX_STEPS and MAX_MS. */
     /** The free online chain can drive the agent only when the owner left it ON and added a Groq or OpenRouter key. */
     private fun agentChainReady(): Boolean =
-        ExtCfg.freeChain(this) && (SecureStore.hasGroq(this) || SecureStore.hasSlot(this, "openrouter"))
+        ExtCfg.freeChain(this) && (SecureStore.hasGroq(this) || SecureStore.hasSlot(this, "openrouter") || SecureStore.hasSlot(this, "zai"))
 
     /** One text-only agent answer from the free chain (keys only, no keyless provider). null = nothing usable. */
     private fun agentChain(system: String, user: String): String? = try {
@@ -1909,6 +1962,7 @@ class NovaService : Service() {
                 when (name) {
                     "groq" -> SecureStore.getGroq(this)
                     "openrouter" -> SecureStore.getSlot(this, "openrouter")
+                    "zai" -> SecureStore.getSlot(this, "zai")
                     else -> ""
                 }
             },
@@ -2523,7 +2577,7 @@ class NovaService : Service() {
     private fun systemPrompt(): String {
         val now = SimpleDateFormat("EEEE, d MMMM yyyy, hh:mm a", Locale.ENGLISH).format(Date())
         val bat = getSystemService(BatteryManager::class.java).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return """You are NOVA, a voice assistant on the user's Android phone. The user's message is a short audio recording of a spoken command in Hindi, Hinglish or English, sometimes with a rough offline transcript that may be wrong: trust the audio. If it is empty or unclear, ask the user briefly to repeat. Your replies are read aloud, so: no markdown, no lists, no emojis, no URLs, short natural sentences. Reply in the language the user spoke: Hindi in Devanagari script for Hindi or Hinglish, English for English. Use the provided tools for phone actions and never claim an action was done unless the tool result says so; if a tool result says requested or not confirmed, say exactly that. The call and whatsapp tools ask the user for a spoken confirmation by themselves, so call them directly without asking first. For call, sms and whatsapp pass the contact name in Latin letters as it is usually saved, for example Rahul. For whatsapp pass only the final message text. You cannot see the phone screen. For analysis or explanations give a clear answer: conclusion first, then two to four reasons, then key risks. Use search_web for anything current such as news, prices or scores. Keep answers under about 8 sentences unless asked for detail. Never call or message anyone the user did not ask for. Never repeat, redo or continue an earlier command unless the user clearly asks for it again in this new message. If the audio is silent, noisy, cut off or unclear, call no tool, change nothing, and only ask the user to repeat. Current time: $now. Phone battery: $bat percent."""
+        return """You are NOVA, a voice assistant on the user's Android phone. The user's message is a spoken command in Hindi, Hinglish or English: the audio plus a transcript that may have small mistakes (if they differ, trust the audio). People speak naturally: long, casual, with filler and polite words, a different word order, or several things in one sentence, for example 'mere mobile ko turant lock kar do', 'yaar thodi awaaz kam kar de aur torch jala de', 'mujhe subah saat baje uthana hai alarm laga dena'. Work out the INTENT of the whole sentence and act with the tools; when the user asks for several things, call several tools in the same turn. Never say you did not understand just because the phrasing is unusual or long: choose the most likely action. Ask ONE short question only when two very different actions are equally likely, and ask the user to repeat only when the audio is really empty. Your replies are read aloud, so: no markdown, no lists, no emojis, no URLs, short natural sentences. Reply in the language the user spoke: Hindi in Devanagari script for Hindi or Hinglish, English for English. Use the provided tools for phone actions and never claim an action was done unless the tool result says so; if a tool result says requested or not confirmed, say exactly that. The call and whatsapp tools ask the user for a spoken confirmation by themselves, so call them directly without asking first. For call, sms and whatsapp pass the contact name in Latin letters as it is usually saved, for example Rahul. For whatsapp pass only the final message text. You cannot see the phone screen. For analysis or explanations give a clear answer: conclusion first, then two to four reasons, then key risks. Use search_web for anything current such as news, prices or scores. Keep answers under about 8 sentences unless asked for detail. Never call or message anyone the user did not ask for. Never repeat, redo or continue an earlier command unless the user clearly asks for it again in this new message. If the audio is silent or only background noise, call no tool, change nothing, and only ask the user to repeat. Current time: $now. Phone battery: $bat percent."""
     }
 
     private fun declarations(): JSONArray {
@@ -2553,7 +2607,10 @@ class NovaService : Service() {
     private fun cloudBody(contents: JSONArray, withTools: Boolean, system: String?): String {
         val b = JSONObject().put("contents", contents)
         if (system != null) b.put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
-        if (withTools) b.put("tools", JSONArray().put(JSONObject().put("functionDeclarations", declarations())))
+        if (withTools) {
+            b.put("tools", JSONArray().put(JSONObject().put("functionDeclarations", declarations())))
+            b.put("generationConfig", JSONObject().put("temperature", 0.2))   // v32: steady tool choice for spoken commands
+        }
         return b.toString()
     }
 
@@ -2578,7 +2635,7 @@ class NovaService : Service() {
                 .put("mimeType", "audio/wav")
                 .put("data", Base64.encodeToString(wavBytes(pcm), Base64.NO_WRAP))))
         }
-        val hint = if (text.isBlank()) "" else " Rough offline transcript (may be wrong): \"$text\"."
+        val hint = if (text.isBlank()) "" else " Transcript (may have small mistakes; trust the audio if they differ, and act on the intent): \"$text\"."
         parts.put(JSONObject().put("text", "(This is the user's spoken command, said after the wake word. Understand it and act on it.$hint)"))
         val userMsg = JSONObject().put("role", "user").put("parts", parts)
         val contents = JSONArray()
@@ -2624,7 +2681,100 @@ class NovaService : Service() {
         return tr("Kaam poora nahi ho paya", "I could not finish that")
     }
 
-    // ---------------------------------------------------------------- screen analysis (explicit command only)
+    // ---------------------------------------------------------------- screen session (v33 JARVIS, explicit command only)
+    // "nova screen dekho" reads the screen ONCE and then stays in a session: the owner can ask follow-ups without the wake word
+    // (aur detail, isme important kya hai, ise padh ke sunao, iska jawab likho, aage kya karu, ab ye dekho, ruko).
+    // The session only TALKS. Typing a reply draft needs a spoken yes; nothing is ever sent. Protected screens never go to the cloud.
+
+    private fun screenOpen(): Boolean = ScreenSession.isOpen(scrState, System.currentTimeMillis())
+
+    private fun endScreenSession() {
+        scrState = null
+        synchronized(scrHist) { scrHist.clear() }
+        scrText = ""
+        scrLines = emptyList()
+        scrPkg = ""
+        scrLabel = ""
+    }
+
+    private fun appLabel(pkg: String): String = try {
+        packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+    } catch (e: Exception) { pkg }
+
+    private fun scrAdopt(sn: NovaAccessibilityService.Snap) {
+        scrPkg = sn.pkg
+        scrLines = sn.lines
+        scrText = ScreenSession.cleanText(sn.lines)
+        scrLabel = appLabel(sn.pkg)
+        synchronized(scrHist) { scrHist.clear() }   // a new screen: the old talk would only confuse
+    }
+
+    /** What the screen shows, read on the phone only (no cloud). */
+    private fun screenLocalRead(lines: List<String>, max: Int): String {
+        val top = Logic.topLines(lines, max, 120)
+        if (top.isEmpty()) return tr(
+            "Is screen par padhne layak text nahi mila. Main sirf accessibility text padhta hoon, canvas, game aur secure screens nahi padh sakta",
+            "I found no readable text here. I only read accessibility text, and I cannot read canvas, game or secure screens"
+        )
+        return tr(
+            "Screen par ye likha hai: " + top.joinToString(", ") + ".",
+            "The screen shows: " + top.joinToString(", ") + "."
+        )
+    }
+
+    /** Protected screen or no key: answered here, nothing goes to the cloud. null = the cloud may be used. */
+    private fun screenGate(intent: ScreenSession.Intent): String? {
+        val en = cfg.lang == "en"
+        if (ScreenSession.isProtected(scrPkg, packageName)) {
+            val lines = scrLines
+            return askFirst(ScreenSession.protectedAsk(en)) { screenLocalRead(lines, 8) }
+        }
+        if (!SecureStore.hasKeys(this)) {
+            val reply = screenLocalRead(scrLines, if (intent == ScreenSession.Intent.READ) 12 else 8) + " " + ScreenSession.noKey(en)
+            endScreenSession()
+            lastKind = "screen_end"
+            return reply
+        }
+        return null
+    }
+
+    /** One AI turn about the screen. Pair(true, text) or Pair(false, spoken failure). Worker thread. */
+    private fun screenTalk(ask: String, histUser: String, intent: ScreenSession.Intent): Pair<Boolean, String> {
+        val en = cfg.lang == "en"
+        var shot: ByteArray? = null
+        val thin = ScreenSession.needsPicture(scrText)
+        if (intent == ScreenSession.Intent.PICTURE || thin) {
+            val now = NovaAccessibilityService.readScreen(false)
+            if (now == null || ScreenSession.isProtected(now.pkg, packageName)) {
+                return Pair(false, if (intent == ScreenSession.Intent.PICTURE) ScreenSession.noPicture(en) else ScreenSession.noText(en))
+            }
+            shot = NovaAccessibilityService.agentScreenshot()
+            if (shot == null) return Pair(false, if (intent == ScreenSession.Intent.PICTURE) ScreenSession.noPicture(en) else ScreenSession.noText(en))
+        }
+        val parts = JSONArray()
+        if (shot != null) {
+            parts.put(JSONObject().put("inlineData", JSONObject()
+                .put("mimeType", "image/jpeg")
+                .put("data", Base64.encodeToString(shot, Base64.NO_WRAP))))
+        }
+        parts.put(JSONObject().put("text", ask))
+        val contents = JSONArray()
+        synchronized(scrHist) { scrHist.forEach { contents.put(it) } }
+        contents.put(JSONObject().put("role", "user").put("parts", parts))
+        val sys = ScreenSession.systemPrompt(cfg.lang, scrLabel, scrPkg, scrText)
+        val (code, resp) = postFallback(cloudBody(contents, false, sys))
+        if (code !in 200..299) return Pair(false, cloudFailure(code))
+        val out = candidateText(resp).trim()
+        if (out.isEmpty()) return Pair(false, tr("Jawab nahi mila", "No answer received"))
+        synchronized(scrHist) {
+            scrHist.add(msg("user", histUser))
+            scrHist.add(msg("model", out))
+            Logic.boundHistory(scrHist, ScreenSession.MAX_HIST)
+        }
+        return Pair(true, out)
+    }
+
+    /** First reading ("nova screen dekho"). */
     private fun analyzeScreen(): String {
         if (!NovaAccessibilityService.isEnabled(this) || NovaAccessibilityService.instance == null) return tr(
             "Screen padhne ke liye Accessibility permission on karo. Baaki local commands bina iske chalte hain",
@@ -2640,29 +2790,117 @@ class NovaService : Service() {
                 val sn = NovaAccessibilityService.readScreen(false)
                 if (sn != null && sn.pkg != packageName && sn.pkg.isNotEmpty()) { snap = sn; break }
             }
-            if (snap == null || snap.pkg == packageName) return tr(
-                "Mujhe koi dusra app nahi dikha. NOVA se bahar jaakar dobara bolo: screen dekho",
-                "I did not see another app. Leave NOVA and say it again: analyze screen"
-            )
         }
-        val lines = snap?.lines ?: emptyList()
-        val top = Logic.topLines(lines, 8)
-        if (top.isEmpty()) return tr(
-            "Is screen par padhne layak text nahi mila (app: ${snap?.pkg}). Main sirf accessibility text padhta hoon, images nahi. Canvas, game aur secure screens nahi padh sakta",
-            "I found no readable text here (app: ${snap?.pkg}). I only read accessibility text, not images, and I cannot read canvas, game or secure screens"
+        val sn = snap
+        if (sn == null || sn.pkg == packageName || sn.pkg.isEmpty()) return tr(
+            "Mujhe koi dusra app nahi dikha. NOVA se bahar jaakar dobara bolo: screen dekho",
+            "I did not see another app. Leave NOVA and say it again: analyze screen"
         )
-        val local = tr(
-            "Screen par ye likha hai: " + top.joinToString(", ") + ". Ye sirf accessibility text hai, image nahi.",
-            "The screen shows: " + top.joinToString(", ") + ". This is accessibility text only, no images."
+        return screenStartFrom(sn)
+    }
+
+    /** Opens the session on an already read screen. Used by "screen dekho" and by a spoken yes to a screen alert. Worker thread. */
+    private fun screenStartFrom(sn: NovaAccessibilityService.Snap): String {
+        lastTurnLocal = false
+        lastKind = "screen"
+        scrAdopt(sn)
+        scrState = ScreenSession.start(sn.pkg, System.currentTimeMillis())
+        val gate = screenGate(ScreenSession.Intent.REFRESH)
+        if (gate != null) return gate
+        val (ok, out) = screenTalk(ScreenSession.firstAsk(), "(screen dekho)", ScreenSession.Intent.REFRESH)
+        if (!ok) {
+            val local = screenLocalRead(scrLines, 8)
+            endScreenSession()
+            lastKind = "screen_end"
+            return local + " " + out
+        }
+        return out
+    }
+
+    /**
+     * A spoken or typed follow-up while a session is open. Returns the reply, or null when the sentence is something else
+     * (a normal command, a picture request, a task): the session then ends and the normal path runs. Worker thread.
+     */
+    private fun screenFollow(pcm: ByteArray, text0: String): String? {
+        val en = cfg.lang == "en"
+        val now = System.currentTimeMillis()
+        val st = scrState
+        if (st == null || !ScreenSession.isOpen(st, now)) { endScreenSession(); return null }
+        var said = text0
+        var cmd = if (said.isBlank()) null else Understand.classify(said)
+        var intent = if (said.isBlank()) ScreenSession.Intent.OTHER else ScreenSession.intent(said)
+        // The offline text is weak for Hindi: the better listeners write it down (same silent fallback as everywhere else).
+        if (intent == ScreenSession.Intent.OTHER && cmd == null && pcm.size >= MIN_HEAR_BYTES) {
+            var hs = if (SecureStore.hasGroq(this)) groqHear(pcm) else ""
+            if (hs.isBlank()) hs = geminiHear(pcm)
+            if (hs.isNotBlank()) {
+                said = hs
+                cmd = Understand.classify(hs)
+                intent = ScreenSession.intent(hs)
+            }
+        }
+        lastTurnLocal = false
+        if (said.isBlank()) {   // nothing understood: ask again, this still counts as one turn
+            lastKind = "screen"
+            scrState = ScreenSession.touch(st, now)
+            return endIfLast(tr("Samajh nahi aaya, dobara bolo", "I did not catch that, please say it again"))
+        }
+        if (cmd != null && cmd.kind != "analyze" && cmd.kind != "stop") { endScreenSession(); return null }   // a normal command ("torch jala do")
+        if (cmd?.kind == "stop" || intent == ScreenSession.Intent.STOP) {
+            endScreenSession()
+            lastKind = "screen_end"
+            return ScreenSession.ended(en)
+        }
+        if (cmd?.kind == "analyze") intent = ScreenSession.Intent.REFRESH
+        else if (ScreenSession.isOtherFeature(said)) { endScreenSession(); return null }
+        if (intent == ScreenSession.Intent.OTHER && !turnIsFollow) { endScreenSession(); return null }   // a new wake-word sentence is not a screen question
+        lastKind = "screen"
+        scrState = ScreenSession.touch(st, now)
+        return endIfLast(screenAnswer(intent, said))
+    }
+
+    /** After the last allowed follow-up the session ends once this reply is spoken. */
+    private fun endIfLast(reply: String): String {
+        val s = scrState
+        if (s != null && ScreenSession.isLastTurn(s)) {
+            endScreenSession()
+            lastKind = "screen_end"
+        }
+        return reply
+    }
+
+    private fun screenAnswer(intent: ScreenSession.Intent, said: String): String {
+        val en = cfg.lang == "en"
+        val snap = NovaAccessibilityService.readScreen(false)
+        val other = snap != null && snap.pkg.isNotEmpty() && snap.pkg != packageName
+        if (other && snap != null && (intent == ScreenSession.Intent.REFRESH || snap.pkg != scrPkg)) scrAdopt(snap)   // "ab ye dekho" or another app is in front now
+        else if (!other && intent == ScreenSession.Intent.REFRESH) return tr(
+            "Mujhe naya screen nahi dikha. Jo screen dekhni hai wo kholo, phir bolo: ab ye dekho",
+            "I do not see a new screen. Open the one you want, then say: look at this now"
         )
-        if (!SecureStore.hasKeys(this)) return local
-        val text = lines.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString("\n").take(6000)
-        val ask = "This is the visible text of an Android screen (text only, no images). Give a concise conclusion first, " +
-            "then important controls or warnings. Do not invent anything that is not in the text. No markdown, short spoken sentences. " +
-            (if (cfg.lang == "en") "Reply in English." else "Reply in Hindi (Devanagari).") + "\nSCREEN TEXT:\n" + text
-        val body = cloudBody(JSONArray().put(msg("user", ask)), false, null)
-        val (code, resp) = postFallback(body)
-        if (code !in 200..299) return local + " " + cloudFailure(code)
-        return candidateText(resp).ifEmpty { local }
+        val gate = screenGate(intent)
+        if (gate != null) return gate
+        val ask = ScreenSession.askFor(intent, said)
+        val tag = "(" + intent.name.lowercase() + ") " + if (intent == ScreenSession.Intent.OTHER) said.take(120) else ""
+        val (ok, out) = screenTalk(ask, tag.trim(), intent)
+        if (!ok) return out
+        if (intent == ScreenSession.Intent.REPLY) {
+            val draft = ScreenSession.cleanDraft(out)
+            if (draft.isEmpty() || out.uppercase().contains("NO_MESSAGE")) return ScreenSession.noReply(en)
+            return askFirst(ScreenSession.askType(en, draft)) {   // the spoken yes first; typing only, never sending
+                val r = NovaAccessibilityService.typeText(draft)
+                if (!r.ok) ctlFail(r.code, draft).msg
+                else {
+                    try { Thread.sleep(600) } catch (e: InterruptedException) { }   // the Send button appears after text is typed
+                    var sent = false
+                    for (label in ScreenSession.SEND_LABELS) {
+                        if (NovaAccessibilityService.tapLabel(label).ok) { sent = true; break }
+                    }
+                    if (sent) tr("Likh diya aur bhej diya", "Typed it and sent it")
+                    else tr("Likh diya, par Send button nahi mila. Aap khud dabao", "Typed it, but I could not find the Send button. Please press it yourself")
+                }
+            }
+        }
+        return out
     }
 }

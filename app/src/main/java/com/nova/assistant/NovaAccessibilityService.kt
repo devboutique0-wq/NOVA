@@ -7,6 +7,7 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -338,8 +339,7 @@ class NovaAccessibilityService : AccessibilityService() {
     private var job: Job? = null
     private var scanQueued = false
     private var lastScanAt = -MIN_SCAN_GAP_MS
-    private var lastAlertAt = -1L
-    private var lastAlertKey = ""
+    private val alertGate = ScreenAlert.Gate()
 
     private val tick = object : Runnable {
         override fun run() {
@@ -355,18 +355,14 @@ class NovaAccessibilityService : AccessibilityService() {
         lastScanAt = SystemClock.elapsedRealtime()
         val snap = readScreen(false) ?: return@Runnable
         if (snap.pkg == packageName || snap.pkg in PKGS && job != null) return@Runnable
-        val hit = Logic.detectAlert(snap.lines) ?: return@Runnable
-        val key = snap.pkg + "|" + hit
+        // v33 Part 2: only a real dialog counts (ScreenAlert), never while the screen is off, then a strict rate limit.
+        val hit = ScreenAlert.detect(snap.pkg, snap.lines, packageName) ?: return@Runnable
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (pm != null && !pm.isInteractive) return@Runnable
         val now = SystemClock.elapsedRealtime()
-        if (!Logic.shouldAnnounce(now, lastAlertAt, lastAlertKey, key)) return@Runnable
-        // NovaService only speaks if it is idle (not busy, not waiting for a confirmation, not talking).
-        if (NovaService.instance?.announceIfIdle(
-                "Screen alert: $hit. Say analyze screen for details."
-            ) == true
-        ) {
-            lastAlertAt = now
-            lastAlertKey = key
-        }
+        if (!alertGate.allow(now, hit.key)) return@Runnable
+        // NovaService only asks if it is idle (not busy, not listening, not waiting for a yes, not driving, no screen session open).
+        if (NovaService.instance?.screenAlertAsk(snap, hit) == true) alertGate.record(now, hit.key)
     }
 
     override fun onServiceConnected() {

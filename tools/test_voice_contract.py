@@ -48,7 +48,7 @@ check("camera/video not used by voice code", "Camera" not in VL + SR and "MediaR
 MAU = rd(os.path.join(J, "ModelAuto.kt"))
 check("auto: only voice model, Qwen never automatic", "VoiceLock.downloadModel" in MAU and "ModelCatalog" not in MAU and "install(" not in MAU)
 check("auto: respects switch, 6h gap, skips if model exists", "ExtCfg.autoModels(ctx)" in MAU and "GAP_MS = 6L" in MAU and "VoiceLock.modelReady(ctx)" in MAU)
-check("auto: started from the mic service start", "ModelAuto.autoStart(this)" in NS)
+check("auto: started from the mic service start (v34: via the one AutoSetup runner, which calls ModelAuto.silentVoice)", "AutoSetup.start(this)" in NS and "ModelAuto.silentVoice(app)" in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app/src/main/java/com/nova/assistant/AutoSetup.kt"), encoding="utf-8").read())
 check("auto default ON, no new permission", "getBoolean(AUTO_MODELS, true)" in EC and "ACCESS_NETWORK_STATE" not in rd(os.path.join(R, "AndroidManifest.xml")))
 check("qwen button guarded by engine flag", "brainEngineReady" in UI and "fun brainEngineReady" in MA)
 check("agent: free chain answers when Gemini fails", "agentChain(AgentRules.systemPrompt(), prompt)" in NS and "private fun agentChainReady()" in NS)

@@ -19,8 +19,8 @@ def check(name, cond):
 for frag in ['{\\"model\\":', '\\"role\\":\\"system\\"', '\\"role\\":\\"user\\"', '\\"max_tokens\\"', '\\"temperature\\":0.6']:
     check("kotlin buildBody contains " + frag, frag in KT)
 urls = re.findall(r'"(https://[^"]+)"', KT)
-check("3 https endpoints in Kotlin", len(urls) == 3 and all(u.startswith("https://") for u in urls))
-check("provider order groq, openrouter, pollinations", re.search(r"listOf\(GROQ, OPENROUTER, POLLINATIONS\)", KT) is not None)
+check("5 https endpoints in Kotlin (Qwen row reuses the Groq URL, GLM has its own)", len(urls) == 5 and len(set(urls)) == 4 and all(u.startswith("https://") for u in urls))
+check("provider order groq, qwen (groq key), glm (zai key), openrouter, pollinations", re.search(r"listOf\(GROQ, GROQ_QWEN, ZAI, OPENROUTER, POLLINATIONS\)", KT) is not None)
 check("cooldown key = 600000", re.search(r'"key" -> 600_000L', KT) is not None)
 check("pollinations anonymous (no key slot) on the current gen.pollinations.ai endpoint", re.search(r'listOf\("openai/gpt-5.4-nano", "openai"\), null', KT) is not None and "https://gen.pollinations.ai/v1/chat/completions" in KT and "text.pollinations.ai" not in KT)
 check("chain sends only said text: buildBody takes (model, system, user)", "fun buildBody(model: String, system: String, user: String" in KT)
