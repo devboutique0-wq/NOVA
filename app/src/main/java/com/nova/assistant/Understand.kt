@@ -166,8 +166,10 @@ object Understand {
     /** Strict Logic.classify first (nothing that worked before changes), then the loose reading. */
     fun classify(text: String): Logic.Cmd? {
         val strict = Logic.classify(text)
-        if (strict != null) return strict
-        val s = simplify(text) ?: return null
-        return Logic.classify(s)
+        // "mera camera kholo": the strict parser reads "mera camera" as the NAME of an app (open_app). When the whole sentence is
+        // really one known safe intent, that reading is wrong, so the loose reading wins over a guessed app name.
+        if (strict != null && strict.kind != "open_app") return strict
+        val s = simplify(text) ?: return strict
+        return Logic.classify(s) ?: strict
     }
 }

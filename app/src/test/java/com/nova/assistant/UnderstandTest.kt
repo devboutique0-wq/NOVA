@@ -73,6 +73,13 @@ class UnderstandTest {
         for ((said, want) in cases) assertEquals(said, want, Understand.classify(said))
     }
 
+    @Test fun realAppNamesStillOpenAsApps() {
+        assertEquals(Logic.Cmd("open_app", "whatsapp"), Understand.classify("whatsapp kholo"))
+        assertEquals(Logic.Cmd("open_app", "mera camera"), Logic.classify("mera camera kholo"))   // the strict guess the loose reading overrides
+        assertEquals(Logic.Cmd("camera"), Understand.classify("mera camera kholo"))
+        assertEquals(Logic.Cmd("open_app", "youtube"), Understand.classify("youtube kholo"))
+    }
+
     @Test fun strictCommandsKeepWorkingExactlyAsBefore() {
         assertEquals(Logic.classify("lock phone"), Understand.classify("lock phone"))
         assertEquals(Logic.classify("torch on"), Understand.classify("torch on"))

@@ -123,6 +123,9 @@ for said, want in CASES:
 # source guards
 check("Understand.kt has no !!, catch (_ or TODO", "!!" not in U and "catch (_" not in U and "TODO" not in U)
 check("never produces risky kinds", not re.search(r'Intent\("(tap|type|call|sms|whatsapp|unlock|send|pay)', U))
+check("classify: the loose reading beats a guessed open_app name (mera camera kholo)", 'strict.kind != "open_app"' in U and "Logic.classify(s) ?: strict" in U)
+check("simplify(mera camera kholo) = camera", simplify("mera camera kholo") == "camera")
+check("simplify keeps real app names out (whatsapp kholo, youtube kholo)", simplify("whatsapp kholo") is None and simplify("youtube kholo") is None)
 check("handle() uses Understand.classify for the Vosk text", "val c0 = if (text.isBlank()) null else Understand.classify(text)" in NS)
 check("handle() uses Understand.classify for the Groq/Gemini text", NS.count("c = Understand.classify(groqText)") == 2)
 check("false-wake gate counts the Gemini key too", "SecureStore.hasGroq(this) || SecureStore.hasKeys(this)))" in NS)
