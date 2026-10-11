@@ -15,7 +15,7 @@ import java.net.UnknownHostException
 object GroqStt {
     private const val ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
     private const val MODEL = "whisper-large-v3"
-    private const val PROMPT = "Nova, torch chalu karo. Instagram kholo. Volume kam karo."
+    private const val PROMPT = ListenGuard.GROQ_PROMPT   // PART 4: a neutral hint, not a list of real commands
     private const val RATE = 16000
 
     class Res(val code: Int, val text: String?)
@@ -48,7 +48,7 @@ object GroqStt {
             body.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + name + "\"\r\n\r\n" + value + "\r\n").toByteArray(Charsets.UTF_8))
         }
         field("model", MODEL)
-        field("response_format", "json")
+        field("response_format", "verbose_json")   // PART 4: gives no_speech_prob per segment
         field("temperature", "0")
         field("prompt", PROMPT)
         body.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"cmd.wav\"\r\nContent-Type: audio/wav\r\n\r\n").toByteArray(Charsets.UTF_8))
@@ -69,7 +69,18 @@ object GroqStt {
             val stream = if (code in 200..299) c.inputStream else c.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
             if (code !in 200..299) Res(code, null)
-            else Res(code, JSONObject(text).optString("text", "").trim())
+            else {
+                val j = JSONObject(text)
+                val probs = ArrayList<Double>()
+                val segs = j.optJSONArray("segments")
+                if (segs != null) for (i in 0 until segs.length()) {
+                    val sg = segs.optJSONObject(i)
+                    if (sg != null && sg.has("no_speech_prob")) probs.add(sg.optDouble("no_speech_prob", 0.0))
+                }
+                val t = j.optString("text", "").trim()
+                // PART 4: noise that Whisper "heard" as words, or its own hint written back, is never a command
+                Res(code, if (ListenGuard.allNoSpeech(probs)) "" else ListenGuard.stripPromptEcho(t))
+            }
         } catch (e: UnknownHostException) {
             Res(598, null)
         } catch (e: IOException) {

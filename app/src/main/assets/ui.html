@@ -338,6 +338,7 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
 <b>SELF TEST (sab kuch asli mein)</b>
 <small>Pehle saari permissions allow karo aur home par ACTIVATE dabao. Phir SAB TEST KARO. Test lagbhag 40 second chalta hai: torch ek second jalegi, volume thoda badhega-ghategi, aur Android Settings screen khulke wapas aayegi. Koi call, message ya payment nahi hota.</small>
 <div class="row"><button class="sm" id="st_run">SAB TEST KARO</button><button class="sm" id="st_img">IMAGE TEST</button><button class="sm" id="st_free">FREE IMAGE TEST</button></div>
+<div class="row"><button class="sm" id="st_err">AKHRI GALTIYAN</button><button class="sm" id="st_pow">BATTERY / AUTOSTART</button></div>
 <pre id="st_out"></pre>
 <div class="row"><button class="sm" id="st_copy">COPY REPORT</button><button class="sm" id="st_share">SHARE</button></div>
 </div>
@@ -453,6 +454,16 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
 <small>Kisi aur ki awaaz par bhi NOVA bole to STRICT rakho. Meri awaaz par "Anjaan awaaz" aaye to NORMAL karo. Chat me "Awaaz match" number dikhta hai.</small>
 <div class="row"><button class="sm" id="vl_save">AWAAZ SAVE KARO</button><button class="sm" id="vl_del">AWAAZ HATAO</button></div>
 <small>Pehle ACTIVATE dabao. Save karte waqt chat me jo likha aaye wahi karo. Kisi ki recording se ye dhoka kha sakta hai, isliye paise/call/delete par "haan" ka sawaal pehle jaisa rahega.</small>
+</div>
+
+<div class="box">
+<label style="margin-top:0">AWAAZ TEST + FACE LOCK</label>
+<small id="fg_state"></small>
+<div class="row"><button class="sm" id="vt_own">AWAAZ TEST (10 vaakya)</button><button class="sm" id="vt_oth">DOOSRE KI AWAAZ TEST</button></div>
+<small>Pehle AWAAZ SAVE karo. Test me 10 vaakya bolo: NOVA aapki awaaz ke hisaab se apna limit khud chunta hai. Doosre se bhi 3 vaakya bulwa lo to pata chalta hai wo rok li jaati hai ya nahi.</small>
+<label class="chk" style="margin-top:8px"><input type="checkbox" id="fg_on"> Phone locked ho to awaaz + face dono chahiye</label>
+<div class="row"><button class="sm" id="fg_test">FACE CHECK TEST</button></div>
+<small>Locked phone par NOVA tabhi kaam karega jab aapki awaaz pehchani jaye AUR phone ki apni face / fingerprint screen pass ho. Android apps ko face-unlock ka data nahi deta, isliye NOVA phone ki apni screen dikhata hai; wo face ya fingerprint, jo aapke phone me set ho, wahi maangti hai. Recording se awaaz ko dhoka diya ja sakta hai, isliye dusra check zaroori hai. Is check se phone unlock nahi hota.</small>
 </div>
 
 <div class="box">
@@ -660,6 +671,39 @@ button:focus-visible,.f:focus-visible{outline:2px solid var(--c1);outline-offset
   if(vlD)vlD.addEventListener("click",function(){
     try{Android.voiceDelete();if(vlEl)vlEl.checked=false;vlState();say("Awaaz hata di",true)}catch(x){say("Nahi hua",false)}});
   vlState();
+  var fgEl=g("fg_on");
+  function fgState(){var st=g("fg_state");if(!st)return;try{
+    var m=Android.faceMode();
+    var ms=m==="weak"?"Face/fingerprint: tayyar":m==="credential"?"Sirf PIN/pattern se (face/fingerprint set nahi)":"Phone me face/fingerprint/screen lock set nahi";
+    st.textContent=ms+" | Awaaz limit: "+Android.getVoiceLimitText()+" | Face lock: "+(Android.getFaceGate()?"ON":"OFF")}catch(x){}}
+  window.onFaceTest=function(ok){say(ok?"Face / fingerprint pass hua":"Pass nahi hua",ok);fgState()};
+  if(fgEl){try{fgEl.checked=!!Android.getFaceGate()}catch(x){}
+    fgEl.addEventListener("change",function(){
+      try{var r=Android.setFaceGate(fgEl.checked);
+        if(r==="novoice"){fgEl.checked=false;say("Pehle AWAAZ SAVE karo aur 'sirf meri awaaz' ON karo",false)}
+        else if(r==="noface"){fgEl.checked=false;say("Phone me face/fingerprint ya screen lock set karo",false)}
+        else say(fgEl.checked?"Face lock ON":"Face lock OFF",true);fgState()}catch(x){say("Nahi hua",false)}})}
+  var vtO=g("vt_own");
+  if(vtO)vtO.addEventListener("click",function(){
+    try{var r=Android.voiceTune(false);
+      if(r==="ok")say("Chat dekho, wahan likha hai kya bolna hai",true);
+      else if(r==="noprofile")say("Pehle AWAAZ SAVE karo",false);
+      else if(r==="busy")say("Awaaz save chal raha hai, pehle use pura karo",false);
+      else say("Pehle ACTIVATE dabao",false)}catch(x){say("Nahi hua",false)}
+    setTimeout(fgState,60000)});
+  var vtT=g("vt_oth");
+  if(vtT)vtT.addEventListener("click",function(){
+    try{var r=Android.voiceTune(true);
+      if(r==="ok")say("Chat dekho, doosre insaan se wahi bulwao",true);
+      else if(r==="noowntest")say("Pehle apna AWAAZ TEST (10 vaakya) pura karo",false);
+      else if(r==="noprofile")say("Pehle AWAAZ SAVE karo",false);
+      else if(r==="busy")say("Awaaz save chal raha hai, pehle use pura karo",false);
+      else say("Pehle ACTIVATE dabao",false)}catch(x){say("Nahi hua",false)}
+    setTimeout(fgState,30000)});
+  var fgT=g("fg_test");
+  if(fgT)fgT.addEventListener("click",function(){
+    try{var r=Android.faceTest();if(r==="noface")say("Phone me face/fingerprint ya screen lock set karo",false);else say("Phone ki screen dikhegi, pehchaan karo",true)}catch(x){say("Nahi hua",false)}});
+  fgState();
   var cvEl=g("cv_on");
   if(cvEl){try{cvEl.checked=!!Android.getConvo()}catch(x){}
     cvEl.addEventListener("change",function(){
@@ -1402,6 +1446,8 @@ g('st_free').onclick=function(){
 };
 g('st_copy').onclick=function(){var t=rep||out.textContent;var r='';try{r=Android.copyText(t)}catch(e){}g('st_copy').textContent=(r==='ok')?'COPY HO GAYA':'COPY NAHI HUA'};
 g('st_share').onclick=function(){try{Android.shareText(rep||out.textContent)}catch(e){}};
+g('st_err').onclick=function(){var r='';try{r=Android.getErrors()}catch(e){r='fail'}rep=(r==='fail')?'':r;out.textContent=(r==='fail')?'Galtiyan padh nahi paya':r;g('st_copy').textContent='COPY REPORT'};
+g('st_pow').onclick=function(){var r='';try{r=Android.openPowerGuide()}catch(e){r='fail'}add(r==='fail'?'Settings khul nahi payi':r)};
 window.onSelfTest=function(l){add(l)};
 window.onSelfTestDone=function(r){rep=r;out.textContent=r;g('st_copy').textContent='COPY REPORT'};
 })();

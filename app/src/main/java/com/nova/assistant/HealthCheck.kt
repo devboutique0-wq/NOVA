@@ -43,6 +43,10 @@ object HealthCheck {
         val bat = pm != null && pm.isIgnoringBatteryOptimizations(ctx.packageName)
         out.add(Item("Battery unrestricted", bat,
             "Settings > Apps > NOVA > Battery: No restrictions (and Autostart ON)"))
+        out.add(Item("Gemini key (phone ke kaam)", SecureStore.hasKeys(ctx), "NOVA Settings me Gemini key daalo", false))
+        out.add(Item("Groq key (awaaz aur backup AI)", SecureStore.hasGroq(ctx), "NOVA Settings me free Groq key daalo", false))
+        out.add(Item("OpenRouter key (backup AI)", SecureStore.hasSlot(ctx, "openrouter"), "NOVA Settings me free OpenRouter key daalo", false))
+        out.add(Item("GLM Z.ai key (backup AI)", SecureStore.hasSlot(ctx, "zai"), "NOVA Settings me free Z.ai key daalo", false))
         out.add(Item("NOVA listening", NovaService.running, "Press ACTIVATE in NOVA", false))
         return out
     }
@@ -62,6 +66,7 @@ object HealthCheck {
             if (!i.ok) sb.append("  -> ").append(i.fix)
             sb.append('\n')
         }
+        sb.append(ErrLog.dump(System.currentTimeMillis())).append('\n')
         return sb.toString()
     }
 
@@ -89,6 +94,7 @@ object HealthCheck {
                 .setTitle("NOVA health check")
                 .setMessage(msg)
                 .setPositiveButton("COPY REPORT") { _, _ -> copy(act) }
+                .setNeutralButton("BATTERY / AUTOSTART") { _, _ -> openPower(act) }
                 .setNegativeButton("OK", null)
                 .create()
             d.setOnDismissListener { if (dialog === d) dialog = null }
@@ -96,6 +102,13 @@ object HealthCheck {
             dialog = d
         } catch (e: Exception) {
             // a health check must never crash the app
+        }
+    }
+
+    private fun openPower(act: Activity) {
+        try {
+            Toast.makeText(act, PowerGuide.open(act), Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
         }
     }
 

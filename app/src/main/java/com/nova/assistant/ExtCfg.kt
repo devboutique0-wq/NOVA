@@ -72,6 +72,44 @@ object ExtCfg {
         } catch (e: Exception) { }
     }
 
+    // ---- Part 5: voice self-tuning + lock-screen face gate
+    private const val VOICE_THR = "voice_threshold"
+    private const val VOICE_OWN = "voice_own_dists"
+    private const val FACE_GATE = "face_gate"
+
+    /** The limit chosen by the owner's own voice test. 0.0 = not tuned (the STRICT / NORMAL / LOOSE level is used). */
+    fun voiceThreshold(ctx: Context): Double = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getFloat(VOICE_THR, 0f).toDouble()
+    } catch (e: Exception) { 0.0 }
+
+    fun setVoiceThreshold(ctx: Context, v: Double) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putFloat(VOICE_THR, v.toFloat()).apply()
+        } catch (e: Exception) { }
+    }
+
+    /** Distances (plain numbers, no audio) of the owner's test sentences, kept so another person's test can be compared later. */
+    fun voiceOwnDists(ctx: Context): String = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString(VOICE_OWN, "") ?: ""
+    } catch (e: Exception) { "" }
+
+    fun setVoiceOwnDists(ctx: Context, s: String) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString(VOICE_OWN, s).apply()
+        } catch (e: Exception) { }
+    }
+
+    /** Locked phone: NOVA acts only when the voice AND the system face / fingerprint check pass. Default OFF. */
+    fun faceGate(ctx: Context): Boolean = try {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(FACE_GATE, false)
+    } catch (e: Exception) { false }
+
+    fun setFaceGate(ctx: Context, on: Boolean) {
+        try {
+            ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(FACE_GATE, on).apply()
+        } catch (e: Exception) { }
+    }
+
     private const val VOICE_LOCK = "voice_lock"
 
     /** v17 "only my voice": when ON (and a voiceprint exists) every spoken turn must match the owner. Default OFF until enrolled. */

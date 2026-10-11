@@ -169,7 +169,18 @@ object Understand {
         // "mera camera kholo": the strict parser reads "mera camera" as the NAME of an app (open_app). When the whole sentence is
         // really one known safe intent, that reading is wrong, so the loose reading wins over a guessed app name.
         if (strict != null && strict.kind != "open_app") return strict
-        val s = simplify(text) ?: return strict
+        val s = simplify(text)
+        if (s == null) {
+            // "front camera se video kholo": the strict parser would guess an app called "front camera se video". When camera comes with
+            // video / front / selfie words it is a camera request with options, so give no local answer and let the AI choose the tool args.
+            if (strict != null && strict.kind == "open_app") {
+                val w = strict.arg.split(" ").filter { it.isNotEmpty() }
+                if ("camera" in w && w.any { it in CAMERA_OPTION_WORDS }) return null
+            }
+            return strict
+        }
         return Logic.classify(s) ?: strict
     }
+
+    private val CAMERA_OPTION_WORDS = setOf("video", "vid", "videos", "front", "selfie", "record", "recording", "aage", "photo")
 }

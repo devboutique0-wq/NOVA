@@ -22,6 +22,13 @@ object SpeakerRules {
         else -> 0.4
     }
 
+    /**
+     * Part 5: the limit the owner's own tuning chose (VoiceTune) wins over the fixed STRICT / NORMAL / LOOSE values.
+     * A missing or out-of-range tuned value (0 = not tuned) falls back to the level.
+     */
+    fun effectiveThreshold(level: Int, tuned: Double): Double =
+        if (tuned.isFinite() && tuned >= VoiceTune.MIN_THRESHOLD && tuned <= VoiceTune.MAX_THRESHOLD) tuned else thresholdFor(level)
+
     /** 0 = same direction, 2 = opposite. Mismatched, empty or all-zero vectors are 2.0 (never a match). */
     fun cosineDistance(a: DoubleArray, b: DoubleArray): Double {
         if (a.isEmpty() || a.size != b.size) return 2.0

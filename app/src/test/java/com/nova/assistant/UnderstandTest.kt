@@ -90,4 +90,9 @@ class UnderstandTest {
         assertNull(Understand.simplify("phone unlock kar do"))
         assertNull(Understand.simplify("mera phone unlock kro turant"))
     }
+
+    @Test fun cameraWithOptionsGoesToTheAiNotToAnAppNameGuess() {
+        assertNull(Understand.classify("front camera se video kholo"))
+        assertEquals(Logic.Cmd("camera"), Understand.classify("camera kholo"))
+    }
 }

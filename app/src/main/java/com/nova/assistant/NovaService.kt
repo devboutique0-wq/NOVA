@@ -102,6 +102,17 @@ class NovaService : Service() {
     @Volatile private var busy = false              // a turn is being processed
     @Volatile private var listening = false         // the loop is capturing a command / answer
     @Volatile private var pending: Pending? = null
+
+    // PART 3 (silent turn): set per order when the owner adds "chup rehna" / "bina bole" / "don't speak". See SilentRules.
+    @Volatile private var lastVoiceAt = 0L              // PART 4: last time a voice-like sound was heard while asleep (NOVA never starts talking over people)
+    @Volatile private var silentTurn = false
+    @Volatile private var silentCarryAt = 0L            // a silent order that asked a yes/no: the spoken yes keeps the result silent
+    @Volatile private var silentCarryP: Any? = null     // the exact question that silent order asked (a different question never inherits silence)
+    @Volatile private var turnFailed = false
+    private val turnOk: MutableList<String> = java.util.Collections.synchronizedList(ArrayList<String>())
+    @Volatile private var silentFillerHeard = false
+    @Volatile private var agentSilent = false
+    @Volatile private var agentAsked = false
     @Volatile private var lastKind = ""                      // kind of the command the last turn ran (decides spoken or silent reply)
     @Volatile private var historyAt = 0L                     // when the cloud chat memory was last used
     @Volatile private var cloudCoolUntil = 0L                // after a cloud failure the cloud is skipped until this time (AiRouter.cooldownMs)
@@ -403,6 +414,7 @@ class NovaService : Service() {
     /** Used by the Accessibility alert monitor. False when NOVA is busy / listening / waiting for "yes". */
     fun announceIfIdle(text: String): Boolean {
         if (!alive || busy || listening || ttsActive || pending != null || !ttsReady) return false
+        if (!ListenGuard.mayAnnounce(lastVoiceAt, System.currentTimeMillis())) return false   // PART 4: never talk over people
         if (Looper.myLooper() == Looper.getMainLooper()) return say(text)
         h.post { if (alive && !busy && !listening && !ttsActive && pending == null) say(text) }
         return true
@@ -415,6 +427,7 @@ class NovaService : Service() {
         if (Looper.myLooper() != Looper.getMainLooper()) return false
         if (!alive || !ttsReady || Driving.enabled || screenOpen()) return false
         if (busy || listening || ttsActive || pending != null || answerWindow || followWindow || dictatePending != null) return false
+        if (!ListenGuard.mayAnnounce(lastVoiceAt, System.currentTimeMillis())) return false   // PART 4: never ask over people who are talking
         val en = cfg.lang == "en"
         val q = ScreenAlert.question(hit, appLabel(sn.pkg), en)
         sys("alert: ${hit.key} | ${hit.line}")   // debug line in the chat only (not spoken)
@@ -507,6 +520,112 @@ class NovaService : Service() {
     @Volatile private var voiceMd: Model? = null
     @Volatile private var enrollLeft = 0
     private val enrollVecs = ArrayList<DoubleArray>()
+    @Volatile private var tuneLeft = 0              // PART 5: test sentences still to say (voice self-tuning)
+    @Volatile private var tuneOthers = false        // PART 5: true = the test sentences are another person's
+    private val tuneDists = ArrayList<Double>()
+
+    /**
+     * PART 5 (voice self-tuning). Called from Settings. The owner says about 10 test sentences; their distances to the saved voiceprint
+     * pick a personal limit. With others = true another person says 3 sentences, to see whether the check can tell them apart.
+     * "ok" = started, anything else = a short reason.
+     */
+    fun startVoiceTune(others: Boolean): String {
+        if (!alive || voiceMd == null) return "notrunning"
+        if (!VoiceLock.hasProfile(this) || !VoiceLock.modelReady(this)) return "noprofile"
+        if (enrollLeft > 0) return "busy"
+        if (others && VoiceTune.decode(ExtCfg.voiceOwnDists(this)).size < VoiceTune.MIN_SAMPLES) return "noowntest"
+        synchronized(tuneDists) { tuneDists.clear() }
+        tuneOthers = others
+        tuneLeft = if (others) VoiceTune.OTHER_SAMPLES else VoiceTune.SAMPLES
+        val n = tuneLeft
+        listener?.invoke("ai", if (others) tr(
+            "Doosre insaan ki awaaz ka test: wo \"$curWake\" bole aur 4-5 second ka lamba vaakya, $n baar (1/$n).",
+            "Other person's voice test: they say \"$curWake\" and then a 4-5 second sentence, $n times (1/$n)."
+        ) else tr(
+            "Awaaz test: \"$curWake\" bolo aur 4-5 second ka lamba vaakya, $n baar (1/$n). Apni normal awaaz me, kabhi dheere kabhi tez.",
+            "Voice test: say \"$curWake\" and then a 4-5 second sentence, $n times (1/$n). Normal voice, sometimes softer, sometimes louder."
+        ))
+        return "ok"
+    }
+
+    /** One test sentence. Always returns false: a test sentence is consumed and never runs as a command. */
+    private fun tuneSample(pcm: ByteArray): Boolean {
+        val profile = VoiceLock.loadProfile(this)
+        val md = voiceMd
+        val got = if (md != null && profile != null) VoiceLock.vector(this, md, pcm, RATE) else null
+        if (got == null || profile == null) { voiceDeny(tr("Awaaz samajh nahi aayi, dobara bolo.", "I could not read your voice, say it again.")); return false }
+        if (got.second < SpeakerRules.MIN_FRAMES_COMMAND) { voiceDeny(tr("Vaakya bahut chhota tha, thoda lamba bolo.", "That was too short, say a longer sentence.")); return false }
+        val n = synchronized(tuneDists) { tuneDists.add(SpeakerRules.cosineDistance(got.first, profile)); tuneDists.size }
+        tuneLeft -= 1
+        if (tuneLeft > 0) {
+            voiceDeny(tr("Theek ($n). Ab agla vaakya bolo.", "Got it ($n). Say the next sentence."))
+            return false
+        }
+        val mine: List<Double> = synchronized(tuneDists) { ArrayList(tuneDists) }
+        val others = tuneOthers
+        val r = if (others) VoiceTune.choose(VoiceTune.decode(ExtCfg.voiceOwnDists(this)), mine) else VoiceTune.choose(mine, emptyList())
+        if (!others) ExtCfg.setVoiceOwnDists(this, VoiceTune.encode(mine))
+        val acc = Math.round(r.acceptRate * 100)
+        val msg = when {
+            r.note == "few" -> tr("Kam vaakya mile, test dobara karo.", "Too few sentences, run the test again.")
+            r.note == "noisy" -> tr(
+                "Aapki awaaz ke numbers bahut alag-alag aaye (sirf $acc% pass). Shaant jagah par, ek jaisi awaaz me dobara test karo. Purana limit nahi badla.",
+                "Your voice numbers varied too much (only $acc% pass). Test again in a quiet place with a steady voice. The old limit was not changed."
+            )
+            r.note == "overlap" -> tr(
+                "Doosre insaan ki awaaz aapki awaaz jitni paas aayi. Sirf awaaz par bharosa mat karo: Face lock ON rakho. Limit nahi badla.",
+                "The other person's voice came as close as yours. Do not trust the voice check alone: keep the face lock ON. The limit was not changed."
+            )
+            else -> {
+                ExtCfg.setVoiceThreshold(this, r.threshold)
+                val rej = r.rejectRate
+                if (rej != null) tr(
+                    "Test pura. Aapki awaaz $acc% pass, doosre ki ${Math.round(rej * 100)}% roki gayi. Naya limit ${"%.2f".format(r.threshold)} lag gaya.",
+                    "Test done. Your voice passes $acc%, the other person is refused ${Math.round(rej * 100)}%. New limit ${"%.2f".format(r.threshold)} is set."
+                ) else tr(
+                    "Test pura. Aapki awaaz $acc% pass. Naya limit ${"%.2f".format(r.threshold)} lag gaya. Doosre se bhi test karwao to bharosa badhega.",
+                    "Test done. Your voice passes $acc%. New limit ${"%.2f".format(r.threshold)} is set. Test with another person too for more confidence."
+                )
+            }
+        }
+        voiceDeny(msg)
+        return false
+    }
+
+    /**
+     * PART 5: on a LOCKED phone (gate switched on) NOVA acts only when the voice AND the system face / fingerprint check pass.
+     * Called on the worker thread right after the voice check allowed the turn. false = refused (shown in the chat only).
+     */
+    private fun faceAllows(): Boolean {
+        if (!ExtCfg.faceGate(this)) return true
+        val voiceActive = ExtCfg.voiceLock(this) && VoiceLock.hasProfile(this)
+        val now = System.currentTimeMillis()
+        when (LockGate.step(true, FaceGate.isLocked(this), voiceActive, LockGate.faceFresh(FaceGateState.lastOkAt, now))) {
+            LockGate.Step.ALLOW -> return true
+            LockGate.Step.DENY_NO_VOICEPRINT -> {
+                voiceDeny(tr("Phone locked hai aur face lock ON hai: awaaz + face dono chahiye. Pehle Settings mein apni awaaz save karke 'sirf meri awaaz' ON karo.",
+                    "The phone is locked and the face lock is ON: voice and face are both needed. Save your voice in Settings and switch 'only my voice' ON first."))
+                return false
+            }
+            LockGate.Step.NEED_FACE -> { }
+        }
+        val mode = FaceGate.mode(this)
+        if (mode == LockGate.Mode.NONE) {
+            voiceDeny(tr("Is phone par face / fingerprint ya screen lock set nahi hai, isliye maine kuch nahi kiya.",
+                "This phone has no face / fingerprint or screen lock set up, so I did nothing."))
+            return false
+        }
+        val tok = FaceGateState.begin()
+        FaceGate.launch(this, tok, mode)
+        val ok = FaceGateState.await(tok, LockGate.FACE_WAIT_MS)
+        FaceGate.dismissNotice(this)
+        if (!ok) {
+            voiceDeny(tr("Face / fingerprint check pass nahi hua (ya screen nahi khuli), isliye kuch nahi kiya.",
+                "The face / fingerprint check did not pass (or its screen did not open), so I did nothing."))
+            return false
+        }
+        return true
+    }
 
     /** Called from Settings. "ok" = enrolment started (chat tells the owner what to say), anything else = a short reason. */
     fun startVoiceEnroll(): String {
@@ -546,6 +665,7 @@ class NovaService : Service() {
 
     /** true = go on and handle this utterance. false = it was consumed (enrolment) or refused (not the owner). */
     private fun voiceAllows(pcm: ByteArray, isAnswer: Boolean): Boolean {
+        if (tuneLeft > 0 && enrollLeft <= 0) return tuneSample(pcm)   // PART 5: a test sentence of the voice self-tuning
         val enrolling = enrollLeft > 0
         if (!enrolling && !(ExtCfg.voiceLock(this) && VoiceLock.hasProfile(this))) return true
         val md = voiceMd
@@ -560,13 +680,15 @@ class NovaService : Service() {
             val avg = synchronized(enrollVecs) { SpeakerRules.average(ArrayList(enrollVecs)) }
             synchronized(enrollVecs) { enrollVecs.clear() }
             if (avg != null && VoiceLock.saveProfile(this, avg)) {
+                ExtCfg.setVoiceThreshold(this, 0.0)      // PART 5: a new voiceprint makes the old tuning wrong
+                ExtCfg.setVoiceOwnDists(this, "")
                 ExtCfg.setVoiceLock(this, true)
                 voiceDeny(tr("Awaaz save ho gayi. Ab NOVA sirf aapki awaaz par jawab dega.", "Voice saved. NOVA will now answer only your voice."))
             } else voiceDeny(tr("Awaaz save nahi ho payi. Dobara try karo.", "The voice could not be saved. Try again."))
             return false
         }
         val profile = VoiceLock.loadProfile(this)
-        val thr = SpeakerRules.thresholdFor(ExtCfg.voiceLevel(this))
+        val thr = SpeakerRules.effectiveThreshold(ExtCfg.voiceLevel(this), ExtCfg.voiceThreshold(this))   // PART 5: the owner's own tuned limit wins
         if (got != null && profile != null) {   // shown in the chat so the owner can see (and tune) how close a voice was
             val d = SpeakerRules.cosineDistance(got.first, profile)
             sys(tr("Awaaz match: " + "%.2f".format(d) + " (seema " + "%.2f".format(thr) + ")", "Voice match: " + "%.2f".format(d) + " (limit " + "%.2f".format(thr) + ")"))
@@ -639,6 +761,7 @@ class NovaService : Service() {
             var totalMs = 0
             var skip = 0
             var noise = 300.0
+            var lastSpeechBytes = 0           // PART 4: pcm size right after the last loud chunk (trailing silence is cut before the cloud hears it)
             var wasBlocked = false
             var readErrors = 0
             var peak = 0.0                    // loudest recent chunk: a wake word must be spoken, not just a faint sound
@@ -650,7 +773,7 @@ class NovaService : Service() {
                 h.removeCallbacks(sleepRun)    // awake now: no sleeping in the middle of a task
                 wk.reset()
                 cm.reset()
-                tn.startTone(ToneGenerator.TONE_PROP_BEEP, 120)
+                tn.startTone(ToneGenerator.TONE_PROP_BEEP, 60)   // PART 4: shorter beep, so less of the first word is lost
                 capturing = true
                 listening = true
                 answerCapture = answer
@@ -660,7 +783,8 @@ class NovaService : Service() {
                 heard = false
                 silentMs = 0
                 totalMs = 0
-                skip = 2                       // do not record our own beep
+                skip = 1                       // do not record our own beep (PART 4: was 2 = 200 ms of the owner's first word lost)
+                lastSpeechBytes = 0
                 if (!answer) {                 // words spoken while the wake word was being recognised are kept
                     for (c in pre) {
                         try {
@@ -744,7 +868,8 @@ class NovaService : Service() {
                         startCapture(false)
                         continue
                     }
-                    noise = noise * 0.97 + minOf(rms, 1500.0) * 0.03
+                    if (ListenGuard.isVoice(rms, noise)) lastVoiceAt = System.currentTimeMillis()   // PART 4: people are talking nearby: no alerts over them
+                    noise = ListenGuard.nextNoise(noise, rms)   // PART 4: the wake word itself must not raise the "speaking" threshold
                     peak = maxOf(rms, peak * 0.85)
                     pre.add(buf.copyOf(n))
                     while (pre.size > 5) pre.removeAt(0)
@@ -773,12 +898,13 @@ class NovaService : Service() {
                         pcm.write(buf[i].toInt() and 0xff)
                         pcm.write((buf[i].toInt() shr 8) and 0xff)
                     }
+                    if (speaking) lastSpeechBytes = pcm.size()
                     // Vosk's own end-of-utterance (acceptWaveForm == true) ends the capture early.
                     // After it fires the text must be taken with getResult(); getFinalResult() would be empty.
                     var endpoint = false
                     if (cm.acceptWaveForm(buf, n)) {
                         val t = Logic.extractText(cm.getResult())
-                        if (t.isNotBlank()) { cmdText.append(' ').append(t); endpoint = false; heard = true }
+                        if (t.isNotBlank()) { cmdText.append(' ').append(t); endpoint = false; heard = true; lastSpeechBytes = pcm.size() }
                     }
                     val maxMs = if (dictCapture) Logic.MAX_DICTATION_MS else if (answerCapture) Logic.MAX_ANSWER_MS else Logic.MAX_COMMAND_MS + ExtCfg.waitMs(this)
                     val noSpeechMs = if (dictCapture) Logic.NO_SPEECH_DICTATION_MS else if (answerCapture) Logic.NO_SPEECH_ANSWER_MS else Logic.NO_SPEECH_COMMAND_MS
@@ -811,6 +937,7 @@ class NovaService : Service() {
                         }
                         val text = cmdText.toString().trim()
                         val bytes = pcm.toByteArray()
+                        val sendBytes = ListenGuard.trimTail(bytes, lastSpeechBytes, ListenGuard.TAIL_KEEP_MS, MIN_HEAR_BYTES)   // PART 4: no 5 s of silence to the cloud
                         val dur = totalMs
                         cm.reset()
                         wk.reset()
@@ -833,7 +960,8 @@ class NovaService : Service() {
                         sys(tr("Soch raha hoon...", "Thinking..."))
                         Thread {
                             if (!voiceAllows(bytes, isAnswer)) return@Thread   // v17: only the owner's voice (when switched on)
-                            if (isAnswer) processAnswer(text) else process(bytes, text, dur)
+                            if (!faceAllows()) return@Thread                   // PART 5: locked phone: the face / fingerprint screen as well
+                            if (isAnswer) processAnswer(text) else process(sendBytes, text, dur)
                         }.start()
                     }
                 }
@@ -847,6 +975,7 @@ class NovaService : Service() {
             listening = false
             voiceMd = null
             enrollLeft = 0
+            tuneLeft = 0
             try { rec?.stop() } catch (t: Throwable) { }
             try { rec?.release() } catch (t: Throwable) { }
             try { tone?.release() } catch (t: Throwable) { }
@@ -867,18 +996,35 @@ class NovaService : Service() {
     // ------------------------------------------------------------------ one turn
 
     private fun finishTurn(reply: String, kind: String? = null) {
+        val silent = silentTurn
+        val failed = turnFailed
+        val oks: List<String> = synchronized(turnOk) { ArrayList(turnOk) }
         h.post {
             if (alive) {
                 val p = pending
-                val confirm = p != null && !Logic.isExpired(p.createdAt, System.currentTimeMillis(), Logic.PENDING_TTL_MS)
-                // kind == null (answers to a yes/no, errors) is always spoken; a normal command reply may be silent
-                val loud = kind == null || Logic.speakReply(cfg.quietReplies, confirm, kind)
-                if (loud) {
-                    nextFollow = !confirm && kind != null && kind !in NO_FOLLOW_KINDS
-                    say(reply, confirm)  // say() FIRST (sets ttsActive) ...
+                val now = System.currentTimeMillis()
+                val confirm = p != null && !Logic.isExpired(p.createdAt, now, Logic.PENDING_TTL_MS)
+                var shown = reply
+                val loud: Boolean
+                if (silent) {
+                    // PART 3: silent order. A waiting yes/no is still spoken; a failure shows its real text; nothing is overclaimed.
+                    val o = SilentRules.present(confirm, failed, oks, reply, tr("Kaam complete ho gaya", "Task complete"))
+                    shown = o.show
+                    loud = o.speak
+                    silentCarryAt = if (confirm) now else 0L
+                    silentCarryP = if (confirm) p else null
                 } else {
-                    listener?.invoke("ai", reply)                     // silent: chat + floating card only
-                    hud?.setReply(reply)
+                    // kind == null (answers to a yes/no, errors) is always spoken; a normal command reply may be silent
+                    loud = kind == null || Logic.speakReply(cfg.quietReplies, confirm, kind)
+                    silentCarryAt = 0L
+                    silentCarryP = null
+                }
+                if (loud) {
+                    nextFollow = !confirm && kind != null && kind !in NO_FOLLOW_KINDS && !silent
+                    say(shown, confirm)  // say() FIRST (sets ttsActive) ...
+                } else {
+                    listener?.invoke("ai", shown)                     // silent: chat + floating card only
+                    hud?.setReply(shown)
                 }
                 mode("on")
                 armSleep((hud?.holdMs() ?: 3000L) + 600L)   // reply stays readable, then NOVA sleeps (waits if a yes is pending)
@@ -887,10 +1033,59 @@ class NovaService : Service() {
         }
     }
 
-    private fun process(pcm: ByteArray, text: String, durMs: Int) {
+    /** PART 3: resets the per-order silent state. [carry] = this turn is the spoken yes/no answer to a question a silent order asked. */
+    private fun beginTurn(carry: Boolean) {
+        val cp = silentCarryP
+        silentTurn = carry && cp != null && cp === pending && SilentRules.carryValid(silentCarryAt, System.currentTimeMillis(), Logic.PENDING_TTL_MS)
+        if (!silentTurn) { silentCarryAt = 0L; silentCarryP = null }
+        turnFailed = false
+        silentFillerHeard = false
+        synchronized(turnOk) { turnOk.clear() }
+    }
+
+    /** A silent phrase must not eat a typed dictation or a memory sentence ("yaad rakh ... chup rehna ..."). */
+    private fun silentAllowed(stripped: String): Boolean {
+        val k = Logic.classify(stripped)?.kind ?: return true
+        return k != "type" && !PersonalMemory.isMemoryKind(k)
+    }
+
+    /** Heard text (Groq / Gemini transcript): cuts a silent phrase and turns the silent order on. "" + silentFillerHeard = only "ye kaam pura karo chup rehna". */
+    private fun silentStrip(t: String): String {
+        if (t.isBlank()) return t
+        val sx = SilentRules.extract(t)
+        if (!sx.silent || !silentAllowed(sx.text)) return t
+        silentTurn = true
+        if (sx.fillerOnly) { silentFillerHeard = true; return "" }
+        return sx.text
+    }
+
+    /** "ye kaam pura karo, chup rehna": nothing new to do. If a job is running it finishes quietly; otherwise NOVA asks (spoken). */
+    private fun silentFillerReply(): String {
+        if (agentRunning) {
+            agentSilent = true
+            return tr("Theek hai, kaam chup-chaap poora karunga", "Okay, I will finish the job quietly")
+        }
+        silentTurn = false   // nothing to do silently, and the owner needs to HEAR this question
+        return tr("Kaun sa kaam? Pehle kaam bolo, phir 'chup rehna' bolo", "Which job? Say the job first, then add 'stay quiet'")
+    }
+
+    private fun process(pcm: ByteArray, text0: String, durMs: Int) {
+        beginTurn(false)
+        var text = text0
+        val sx = SilentRules.extract(text0)
+        var fillerOnly = false
+        if (sx.silent && silentAllowed(sx.text)) {   // PART 3: "... chup rehna" in the offline text
+            silentTurn = true
+            text = sx.text
+            fillerOnly = sx.fillerOnly
+        }
         val reply: String = try {
-            handle(pcm, text)
+            if (fillerOnly) {
+                listener?.invoke("me", "🎤 " + text0)
+                silentFillerReply()
+            } else handle(pcm, text)
         } catch (t: Throwable) {
+            turnFailed = true
             tr("Kuch gadbad ho gayi, dobara try karo", "Something went wrong, please try again")
         }
         finishTurn(withNudge(reply), lastKind)
@@ -1170,15 +1365,16 @@ class NovaService : Service() {
         var c: Logic.Cmd? = c0 ?: sk?.let { skillCmd(it) }
         var groqText = ""
         if (c == null && pcm.isNotEmpty() && SecureStore.hasGroq(this)) {
-            groqText = groqHear(pcm)
+            groqText = silentStrip(groqHear(pcm))
             if (groqText.isNotBlank()) c = Understand.classify(groqText)
         }
         // v28: no Groq key, or Groq failed: the owner's Gemini key listens instead (Hindi / Hinglish / English, far better than the
         // small offline Vosk model, which only guesses Roman words). Only after the wake word, only if Vosk found no local command.
         if (c == null && groqText.isBlank() && pcm.size >= MIN_HEAR_BYTES) {
-            groqText = geminiHear(pcm)
+            groqText = silentStrip(geminiHear(pcm))
             if (groqText.isNotBlank()) c = Understand.classify(groqText)
         }
+        if (silentFillerHeard) return silentFillerReply()   // PART 3: only "ye kaam pura karo, chup rehna" was heard
         if (c == null && groqText.isNotBlank() && AgentRules.isTask(groqText)) {   // v28: a whole job heard by Groq Whisper or Gemini
             lastTurnLocal = false
             lastKind = "agent"
@@ -1300,6 +1496,7 @@ class NovaService : Service() {
         }
         val (text, kind) = FreeProviders.combinedFailure(geminiFail, geminiText, chainKind, en)
         lastCloudFail = kind
+        ErrLog.add("ai-chain", "no AI answered: " + kind)
         return Routing.CloudResult(text, false, false, kind)
     }
 
@@ -1342,6 +1539,7 @@ class NovaService : Service() {
 
     /** The user's answer to a pending confirmation. ONLY a clear local "yes" approves; the cloud is never asked. */
     private fun processAnswer(text: String) {
+        beginTurn(true)   // PART 3: a yes to a silent order's question keeps the result silent
         val p = pending
         pending = null
         val isDict = p != null && p === dictatePending
@@ -1364,6 +1562,7 @@ class NovaService : Service() {
                 }
             }
         } catch (t: Throwable) {
+            turnFailed = true
             tr("Kaam nahi ho paya", "That did not work")
         }
         val k = alertKind   // set only by a yes to a screen alert: the screen session then keeps listening for follow-ups
@@ -1579,6 +1778,22 @@ class NovaService : Service() {
         ))
     }
 
+    /** Opens the still or video camera, optionally on the front lens. Android has no official "front" switch, so the common extras are
+     *  all sent; most camera apps follow them, a few ignore them. We never press record: that needs the user's own tap. */
+    private fun cameraTool(modeRaw: String, facingRaw: String): R {
+        val video = modeRaw.trim().lowercase().let { it == "video" || it == "vid" || it == "record" }
+        val front = facingRaw.trim().lowercase().let { it == "front" || it == "selfie" }
+        val i = Intent(if (video) MediaStore.INTENT_ACTION_VIDEO_CAMERA else MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+        if (front) {
+            i.putExtra("android.intent.extras.CAMERA_FACING", 1)
+            i.putExtra("android.intent.extras.LENS_FACING_FRONT", 1)
+            i.putExtra("android.intent.extra.USE_FRONT_CAMERA", true)
+        }
+        val what = (if (front) tr("Front ", "Front ") else "") + (if (video) tr("Video camera", "Video camera") else "Camera")
+        val r = launch(i, null, what)
+        return if (r.ok && video) R(true, r.msg + tr(". Record dabane ka button aap dabao", ". Tap the record button yourself")) else r
+    }
+
     /** For intents that show no screen (alarm / timer with SKIP_UI): Android gives no confirmation at all. */
     private fun fire(i: Intent): Boolean = try {
         startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true
@@ -1626,8 +1841,10 @@ class NovaService : Service() {
                 else -> R(false, tr("Ye command samajh nahi aaya", "I did not understand that command"))
             }
         } catch (e: Exception) {
+            ErrLog.add("local:" + c.kind, "exception " + e.javaClass.simpleName)
             R(false, tr("Ye kaam nahi ho paya", "That did not work"))
         }
+        if (!r.ok) { ErrLog.add("local:" + c.kind, r.msg); turnFailed = true } else turnOk.add(c.kind)
         return r.msg
     }
 
@@ -1862,6 +2079,8 @@ class NovaService : Service() {
         if (agentRunning) return tr("Ek kaam abhi chal raha hai", "A task is already running")
         agentRunning = true
         agentCancel = false
+        agentSilent = silentTurn      // PART 3: "... chup rehna" said with the job (or with its spoken yes)
+        agentAsked = false
         Thread({
             val result = try {
                 agentRun(task)
@@ -1869,7 +2088,17 @@ class NovaService : Service() {
                 tr("Kaam beech mein ruk gaya", "The task stopped midway")
             }
             agentRunning = false
-            h.post { say(result) }
+            h.post {
+                if (agentSilent && !agentAsked) {   // PART 3: silent job: the result goes to the card only (a question to the owner is still spoken)
+                    agentSilent = false
+                    listener?.invoke("ai", result)
+                    hud?.setReply(result)
+                    if (alive && !busy && !listening) { mode("on"); armSleep((hud?.holdMs() ?: 3000L) + 600L) }
+                } else {
+                    agentSilent = false
+                    say(result)
+                }
+            }
         }, "nova-agent").start()
         return tr("Theek hai, kaam shuru. Rokna ho to 'ruko' bolo", "Okay, starting. Say stop to cancel")
     }
@@ -2029,7 +2258,10 @@ class NovaService : Service() {
             when (a.act) {
                 "done" -> return if (a.say.isNotBlank()) a.say else tr("Kaam ho gaya", "Done")
                 "fail" -> return tr("Kaam nahi ho paya. ", "I could not finish. ") + a.say
-                "ask" -> return if (a.say.isNotBlank()) a.say else tr("Mujhe aapki madad chahiye", "I need your help")
+                "ask" -> {
+                    agentAsked = true   // PART 3: the owner must HEAR this, even in a silent job
+                    return if (a.say.isNotBlank()) a.say else tr("Mujhe aapki madad chahiye", "I need your help")
+                }
             }
             val node = nodes.getOrNull(a.index)
             val chk = AgentRules.check(a, node, pkg, packageName)
@@ -2436,7 +2668,7 @@ class NovaService : Service() {
                     if (q.isEmpty()) R(false, "no song given")
                     else launch(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=" + enc(q))), null, "YouTube")
                 }
-                "camera" -> launch(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), null, "Camera")
+                "camera" -> cameraTool(a.optString("mode", "photo"), a.optString("facing", "back"))
                 "settings" -> openSettings(a.optString("page", "main"), false)
                 "brightness" -> setBrightness(a.optInt("percent", -1))
                 "brightness_step" -> stepBrightness(a.optInt("delta", 0))
@@ -2447,8 +2679,10 @@ class NovaService : Service() {
                 else -> R(false, "unknown tool")
             }
         } catch (e: Exception) {
+            ErrLog.add("ai-tool:" + name, "exception " + e.javaClass.simpleName)
             R(false, "the tool failed")
         }
+        if (!r.ok) { ErrLog.add("ai-tool:" + name, r.msg); turnFailed = true } else turnOk.add(name)
         return if (r.ok) r.msg else "FAILED: " + r.msg
     }
 
@@ -2469,14 +2703,19 @@ class NovaService : Service() {
             val code = c.responseCode
             val stream = if (code in 200..299) c.inputStream else c.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            if (code !in 200..299) ErrLog.add("gemini", "http " + code + " (" + model + ")")
             return Pair(code, text)
         } catch (e: UnknownHostException) {
+            ErrLog.add("gemini", "no internet")
             return Pair(598, "")
         } catch (e: ConnectException) {
+            ErrLog.add("gemini", "no internet")
             return Pair(598, "")
         } catch (e: SocketTimeoutException) {
+            ErrLog.add("gemini", "timeout (" + model + ")")
             return Pair(599, "")
         } catch (e: IOException) {
+            ErrLog.add("gemini", "network error (" + model + ")")
             return Pair(599, "")
         } finally {
             conn?.disconnect()
@@ -2577,7 +2816,7 @@ class NovaService : Service() {
     private fun systemPrompt(): String {
         val now = SimpleDateFormat("EEEE, d MMMM yyyy, hh:mm a", Locale.ENGLISH).format(Date())
         val bat = getSystemService(BatteryManager::class.java).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return """You are NOVA, a voice assistant on the user's Android phone. The user's message is a spoken command in Hindi, Hinglish or English: the audio plus a transcript that may have small mistakes (if they differ, trust the audio). People speak naturally: long, casual, with filler and polite words, a different word order, or several things in one sentence, for example 'mere mobile ko turant lock kar do', 'yaar thodi awaaz kam kar de aur torch jala de', 'mujhe subah saat baje uthana hai alarm laga dena'. Work out the INTENT of the whole sentence and act with the tools; when the user asks for several things, call several tools in the same turn. Never say you did not understand just because the phrasing is unusual or long: choose the most likely action. Ask ONE short question only when two very different actions are equally likely, and ask the user to repeat only when the audio is really empty. Your replies are read aloud, so: no markdown, no lists, no emojis, no URLs, short natural sentences. Reply in the language the user spoke: Hindi in Devanagari script for Hindi or Hinglish, English for English. Use the provided tools for phone actions and never claim an action was done unless the tool result says so; if a tool result says requested or not confirmed, say exactly that. The call and whatsapp tools ask the user for a spoken confirmation by themselves, so call them directly without asking first. For call, sms and whatsapp pass the contact name in Latin letters as it is usually saved, for example Rahul. For whatsapp pass only the final message text. You cannot see the phone screen. For analysis or explanations give a clear answer: conclusion first, then two to four reasons, then key risks. Use search_web for anything current such as news, prices or scores. Keep answers under about 8 sentences unless asked for detail. Never call or message anyone the user did not ask for. Never repeat, redo or continue an earlier command unless the user clearly asks for it again in this new message. If the audio is silent or only background noise, call no tool, change nothing, and only ask the user to repeat. Current time: $now. Phone battery: $bat percent."""
+        return """You are NOVA, a voice assistant on the user's Android phone. The user's message is a spoken command in Hindi, Hinglish or English: the audio plus a transcript that may have small mistakes (if they differ, trust the audio). People speak naturally: long, casual, with filler and polite words, a different word order, or several things in one sentence, for example 'mere mobile ko turant lock kar do', 'yaar thodi awaaz kam kar de aur torch jala de', 'mujhe subah saat baje uthana hai alarm laga dena'. Work out the INTENT of the whole sentence and act with the tools; when the user asks for several things, call several tools in the same turn. Never say you did not understand just because the phrasing is unusual or long: choose the most likely action. Ask ONE short question only when two very different actions are equally likely, and ask the user to repeat only when the audio is really empty. Your replies are read aloud, so: no markdown, no lists, no emojis, no URLs, short natural sentences. Reply in the language the user spoke: Hindi in Devanagari script for Hindi or Hinglish, English for English. For the camera tool pass mode video when the user says video or record, and facing front when the user says front, selfie or aage wala camera. Use the provided tools for phone actions and never claim an action was done unless the tool result says so; if a tool result says requested or not confirmed, say exactly that. The call and whatsapp tools ask the user for a spoken confirmation by themselves, so call them directly without asking first. For call, sms and whatsapp pass the contact name in Latin letters as it is usually saved, for example Rahul. For whatsapp pass only the final message text. You cannot see the phone screen. For analysis or explanations give a clear answer: conclusion first, then two to four reasons, then key risks. Use search_web for anything current such as news, prices or scores. Keep answers under about 8 sentences unless asked for detail. Never call or message anyone the user did not ask for. Never repeat, redo or continue an earlier command unless the user clearly asks for it again in this new message. If the audio is silent or only background noise, call no tool, change nothing, and only ask the user to repeat. Current time: $now. Phone battery: $bat percent."""
     }
 
     private fun declarations(): JSONArray {
@@ -2593,7 +2832,11 @@ class NovaService : Service() {
         t.put(tool("volume", "Change media volume: action is one of up, down, mute, max", "action" to "string"))
         t.put(tool("navigate", "Start navigation or show a place in Google Maps", "place" to "string"))
         t.put(tool("play_music", "Search a song or video on YouTube", "query" to "string"))
-        t.put(tool("camera", "Open the camera"))
+        t.put(JSONObject().put("name", "camera").put("description",
+            "Open the camera app. mode is photo or video (default photo); facing is front (selfie camera) or back (default back). Only opens the camera, it cannot press the record or shutter button")
+            .put("parameters", JSONObject().put("type", "OBJECT").put("properties", JSONObject()
+                .put("mode", JSONObject().put("type", "STRING").put("description", "photo or video"))
+                .put("facing", JSONObject().put("type", "STRING").put("description", "front or back")))))
         t.put(tool("settings", "Open a phone settings page: wifi, bluetooth, display, sound, location, battery, airplane, apps, dnd, or main", "page" to "string"))
         t.put(tool("brightness", "Set screen brightness 0-100. May need a special permission", "percent" to "integer"))
         t.put(tool("brightness_step", "Increase or decrease brightness by a percentage delta", "delta" to "integer"))

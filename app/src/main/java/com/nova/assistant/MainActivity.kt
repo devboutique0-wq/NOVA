@@ -451,6 +451,15 @@ class MainActivity : Activity() {
         } catch (e: Exception) { "fail" }
 
         @JavascriptInterface
+        fun getErrors(): String = ErrLog.dump()
+
+        @JavascriptInterface
+        fun clearErrors(): String { ErrLog.clear(); return "ok" }
+
+        @JavascriptInterface
+        fun openPowerGuide(): String = try { PowerGuide.open(this@MainActivity) } catch (e: Exception) { "fail" }
+
+        @JavascriptInterface
         fun shareText(t: String): String {
             runOnUiThread {
                 try {
@@ -676,7 +685,57 @@ class MainActivity : Activity() {
         fun getVoiceLevel(): Int = ExtCfg.voiceLevel(this@MainActivity)
 
         @JavascriptInterface
-        fun setVoiceLevel(level: Int): String { ExtCfg.setVoiceLevel(this@MainActivity, level); return "ok" }
+        fun setVoiceLevel(level: Int): String {
+            ExtCfg.setVoiceLevel(this@MainActivity, level)
+            ExtCfg.setVoiceThreshold(this@MainActivity, 0.0)   // PART 5: choosing a level again drops the tuned limit
+            return "ok"
+        }
+
+        @JavascriptInterface
+        fun getVoiceLimitText(): String {
+            val t = ExtCfg.voiceThreshold(this@MainActivity)
+            val used = SpeakerRules.effectiveThreshold(ExtCfg.voiceLevel(this@MainActivity), t)
+            return "%.2f".format(used) + if (t > 0.0) " (tune kiya)" else " (default)"
+        }
+
+        @JavascriptInterface
+        fun voiceTune(others: Boolean): String = NovaService.instance?.startVoiceTune(others) ?: "notrunning"
+
+        @JavascriptInterface
+        fun faceMode(): String = when (FaceGate.mode(this@MainActivity)) {
+            LockGate.Mode.WEAK -> "weak"
+            LockGate.Mode.CREDENTIAL -> "credential"
+            LockGate.Mode.NONE -> "none"
+        }
+
+        @JavascriptInterface
+        fun getFaceGate(): Boolean = ExtCfg.faceGate(this@MainActivity)
+
+        @JavascriptInterface
+        fun setFaceGate(on: Boolean): String {
+            if (on) {
+                val voiceOk = VoiceLock.hasProfile(this@MainActivity) && ExtCfg.voiceLock(this@MainActivity)
+                val err = LockGate.canEnable(voiceOk, FaceGate.mode(this@MainActivity))
+                if (err != null) return err
+            }
+            ExtCfg.setFaceGate(this@MainActivity, on)
+            return "ok"
+        }
+
+        /** Shows the system face / fingerprint screen once, so the owner can see it work. The answer comes back through onFaceTest(ok). */
+        @JavascriptInterface
+        fun faceTest(): String {
+            val mode = FaceGate.mode(this@MainActivity)
+            if (mode == LockGate.Mode.NONE) return "noface"
+            Thread({
+                val tok = FaceGateState.begin()
+                FaceGate.launch(this@MainActivity, tok, mode)
+                val ok = FaceGateState.await(tok, LockGate.FACE_WAIT_MS)
+                FaceGate.dismissNotice(this@MainActivity)
+                runJs("if(window.onFaceTest)onFaceTest(" + ok + ")")
+            }, "nova-face-test").start()
+            return "ok"
+        }
 
         @JavascriptInterface
         fun hasVoiceProfile(): Boolean = VoiceLock.hasProfile(this@MainActivity)
@@ -695,6 +754,9 @@ class MainActivity : Activity() {
         fun voiceDelete(): String {
             VoiceLock.deleteProfile(this@MainActivity)
             ExtCfg.setVoiceLock(this@MainActivity, false)
+            ExtCfg.setVoiceThreshold(this@MainActivity, 0.0)   // PART 5: no voiceprint, no tuning, no face gate (it needs the voice)
+            ExtCfg.setVoiceOwnDists(this@MainActivity, "")
+            ExtCfg.setFaceGate(this@MainActivity, false)
             return "ok"
         }
 

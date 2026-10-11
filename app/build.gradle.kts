@@ -50,5 +50,7 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.13.0@aar")
     implementation("com.alphacephei:vosk-android:0.3.47")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    implementation("androidx.biometric:biometric:1.1.0")   // Part 5: system face / fingerprint screen (second factor on a locked phone)
+    implementation("androidx.fragment:fragment:1.6.2")
     testImplementation("junit:junit:4.13.2")
 }

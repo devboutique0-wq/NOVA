@@ -24,7 +24,7 @@ object Logic {
     const val NO_SPEECH_ANSWER_MS = 4000
     const val MAX_DICTATION_MS = 15000      // hard cap for one dictated driving reply
     const val NO_SPEECH_DICTATION_MS = 6000 // give up if nothing is said after "bolo, kya jawab bhejna hai"
-    const val DICTATION_SILENCE_MS = 1300   // people pause mid-sentence: wait a bit longer than for a command
+    const val DICTATION_SILENCE_MS = 2500   // people pause mid-sentence while dictating a reply: wait longer than for a command
     const val PENDING_TTL_MS = 30000L       // a confirmation older than this is dead
     const val WAKE_COOLDOWN_MS = 1500L      // after a turn ends, ignore the wake word for a moment (echo, tail of our own voice)
     const val HISTORY_TTL_MS = 120_000L     // cloud chat memory older than this is forgotten, so an old command can never come back
@@ -79,8 +79,8 @@ object Logic {
     // ---------------------------------------------------------------- smart end of speech
 
     const val FAST_END_MIN_SILENCE_MS = 600     // only look at the live text after this much silence
-    const val FAST_END_MS = 1200                // a complete simple command: stop waiting after this much silence
-    const val FAST_END_OPEN_APP_MS = 1800       // app names can have several words: a little longer
+    const val FAST_END_MS = 1800                // a complete simple command: stop waiting after this much silence (long enough for "... aur ...")
+    const val FAST_END_OPEN_APP_MS = 2500       // app names can have several words: a little longer
 
     private val FAST_KINDS = setOf(
         "battery", "time", "date", "torch_on", "torch_off", "volume", "brightness_set", "brightness_step",
@@ -94,6 +94,7 @@ object Logic {
      */
     fun fastEndMs(liveText: String): Int {
         if (liveText.isBlank()) return 0
+        if (ListenGuard.endsWithJoiner(liveText)) return 0   // "... aur" / "... phir": the owner is not finished
         val c = classify(liveText) ?: return 0
         if (c.kind == "open_app") return FAST_END_OPEN_APP_MS
         return if (c.kind in FAST_KINDS) FAST_END_MS else 0

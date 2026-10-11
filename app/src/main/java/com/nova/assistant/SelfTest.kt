@@ -40,6 +40,7 @@ object SelfTest {
             sb.append("NOVA SELF TEST | app ").append(vName).append(" | ").append(Build.MANUFACTURER).append(' ')
                 .append(Build.MODEL).append(" | Android ").append(Build.VERSION.SDK_INT).append('\n')
             for (l in out) sb.append(l).append('\n')
+            sb.append(ErrLog.dump(System.currentTimeMillis())).append('\n')
             sb.append("SUMMARY pass=").append(out.count { it.startsWith("PASS") })
                 .append(" fail=").append(out.count { it.startsWith("FAIL") })
                 .append(" warn=").append(out.count { it.startsWith("WARN") })

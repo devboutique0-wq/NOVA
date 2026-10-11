@@ -5,4 +5,7 @@
         <item name="android:statusBarColor">#FF05060F</item>
         <item name="android:navigationBarColor">#FF05060F</item>
     </style>
+    <style name="Theme.NovaGate" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>
